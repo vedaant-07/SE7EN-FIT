@@ -1,0 +1,58 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "free",
+        "ai_trainer",
+        "premium_basic",
+        "premium_pro",
+        "premium_elite"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "expired",
+        "cancelled",
+        "pending"
+      ],
+      "default": "active"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "default": true
+    },
+    "coupon_code": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "plan"
+  ]
+}

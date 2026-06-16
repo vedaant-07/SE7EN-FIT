@@ -1,0 +1,44 @@
+{
+  "name": "BodyMeasurement",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "chest_cm": {
+      "type": "number"
+    },
+    "waist_cm": {
+      "type": "number"
+    },
+    "hips_cm": {
+      "type": "number"
+    },
+    "arms_cm": {
+      "type": "number"
+    },
+    "forearms_cm": {
+      "type": "number"
+    },
+    "thighs_cm": {
+      "type": "number"
+    },
+    "calves_cm": {
+      "type": "number"
+    },
+    "shoulders_cm": {
+      "type": "number"
+    },
+    "neck_cm": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_id",
+    "date"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "HabitLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "habit": {
+      "type": "string"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "habit"
+  ]
+}

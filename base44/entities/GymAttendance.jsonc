@@ -1,0 +1,29 @@
+{
+  "name": "GymAttendance",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "gym_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "check_in": {
+      "type": "string"
+    },
+    "check_out": {
+      "type": "string"
+    },
+    "duration_minutes": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_id",
+    "date"
+  ]
+}

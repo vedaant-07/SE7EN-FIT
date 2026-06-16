@@ -1,0 +1,73 @@
+{
+  "name": "Gym",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "facilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timings": {
+      "type": "string"
+    },
+    "monthly_fee": {
+      "type": "number"
+    },
+    "quarterly_fee": {
+      "type": "number"
+    },
+    "yearly_fee": {
+      "type": "number"
+    },
+    "referral_code": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "total_members": {
+      "type": "number",
+      "default": 0
+    },
+    "is_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "owner_id",
+    "name"
+  ]
+}

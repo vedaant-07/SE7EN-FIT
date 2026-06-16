@@ -1,0 +1,48 @@
+{
+  "name": "WorkoutLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "workout_plan_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "day_name": {
+      "type": "string"
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "duration_minutes": {
+      "type": "number"
+    },
+    "calories_burned": {
+      "type": "number"
+    },
+    "difficulty_rating": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "workout_type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date"
+  ]
+}

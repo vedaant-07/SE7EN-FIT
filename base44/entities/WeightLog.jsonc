@@ -1,0 +1,27 @@
+{
+  "name": "WeightLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "weight_kg": {
+      "type": "number"
+    },
+    "body_fat_pct": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "weight_kg"
+  ]
+}

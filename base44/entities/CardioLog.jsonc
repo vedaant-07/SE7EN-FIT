@@ -1,0 +1,45 @@
+{
+  "name": "CardioLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "activity": {
+      "type": "string",
+      "enum": [
+        "running",
+        "walking",
+        "cycling",
+        "treadmill",
+        "elliptical",
+        "skipping",
+        "swimming"
+      ]
+    },
+    "duration_minutes": {
+      "type": "number"
+    },
+    "distance_km": {
+      "type": "number"
+    },
+    "calories_burned": {
+      "type": "number"
+    },
+    "avg_heart_rate": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "activity"
+  ]
+}

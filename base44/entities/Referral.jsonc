@@ -1,0 +1,43 @@
+{
+  "name": "Referral",
+  "type": "object",
+  "properties": {
+    "referrer_id": {
+      "type": "string"
+    },
+    "referred_id": {
+      "type": "string"
+    },
+    "referral_code": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "gym_owner",
+        "trainer"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "rewarded"
+      ],
+      "default": "pending"
+    },
+    "commission_amount": {
+      "type": "number"
+    },
+    "reward_given": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "referrer_id",
+    "referral_code"
+  ]
+}

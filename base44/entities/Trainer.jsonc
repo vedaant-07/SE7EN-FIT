@@ -1,0 +1,56 @@
+{
+  "name": "Trainer",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "specialization": {
+      "type": "string"
+    },
+    "experience_years": {
+      "type": "number"
+    },
+    "bio": {
+      "type": "string"
+    },
+    "certifications": {
+      "type": "string"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
+    "availability": {
+      "type": "string"
+    },
+    "gym_id": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "total_clients": {
+      "type": "number",
+      "default": 0
+    },
+    "photo_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "is_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "user_id",
+    "name"
+  ]
+}

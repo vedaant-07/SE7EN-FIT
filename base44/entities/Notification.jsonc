@@ -1,0 +1,44 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "workout",
+        "meal",
+        "water",
+        "steps",
+        "sleep",
+        "weight",
+        "progress",
+        "subscription",
+        "challenge",
+        "motivation",
+        "report",
+        "system"
+      ]
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "action_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "title",
+    "message"
+  ]
+}

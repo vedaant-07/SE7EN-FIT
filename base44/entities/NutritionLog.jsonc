@@ -1,0 +1,62 @@
+{
+  "name": "NutritionLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "meal_type": {
+      "type": "string",
+      "enum": [
+        "breakfast",
+        "lunch",
+        "snack",
+        "dinner",
+        "pre_workout",
+        "post_workout",
+        "supplements"
+      ]
+    },
+    "food_name": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "string"
+    },
+    "calories": {
+      "type": "number"
+    },
+    "protein_g": {
+      "type": "number"
+    },
+    "carbs_g": {
+      "type": "number"
+    },
+    "fat_g": {
+      "type": "number"
+    },
+    "fiber_g": {
+      "type": "number"
+    },
+    "photo_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "is_ai_estimated": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "food_name"
+  ]
+}

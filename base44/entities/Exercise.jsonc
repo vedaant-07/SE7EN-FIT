@@ -1,0 +1,90 @@
+{
+  "name": "Exercise",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "muscle_group": {
+      "type": "string",
+      "enum": [
+        "chest",
+        "back",
+        "shoulders",
+        "biceps",
+        "triceps",
+        "legs",
+        "glutes",
+        "abs",
+        "forearms",
+        "calves",
+        "full_body",
+        "cardio"
+      ]
+    },
+    "equipment": {
+      "type": "string",
+      "enum": [
+        "barbell",
+        "dumbbell",
+        "machine",
+        "cable",
+        "bodyweight",
+        "resistance_band",
+        "kettlebell",
+        "none"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "strength",
+        "cardio",
+        "hiit",
+        "mobility",
+        "warmup",
+        "cooldown"
+      ]
+    },
+    "instructions": {
+      "type": "string"
+    },
+    "common_mistakes": {
+      "type": "string"
+    },
+    "target_muscles": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "video_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "calories_per_set": {
+      "type": "number"
+    },
+    "is_gym": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_home": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name",
+    "muscle_group"
+  ]
+}

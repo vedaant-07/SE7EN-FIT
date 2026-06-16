@@ -1,0 +1,37 @@
+{
+  "name": "StepLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "steps": {
+      "type": "number"
+    },
+    "distance_km": {
+      "type": "number"
+    },
+    "calories_burned": {
+      "type": "number"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "google_fit",
+        "apple_health",
+        "health_connect"
+      ],
+      "default": "manual"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "steps"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "Challenge",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "steps",
+        "fat_loss",
+        "water",
+        "consistency",
+        "pushup",
+        "weight_loss",
+        "attendance"
+      ]
+    },
+    "duration_days": {
+      "type": "number"
+    },
+    "target": {
+      "type": "number"
+    },
+    "participants_count": {
+      "type": "number",
+      "default": 0
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "reward": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

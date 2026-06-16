@@ -1,0 +1,59 @@
+{
+  "name": "WorkoutPlan",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "push_pull_legs",
+        "full_body",
+        "bro_split",
+        "upper_lower",
+        "weight_loss",
+        "muscle_gain",
+        "beginner",
+        "home_workout",
+        "cardio",
+        "transformation"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "days_per_week": {
+      "type": "number"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "is_ai_generated": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "description": {
+      "type": "string"
+    },
+    "duration_weeks": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "user_id",
+    "name"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "MoodLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "mood": {
+      "type": "string",
+      "enum": [
+        "great",
+        "good",
+        "okay",
+        "low",
+        "bad"
+      ]
+    },
+    "energy": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "stress": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "mood"
+  ]
+}
