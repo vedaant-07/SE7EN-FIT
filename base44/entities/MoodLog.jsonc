@@ -9,31 +9,14 @@
       "type": "string",
       "format": "date"
     },
-    "mood": {
-      "type": "string",
-      "enum": [
-        "great",
-        "good",
-        "okay",
-        "low",
-        "bad"
-      ]
+    "mood_score": {
+      "type": "number"
     },
-    "energy": {
-      "type": "string",
-      "enum": [
-        "high",
-        "medium",
-        "low"
-      ]
+    "energy_level": {
+      "type": "number"
     },
-    "stress": {
-      "type": "string",
-      "enum": [
-        "low",
-        "medium",
-        "high"
-      ]
+    "stress_level": {
+      "type": "number"
     },
     "notes": {
       "type": "string"
@@ -41,7 +24,6 @@
   },
   "required": [
     "user_id",
-    "date",
-    "mood"
+    "date"
   ]
 }
