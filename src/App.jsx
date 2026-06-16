@@ -39,6 +39,7 @@ import Community from '@/pages/Community';
 import Profile from '@/pages/Profile';
 import Notifications from '@/pages/Notifications';
 import Subscription from '@/pages/Subscription';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -95,6 +96,7 @@ const AuthenticatedApp = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Route>
       </Route>
 

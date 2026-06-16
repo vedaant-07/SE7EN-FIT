@@ -3,28 +3,30 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
-import StatCard from '@/components/se7enfit/StatCard';
-import QuickAction from '@/components/se7enfit/QuickAction';
+import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Plus, Trophy, TrendingUp, Zap } from 'lucide-react';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Activity, Heart } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [todayData, setTodayData] = useState({ calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false });
   const today = getToday();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const user = await base44.auth.me();
-    const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
+    const [profiles, subs] = await Promise.all([
+      base44.entities.UserProfile.filter({ user_id: user.id }),
+      base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
+    ]);
     if (!profiles.length) { navigate('/onboarding'); return; }
     const p = profiles[0];
     setProfile(p);
+    setSubscription(subs[0] || null);
 
     const [nutritionLogs, waterLogs, stepLogs, sleepLogs, workoutLogs] = await Promise.all([
       base44.entities.NutritionLog.filter({ user_id: user.id, date: today }),
@@ -34,25 +36,18 @@ export default function Home() {
       base44.entities.WorkoutLog.filter({ user_id: user.id, date: today }),
     ]);
 
-    const totalCal = nutritionLogs.reduce((s, n) => s + (n.calories || 0), 0);
-    const totalProtein = nutritionLogs.reduce((s, n) => s + (n.protein_g || 0), 0);
-    const totalWater = waterLogs.reduce((s, w) => s + (w.amount_ml || 0), 0);
-    const totalSteps = stepLogs.reduce((s, st) => s + (st.steps || 0), 0);
-    const sleepHrs = sleepLogs.length > 0 ? sleepLogs[0].hours : 0;
-    const workoutDone = workoutLogs.some(w => w.completed);
-
-    setTodayData({ calories: totalCal, protein: totalProtein, water: totalWater, steps: totalSteps, sleep: sleepHrs, workoutDone });
+    setTodayData({
+      calories: nutritionLogs.reduce((s, n) => s + (n.calories || 0), 0),
+      protein: nutritionLogs.reduce((s, n) => s + (n.protein_g || 0), 0),
+      water: waterLogs.reduce((s, w) => s + (w.amount_ml || 0), 0),
+      steps: stepLogs.reduce((s, st) => s + (st.steps || 0), 0),
+      sleep: sleepLogs[0]?.hours || 0,
+      workoutDone: workoutLogs.some(w => w.completed),
+    });
     setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="dark min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  if (loading) return <LoadingScreen />;
   if (!profile) return null;
 
   const bmr = calculateBMR(profile.weight_kg, profile.height_cm, profile.age, profile.gender);
@@ -71,129 +66,255 @@ export default function Home() {
     proteinOnTrack: todayData.protein >= proteinTarget * 0.8,
   });
 
+  const scoreLabel = fitnessScore >= 80 ? 'Excellent 🔥' : fitnessScore >= 50 ? 'Good Progress 💪' : 'Let\'s Go! 🚀';
+  const scoreColor = fitnessScore >= 80 ? 'text-green-400' : fitnessScore >= 50 ? 'text-yellow-400' : 'text-muted-foreground';
+  const isPremium = subscription && subscription.plan !== 'free';
+
+  const rings = [
+    { label: 'Calories', percent: Math.min((todayData.calories / calorieTarget) * 100, 100), color: 'hsl(var(--accent))', route: '/nutrition' },
+    { label: 'Water', percent: Math.min((todayData.water / waterGoal) * 100, 100), color: '#3b82f6', route: '/tracking/water' },
+    { label: 'Steps', percent: Math.min((todayData.steps / stepGoal) * 100, 100), color: '#a855f7', route: '/tracking/steps' },
+  ];
+
   return (
     <>
       <TopBar />
-      <div className="px-4 py-4 space-y-5">
-        {/* Greeting */}
-        <div>
-          <p className="text-muted-foreground text-sm">{getGreeting()} 👋</p>
-          <h1 className="text-2xl font-heading font-bold mt-0.5">{profile.full_name || 'Champ'}</h1>
-          <p className="text-xs text-accent mt-1 font-medium">{GOALS_LABELS[profile.goal] || 'Fitness'} • Day {profile.streak_days || 1}</p>
+      <div className="px-4 pt-3 pb-6 space-y-5">
+
+        {/* Header Greeting */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{getGreeting()} 👋</p>
+            <h1 className="text-2xl font-heading font-bold mt-0.5 leading-tight">{profile.full_name || 'Champ'}</h1>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-xs bg-accent/15 text-accent px-2.5 py-0.5 rounded-full font-medium">{GOALS_LABELS[profile.goal] || 'Fitness'}</span>
+              {isPremium && (
+                <span className="text-xs bg-yellow-500/15 text-yellow-400 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                  <Crown size={9} /> Premium
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col items-center justify-center">
+              <Flame size={16} className="text-accent" />
+              <p className="text-xs font-bold font-heading text-accent">{profile.streak_days || 0}</p>
+              <p className="text-[8px] text-muted-foreground">STREAK</p>
+            </div>
+          </div>
         </div>
 
-        {/* Fitness Score */}
-        <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-5">
-          <ProgressRing percent={fitnessScore} size={90} strokeWidth={7}>
-            <div className="text-center">
-              <p className="text-xl font-bold font-heading">{fitnessScore}</p>
-              <p className="text-[9px] text-muted-foreground">SCORE</p>
+        {/* Fitness Score Hero */}
+        <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -translate-y-8 translate-x-8 pointer-events-none" />
+          <div className="flex items-center gap-5">
+            <ProgressRing percent={fitnessScore} size={88} strokeWidth={7}>
+              <div className="text-center">
+                <p className="text-xl font-bold font-heading leading-none">{fitnessScore}</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Score</p>
+              </div>
+            </ProgressRing>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Today's Fitness</p>
+              <p className={`font-heading font-bold text-base ${scoreColor}`}>{scoreLabel}</p>
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {todayData.workoutDone && <Badge label="Workout ✓" />}
+                {todayData.steps >= stepGoal && <Badge label="Steps ✓" />}
+                {todayData.water >= waterGoal && <Badge label="Hydrated ✓" />}
+                {todayData.sleep >= 7 && <Badge label="Sleep ✓" />}
+              </div>
             </div>
-          </ProgressRing>
-          <div className="flex-1">
-            <h3 className="font-heading font-bold text-sm">Today's Fitness Score</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {fitnessScore >= 80 ? 'Outstanding! Keep it up! 🔥' :
-               fitnessScore >= 50 ? 'Good progress! Push harder! 💪' :
-               'Let\'s get moving today! 🚀'}
-            </p>
-            <div className="flex gap-2 mt-3">
-              {todayData.workoutDone && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full">✓ Workout</span>}
-              {todayData.steps >= stepGoal && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full">✓ Steps</span>}
-              {todayData.water >= waterGoal && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full">✓ Hydrated</span>}
-            </div>
+          </div>
+
+          {/* Activity rings row */}
+          <div className="flex gap-3 mt-4 pt-4 border-t border-border/50">
+            {rings.map(r => (
+              <button key={r.label} onClick={() => navigate(r.route)} className="flex-1 flex flex-col items-center gap-2 active:scale-95 transition-all">
+                <ProgressRing percent={r.percent} size={44} strokeWidth={4} color={r.color}>
+                  <span className="text-[10px] font-bold">{Math.round(r.percent)}%</span>
+                </ProgressRing>
+                <span className="text-[10px] text-muted-foreground">{r.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={<Flame size={18} />} label="Calories" value={`${todayData.calories}/${calorieTarget}`} subtitle={`${Math.round((todayData.calories / calorieTarget) * 100)}% of target`} onClick={() => navigate('/nutrition')} />
-          <StatCard icon={<Zap size={18} />} label="Protein" value={`${todayData.protein}g`} subtitle={`Target: ${proteinTarget}g`} onClick={() => navigate('/nutrition')} />
-          <StatCard icon={<Droplets size={18} />} label="Water" value={`${Math.round(todayData.water / 250)} glasses`} subtitle={`${todayData.water}/${waterGoal}ml`} onClick={() => navigate('/tracking/water')} />
-          <StatCard icon={<Footprints size={18} />} label="Steps" value={todayData.steps.toLocaleString()} subtitle={`Goal: ${stepGoal.toLocaleString()}`} onClick={() => navigate('/tracking/steps')} />
-          <StatCard icon={<Moon size={18} />} label="Sleep" value={`${todayData.sleep}h`} subtitle={`Goal: ${profile.sleep_goal_hours || 7}h`} onClick={() => navigate('/tracking/sleep')} />
-          <StatCard icon={<Dumbbell size={18} />} label="Workout" value={todayData.workoutDone ? 'Done ✓' : 'Pending'} subtitle={todayData.workoutDone ? 'Great job!' : 'Tap to start'} onClick={() => navigate('/workout')} />
+        <div className="grid grid-cols-2 gap-2.5">
+          <MetricCard
+            icon={<Flame size={15} />} label="Calories"
+            value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`}
+            percent={(todayData.calories / calorieTarget) * 100}
+            onClick={() => navigate('/nutrition')}
+            color="text-orange-400" barColor="bg-orange-400"
+          />
+          <MetricCard
+            icon={<Zap size={15} />} label="Protein"
+            value={`${todayData.protein}g`} sub={`/ ${proteinTarget}g`}
+            percent={(todayData.protein / proteinTarget) * 100}
+            onClick={() => navigate('/nutrition')}
+            color="text-green-400" barColor="bg-green-400"
+          />
+          <MetricCard
+            icon={<Droplets size={15} />} label="Water"
+            value={`${Math.round(todayData.water / 250)}`} sub={`/ ${Math.round(waterGoal / 250)} glasses`}
+            percent={(todayData.water / waterGoal) * 100}
+            onClick={() => navigate('/tracking/water')}
+            color="text-blue-400" barColor="bg-blue-400"
+          />
+          <MetricCard
+            icon={<Footprints size={15} />} label="Steps"
+            value={todayData.steps.toLocaleString()} sub={`/ ${stepGoal.toLocaleString()}`}
+            percent={(todayData.steps / stepGoal) * 100}
+            onClick={() => navigate('/tracking/steps')}
+            color="text-purple-400" barColor="bg-purple-400"
+          />
+          <MetricCard
+            icon={<Moon size={15} />} label="Sleep"
+            value={`${todayData.sleep}h`} sub={`/ ${profile.sleep_goal_hours || 7}h goal`}
+            percent={(todayData.sleep / (profile.sleep_goal_hours || 7)) * 100}
+            onClick={() => navigate('/tracking/sleep')}
+            color="text-indigo-400" barColor="bg-indigo-400"
+          />
+          <MetricCard
+            icon={<Dumbbell size={15} />} label="Workout"
+            value={todayData.workoutDone ? 'Done!' : 'Pending'}
+            sub={todayData.workoutDone ? 'Great job 💪' : 'Tap to start'}
+            percent={todayData.workoutDone ? 100 : 0}
+            onClick={() => navigate('/workout')}
+            color="text-accent" barColor="bg-accent"
+          />
         </div>
 
         {/* Quick Actions */}
         <div>
-          <h3 className="font-heading font-semibold text-sm mb-3">Quick Actions</h3>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-            <QuickAction icon={<Dumbbell size={18} />} label="Log Workout" onClick={() => navigate('/workout/log')} />
-            <QuickAction icon={<Utensils size={18} />} label="Log Meal" onClick={() => navigate('/nutrition/log')} />
-            <QuickAction icon={<Droplets size={18} />} label="Add Water" onClick={() => navigate('/tracking/water')} />
-            <QuickAction icon={<Scale size={18} />} label="Log Weight" onClick={() => navigate('/tracking/weight')} />
-            <QuickAction icon={<Bot size={18} />} label="Ask AI" onClick={() => navigate('/ai-trainer')} />
-            <QuickAction icon={<Camera size={18} />} label="Progress Photo" onClick={() => navigate('/progress')} />
+          <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
+          <div className="grid grid-cols-3 gap-2.5">
+            {[
+              { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', color: 'text-accent bg-accent/10' },
+              { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
+              { icon: Droplets, label: 'Add Water', route: '/tracking/water', color: 'text-blue-400 bg-blue-400/10' },
+              { icon: Scale, label: 'Log Weight', route: '/tracking/weight', color: 'text-green-400 bg-green-400/10' },
+              { icon: Activity, label: 'Cardio', route: '/tracking/cardio', color: 'text-red-400 bg-red-400/10' },
+              { icon: Camera, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
+            ].map(({ icon: Icon, label, route, color }) => (
+              <button key={route} onClick={() => navigate(route)}
+                className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+                  <Icon size={17} />
+                </div>
+                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Today's Workout Card */}
-        <Link to="/workout" className="block">
-          <div className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-heading font-semibold text-sm">Today's Workout</h3>
-              <span className="text-xs text-accent">View →</span>
+        {/* AI Recommendation */}
+        <Link to="/ai-trainer">
+          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl p-4 hover:border-accent/40 transition-all active:scale-[0.98]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <Bot size={19} className="text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-heading font-semibold text-sm">AI Recommendation</p>
+                  <span className="text-[9px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Live</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {profile.goal === 'weight_loss'
+                    ? 'Maintain your calorie deficit today. High-protein meals + 30 min cardio = faster results! 🔥'
+                    : profile.goal === 'muscle_gain'
+                    ? 'Hit your protein target today — aim for 2g/kg bodyweight. Don\'t skip compound lifts! 💪'
+                    : 'Consistency is your superpower. Every workout compounds your transformation! 🚀'}
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
             </div>
-            <p className="text-xs text-muted-foreground">
-              {todayData.workoutDone ? 'Completed! Great effort today 💪' : 'You haven\'t worked out yet. Time to crush it! 🔥'}
-            </p>
           </div>
         </Link>
 
-        {/* AI Recommendation */}
-        <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Bot size={16} className="text-accent" />
-            <h3 className="font-heading font-semibold text-sm">AI Recommendation</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {profile.goal === 'weight_loss'
-              ? 'Focus on maintaining a calorie deficit today. Aim for high-protein meals and at least 30 min of cardio.'
-              : profile.goal === 'muscle_gain'
-              ? 'Hit your protein target today — aim for 2g per kg bodyweight. Don\'t skip your compound lifts!'
-              : 'Stay consistent with your routine. Every workout counts towards your goal. You\'ve got this!'}
-          </p>
-          <Link to="/ai-trainer" className="inline-flex items-center gap-1 text-xs text-accent font-medium mt-2">
-            Chat with AI Trainer <Bot size={12} />
-          </Link>
-        </div>
-
-        {/* Streak & Progress */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Progress & Streak */}
+        <div className="grid grid-cols-2 gap-2.5">
           <div className="bg-card border border-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Trophy size={16} className="text-accent" />
-              <span className="text-xs text-muted-foreground">Streak</span>
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy size={14} className="text-yellow-400" />
+              <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Streak</span>
             </div>
-            <p className="text-2xl font-bold font-heading">{profile.streak_days || 0} <span className="text-sm font-normal text-muted-foreground">days</span></p>
+            <p className="text-2xl font-bold font-heading">{profile.streak_days || 0}</p>
+            <p className="text-xs text-muted-foreground">days in a row</p>
           </div>
-          <Link to="/progress" className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp size={16} className="text-accent" />
-              <span className="text-xs text-muted-foreground">Progress</span>
+          <Link to="/progress">
+            <div className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 active:scale-[0.97] transition-all h-full">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={14} className="text-accent" />
+                <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Weight</span>
+              </div>
+              <p className="text-2xl font-bold font-heading">{profile.weight_kg}<span className="text-sm font-normal text-muted-foreground"> kg</span></p>
+              <p className="text-[11px] text-accent font-medium">Target: {profile.target_weight_kg} kg</p>
             </div>
-            <p className="text-2xl font-bold font-heading">{profile.weight_kg}<span className="text-sm font-normal text-muted-foreground">kg</span></p>
-            <p className="text-[10px] text-accent">Target: {profile.target_weight_kg}kg</p>
           </Link>
         </div>
 
-        {/* More Sections */}
-        <div className="grid grid-cols-3 gap-3">
-          <Link to="/community" className="bg-card border border-border rounded-2xl p-3 text-center hover:border-accent/30 transition-all">
-            <span className="text-lg">👥</span>
-            <p className="text-[10px] font-medium mt-1">Community</p>
+        {/* Premium upsell if free */}
+        {!isPremium && (
+          <Link to="/subscription">
+            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl p-4 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                  <Crown size={19} className="text-yellow-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-heading font-bold text-sm">Unlock Premium AI Trainer</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Personalized plans, advanced analytics & more</p>
+                </div>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </div>
+            </div>
           </Link>
-          <Link to="/gym" className="bg-card border border-border rounded-2xl p-3 text-center hover:border-accent/30 transition-all">
-            <span className="text-lg">🏋️</span>
-            <p className="text-[10px] font-medium mt-1">Gyms</p>
-          </Link>
-          <Link to="/subscription" className="bg-card border border-border rounded-2xl p-3 text-center hover:border-accent/30 transition-all">
-            <span className="text-lg">⭐</span>
-            <p className="text-[10px] font-medium mt-1">Premium</p>
-          </Link>
+        )}
+
+        {/* Bottom links */}
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { label: 'Community', icon: '👥', route: '/community' },
+            { label: 'Tracking', icon: '📊', route: '/tracking' },
+            { label: 'Premium', icon: '⭐', route: '/subscription' },
+          ].map(item => (
+            <Link key={item.route} to={item.route}>
+              <div className="bg-card border border-border rounded-2xl p-3.5 text-center hover:border-accent/30 active:scale-[0.97] transition-all">
+                <span className="text-xl">{item.icon}</span>
+                <p className="text-[10px] font-medium mt-1.5">{item.label}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </>
+  );
+}
+
+function MetricCard({ icon, label, value, sub, percent, onClick, color, barColor }) {
+  const pct = Math.min(Math.max(percent || 0, 0), 100);
+  return (
+    <button
+      onClick={onClick}
+      className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent/30 active:scale-[0.97] transition-all w-full"
+    >
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${color} bg-current/10`} style={{ backgroundColor: 'rgba(0,0,0,0)' }}>
+        <span className={color}>{icon}</span>
+      </div>
+      <p className="text-base font-bold font-heading leading-none">{value}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">{label} <span className="opacity-60">{sub}</span></p>
+      <div className="mt-2.5 h-1 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </button>
+  );
+}
+
+function Badge({ label }) {
+  return (
+    <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-medium">{label}</span>
   );
 }

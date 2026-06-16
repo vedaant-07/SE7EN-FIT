@@ -104,6 +104,22 @@
   animation: progress-ring 1s ease-out forwards;
 }
 
+/* Safe area support */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth tap feedback */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Better text rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Smooth page transitions */
 .page-enter {
   opacity: 0;

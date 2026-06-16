@@ -2,78 +2,101 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
+import EmptyState from '@/components/se7enfit/EmptyState';
+import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Plus, Calendar, Library, Trophy, Clock, ChevronRight, Flame } from 'lucide-react';
-import { getToday } from '@/lib/fitnessUtils';
+import { Dumbbell, Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, CheckCircle2, Circle } from 'lucide-react';
+import { getToday, GOALS_LABELS } from '@/lib/fitnessUtils';
 
-const WORKOUT_TYPES = [
-  { key: 'push_pull_legs', label: 'Push Pull Legs', emoji: '💪' },
-  { key: 'full_body', label: 'Full Body', emoji: '🏋️' },
-  { key: 'upper_lower', label: 'Upper Lower', emoji: '⬆️' },
-  { key: 'bro_split', label: 'Bro Split', emoji: '🔥' },
-  { key: 'weight_loss', label: 'Weight Loss', emoji: '🏃' },
-  { key: 'muscle_gain', label: 'Muscle Gain', emoji: '💪' },
-  { key: 'beginner', label: 'Beginner Plan', emoji: '🌟' },
-  { key: 'home_workout', label: 'Home Workout', emoji: '🏠' },
-  { key: 'cardio', label: 'Cardio Plan', emoji: '❤️' },
-  { key: 'transformation', label: 'Transformation', emoji: '🔄' },
+const PLAN_TEMPLATES = [
+  { key: 'push_pull_legs', label: 'Push Pull Legs', emoji: '💪', desc: '3-day split, intermediate' },
+  { key: 'full_body', label: 'Full Body', emoji: '🏋️', desc: '3x/week, all levels' },
+  { key: 'upper_lower', label: 'Upper / Lower', emoji: '⬆️', desc: '4-day split, intermediate' },
+  { key: 'bro_split', label: 'Bro Split', emoji: '🔥', desc: '5-day split, advanced' },
+  { key: 'weight_loss', label: 'Weight Loss', emoji: '🏃', desc: 'Cardio + strength combo' },
+  { key: 'home_workout', label: 'Home Workout', emoji: '🏠', desc: 'No equipment needed' },
 ];
 
 export default function Workout() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const user = await base44.auth.me();
-    const [p, logs] = await Promise.all([
+    const [p, logs, profiles] = await Promise.all([
       base44.entities.WorkoutPlan.filter({ user_id: user.id }),
       base44.entities.WorkoutLog.filter({ user_id: user.id, date: getToday() }),
+      base44.entities.UserProfile.filter({ user_id: user.id }),
     ]);
     setPlans(p);
     setTodayLogs(logs);
+    setProfile(profiles[0] || null);
     setLoading(false);
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-[50vh]"><div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingScreen />;
 
   const todayCompleted = todayLogs.filter(l => l.completed).length;
+  const totalCalories = todayLogs.reduce((s, l) => s + (l.calories_burned || 0), 0);
+  const totalMins = todayLogs.reduce((s, l) => s + (l.duration_minutes || 0), 0);
+  const goalLabel = profile ? GOALS_LABELS[profile.goal] : null;
 
   return (
     <>
       <TopBar title="Workout" showBack />
-      <div className="px-4 py-4 space-y-5">
+      <div className="px-4 py-4 space-y-5 pb-6">
+
         {/* Today's Status */}
-        <div className="bg-card border border-border rounded-2xl p-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full -translate-y-6 translate-x-6 pointer-events-none" />
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground">Today's Workout</p>
-              <p className="font-heading font-bold text-lg mt-1">
-                {todayCompleted > 0 ? `${todayCompleted} session${todayCompleted > 1 ? 's' : ''} done ✓` : 'No workout yet'}
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">Today's Workout</p>
+              <p className="font-heading font-bold text-lg mt-0.5">
+                {todayCompleted > 0
+                  ? <span className="text-accent">{todayCompleted} session{todayCompleted > 1 ? 's' : ''} done ✓</span>
+                  : 'No workout logged yet'}
               </p>
+              {goalLabel && <p className="text-xs text-muted-foreground mt-0.5">Goal: {goalLabel}</p>}
             </div>
-            <Button onClick={() => navigate('/workout/log')} className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 h-10">
-              <Plus size={16} className="mr-1" /> Log Workout
+            <Button onClick={() => navigate('/workout/log')} className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 h-10 px-4 gap-1.5 shrink-0">
+              <Plus size={15} /> Log
             </Button>
           </div>
+          {(todayCompleted > 0 || totalCalories > 0) && (
+            <div className="flex gap-4 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-1.5">
+                <Flame size={14} className="text-orange-400" />
+                <span className="text-xs font-medium">{totalCalories} kcal</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock size={14} className="text-blue-400" />
+                <span className="text-xs font-medium">{totalMins} min</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Nav */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link to="/workout/exercises" className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all">
-            <Library size={20} className="text-accent mb-2" />
-            <p className="font-heading font-semibold text-sm">Exercise Library</p>
-            <p className="text-xs text-muted-foreground mt-1">Browse exercises</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link to="/exercises">
+            <div className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 active:scale-[0.97] transition-all">
+              <Library size={20} className="text-accent mb-2" />
+              <p className="font-heading font-semibold text-sm">Exercise Library</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Browse & search exercises</p>
+            </div>
           </Link>
-          <Link to="/workout/history" className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all">
-            <Calendar size={20} className="text-accent mb-2" />
-            <p className="font-heading font-semibold text-sm">History</p>
-            <p className="text-xs text-muted-foreground mt-1">Past workouts</p>
+          <Link to="/tracking">
+            <div className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 active:scale-[0.97] transition-all">
+              <Calendar size={20} className="text-accent mb-2" />
+              <p className="font-heading font-semibold text-sm">All Tracking</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Steps, cardio, sleep & more</p>
+            </div>
           </Link>
         </div>
 
@@ -81,29 +104,39 @@ export default function Workout() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-heading font-semibold text-sm">My Workout Plans</h3>
-            <Link to="/ai-trainer" className="text-xs text-accent">+ AI Generate</Link>
+            <Link to="/ai-trainer" className="text-xs text-accent font-medium flex items-center gap-1">
+              <Zap size={11} /> AI Generate
+            </Link>
           </div>
+
           {plans.length === 0 ? (
-            <div className="bg-card border border-border rounded-2xl p-6 text-center">
-              <Dumbbell size={32} className="text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No workout plans yet</p>
-              <Button onClick={() => navigate('/ai-trainer')} variant="outline" className="mt-3 rounded-xl border-accent/30 text-accent text-xs">
-                Ask AI to create a plan
-              </Button>
-            </div>
+            <EmptyState
+              icon={Dumbbell}
+              title="No workout plans yet"
+              description="Ask the AI Trainer to create a personalized workout plan based on your goals."
+              actionLabel="Create with AI"
+              onAction={() => navigate('/ai-trainer')}
+              compact
+            />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {plans.map(plan => (
-                <div key={plan.id} className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-heading font-semibold text-sm">{plan.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                <div key={plan.id} className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all active:scale-[0.99]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                      <Dumbbell size={18} className="text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-heading font-semibold text-sm truncate">{plan.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {plan.days_per_week} days/week • {plan.level}
-                        {plan.is_ai_generated && ' • AI Generated'}
+                        {plan.is_ai_generated && <span className="ml-1 text-accent">• AI</span>}
                       </p>
                     </div>
-                    <ChevronRight size={16} className="text-muted-foreground" />
+                    {plan.is_active && (
+                      <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">Active</span>
+                    )}
+                    <ChevronRight size={15} className="text-muted-foreground" />
                   </div>
                 </div>
               ))}
@@ -111,18 +144,19 @@ export default function Workout() {
           )}
         </div>
 
-        {/* Workout Types */}
+        {/* Explore Templates */}
         <div>
-          <h3 className="font-heading font-semibold text-sm mb-3">Explore Plans</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {WORKOUT_TYPES.map(type => (
+          <h3 className="font-heading font-semibold text-sm mb-3">Explore Plan Templates</h3>
+          <div className="grid grid-cols-2 gap-2.5">
+            {PLAN_TEMPLATES.map(t => (
               <button
-                key={type.key}
+                key={t.key}
                 onClick={() => navigate('/ai-trainer')}
-                className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent/30 transition-all active:scale-[0.98]"
+                className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent/30 active:scale-[0.97] transition-all"
               >
-                <span className="text-xl mb-2 block">{type.emoji}</span>
-                <p className="font-heading font-medium text-xs">{type.label}</p>
+                <span className="text-2xl mb-2 block">{t.emoji}</span>
+                <p className="font-heading font-semibold text-xs">{t.label}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t.desc}</p>
               </button>
             ))}
           </div>

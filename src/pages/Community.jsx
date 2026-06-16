@@ -1,123 +1,187 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
+import LoadingScreen from '@/components/se7enfit/LoadingScreen';
+import EmptyState from '@/components/se7enfit/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Heart, MessageCircle, Plus, X, Send } from 'lucide-react';
+import { Heart, MessageCircle, Plus, X, Image, Send, Users, Trophy, Dumbbell, Utensils, Zap } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { getToday } from '@/lib/fitnessUtils';
 
-const POST_TYPES = ['general', 'transformation', 'workout', 'meal', 'achievement'];
-const TYPE_COLORS = { general: 'bg-blue-500/10 text-blue-400', transformation: 'bg-purple-500/10 text-purple-400', workout: 'bg-green-500/10 text-green-400', meal: 'bg-orange-500/10 text-orange-400', achievement: 'bg-yellow-500/10 text-yellow-400' };
+const POST_TYPES = [
+  { key: 'general', label: 'General', icon: '💬', color: 'bg-muted text-muted-foreground' },
+  { key: 'workout', label: 'Workout', icon: '💪', color: 'bg-accent/10 text-accent' },
+  { key: 'meal', label: 'Meal', icon: '🥗', color: 'bg-orange-400/10 text-orange-400' },
+  { key: 'transformation', label: 'Transform', icon: '🔥', color: 'bg-red-400/10 text-red-400' },
+  { key: 'achievement', label: 'Achievement', icon: '🏆', color: 'bg-yellow-400/10 text-yellow-400' },
+];
 
 export default function Community() {
+  const { toast } = useToast();
   const [posts, setPosts] = useState([]);
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ type: 'general', content: '' });
-  const [posting, setPosting] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newPost, setNewPost] = useState({ content: '', type: 'general' });
+  const [submitting, setSubmitting] = useState(false);
+  const [likedIds, setLikedIds] = useState(new Set());
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const u = await base44.auth.me();
     setUser(u);
-    const allPosts = await base44.entities.CommunityPost.list('-created_date', 30);
-    setPosts(allPosts);
+    const [allPosts, profiles] = await Promise.all([
+      base44.entities.CommunityPost.list('-created_date', 30),
+      base44.entities.UserProfile.filter({ user_id: u.id }),
+    ]);
+    setPosts(allPosts.filter(p => !p.is_reported));
+    setProfile(profiles[0] || null);
     setLoading(false);
   };
 
   const handlePost = async () => {
-    if (!form.content.trim()) return;
-    setPosting(true);
+    if (!newPost.content.trim()) return;
+    setSubmitting(true);
     await base44.entities.CommunityPost.create({
       user_id: user.id,
-      user_name: user.full_name || 'Anonymous',
-      type: form.type,
-      content: form.content,
+      user_name: profile?.full_name || user.full_name || 'User',
+      content: newPost.content,
+      type: newPost.type,
       likes_count: 0,
       comments_count: 0,
     });
-    setForm({ type: 'general', content: '' });
-    setShowForm(false);
+    toast({ title: '✓ Post shared!', description: 'Your post is live in the community.' });
+    setNewPost({ content: '', type: 'general' });
+    setShowCreate(false);
+    setSubmitting(false);
     loadData();
-    setPosting(false);
   };
 
   const handleLike = async (post) => {
-    await base44.entities.CommunityPost.update(post.id, { likes_count: (post.likes_count || 0) + 1 });
+    if (likedIds.has(post.id)) return;
+    setLikedIds(prev => new Set([...prev, post.id]));
     setPosts(prev => prev.map(p => p.id === post.id ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p));
+    await base44.entities.CommunityPost.update(post.id, { likes_count: (post.likes_count || 0) + 1 });
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-[50vh]"><div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin" /></div>;
+  if (loading) return <LoadingScreen />;
 
   return (
     <>
       <TopBar title="Community" showBack />
-      <div className="px-4 py-4 space-y-4 pb-24">
-        <Button onClick={() => setShowForm(!showForm)} className="w-full h-11 rounded-xl bg-accent text-accent-foreground">
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          {showForm ? 'Cancel' : 'Share Update'}
-        </Button>
+      <div className="px-4 py-4 pb-6 space-y-4">
 
-        {showForm && (
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-heading font-bold text-base">SE7ENFIT Community</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{posts.length} posts from fitness warriors</p>
+          </div>
+          <Button onClick={() => setShowCreate(v => !v)} size="sm" className="rounded-xl bg-accent text-accent-foreground h-9 gap-1.5 px-3">
+            {showCreate ? <X size={14} /> : <Plus size={14} />}
+            {showCreate ? 'Cancel' : 'Post'}
+          </Button>
+        </div>
+
+        {/* Create Post */}
+        {showCreate && (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+            <h3 className="font-heading font-semibold text-sm">Share with the community</h3>
             <div className="flex gap-2 flex-wrap">
               {POST_TYPES.map(t => (
-                <button key={t} onClick={() => setForm(p => ({ ...p, type: t }))} className={`text-xs px-3 py-1 rounded-full border transition-all ${form.type === t ? 'bg-accent text-accent-foreground border-accent' : 'border-border text-muted-foreground'}`}>
-                  {t}
+                <button
+                  key={t.key}
+                  onClick={() => setNewPost(p => ({ ...p, type: t.key }))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                    newPost.type === t.key ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-muted/50'
+                  }`}
+                >
+                  {t.icon} {t.label}
                 </button>
               ))}
             </div>
             <textarea
-              placeholder="Share your fitness journey..."
-              value={form.content}
-              onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-              className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none h-24 focus:outline-none focus:ring-1 focus:ring-accent"
+              value={newPost.content}
+              onChange={e => setNewPost(p => ({ ...p, content: e.target.value }))}
+              placeholder="What's on your fitness mind? Share a workout, meal, or motivation! 💪"
+              rows={3}
+              className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
             />
-            <Button onClick={handlePost} disabled={posting || !form.content.trim()} className="w-full h-10 rounded-xl bg-accent text-accent-foreground">
-              <Send size={14} className="mr-1" /> Post
+            <Button onClick={handlePost} disabled={submitting || !newPost.content.trim()} className="w-full h-10 rounded-xl bg-accent text-accent-foreground">
+              {submitting ? 'Sharing...' : <><Send size={14} className="mr-2" /> Share Post</>}
             </Button>
           </div>
         )}
 
-        {posts.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-4xl mb-2">💪</p>
-            <p className="text-sm">Be the first to share!</p>
+        {/* Feed */}
+        {posts.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No posts yet"
+            description="Be the first to share your fitness journey with the community!"
+            actionLabel="Create First Post"
+            onAction={() => setShowCreate(true)}
+          />
+        ) : (
+          <div className="space-y-3">
+            {posts.map(post => {
+              const typeInfo = POST_TYPES.find(t => t.key === post.type) || POST_TYPES[0];
+              const isLiked = likedIds.has(post.id);
+              const timeAgo = getTimeAgo(post.created_date);
+              return (
+                <div key={post.id} className="bg-card border border-border rounded-2xl p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm">{post.user_name?.[0]?.toUpperCase() || '?'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-heading font-semibold text-sm">{post.user_name || 'Anonymous'}</p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeInfo.color}`}>
+                          {typeInfo.icon} {typeInfo.label}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{timeAgo}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm leading-relaxed mb-3">{post.content}</p>
+                  {post.image_url && (
+                    <div className="mb-3 rounded-xl overflow-hidden">
+                      <img src={post.image_url} alt="Post" className="w-full max-h-48 object-cover" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4 pt-2 border-t border-border/50">
+                    <button
+                      onClick={() => handleLike(post)}
+                      className={`flex items-center gap-1.5 text-xs transition-all active:scale-90 ${isLiked ? 'text-red-400' : 'text-muted-foreground hover:text-red-400'}`}
+                    >
+                      <Heart size={15} fill={isLiked ? 'currentColor' : 'none'} />
+                      <span>{(post.likes_count || 0) + (isLiked && !post.liked ? 0 : 0)}</span>
+                    </button>
+                    <button className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MessageCircle size={15} />
+                      <span>{post.comments_count || 0}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-
-        <div className="space-y-4">
-          {posts.map(post => (
-            <div key={post.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-bold text-accent">
-                  {(post.user_name || 'A')[0].toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{post.user_name || 'Anonymous'}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(post.created_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full ${TYPE_COLORS[post.type] || 'bg-muted text-muted-foreground'}`}>{post.type}</span>
-              </div>
-
-              <p className="text-sm leading-relaxed">{post.content}</p>
-              {post.image_url && <img src={post.image_url} alt="post" className="w-full rounded-xl object-cover max-h-60" />}
-
-              <div className="flex items-center gap-4 pt-1 border-t border-border">
-                <button onClick={() => handleLike(post)} className="flex items-center gap-1.5 text-muted-foreground hover:text-red-500 transition-colors">
-                  <Heart size={15} />
-                  <span className="text-xs">{post.likes_count || 0}</span>
-                </button>
-                <button className="flex items-center gap-1.5 text-muted-foreground">
-                  <MessageCircle size={15} />
-                  <span className="text-xs">{post.comments_count || 0}</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </>
   );
+}
+
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
