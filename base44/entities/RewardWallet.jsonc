@@ -1,0 +1,34 @@
+{
+  "name": "RewardWallet",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "coins_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "total_earned": {
+      "type": "number",
+      "default": 0
+    },
+    "total_redeemed": {
+      "type": "number",
+      "default": 0
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "last_reward_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

@@ -16,21 +16,30 @@ import ResetPassword from '@/pages/ResetPassword';
 
 // App pages
 import AppShell from '@/components/se7enfit/AppShell';
+import Welcome from '@/pages/Welcome';
 import Onboarding from '@/pages/Onboarding';
 import Home from '@/pages/Home';
 import AITrainer from '@/pages/AITrainer';
 import Workout from '@/pages/Workout';
 import WorkoutLog from '@/pages/WorkoutLog';
+import WorkoutGuide from '@/pages/WorkoutGuide';
 import ExerciseLibrary from '@/pages/ExerciseLibrary';
 import Nutrition from '@/pages/Nutrition';
 import NutritionLog from '@/pages/NutritionLog';
 import Tracking from '@/pages/Tracking';
-// Old sub-routes redirect to unified tracking dashboard
 import Progress from '@/pages/Progress';
 import Community from '@/pages/Community';
 import Profile from '@/pages/Profile';
 import Notifications from '@/pages/Notifications';
 import Subscription from '@/pages/Subscription';
+import FoodScan from '@/pages/FoodScan';
+import Challenges from '@/pages/Challenges';
+import Rewards from '@/pages/Rewards';
+import PolicyPages from '@/pages/PolicyPages';
+import GymOwnerLogin from '@/pages/GymOwnerLogin';
+import GymOwnerRegister from '@/pages/GymOwnerRegister';
+import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
+import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 
 const AuthenticatedApp = () => {
@@ -54,6 +63,18 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
+      {/* Welcome / landing */}
+      <Route path="/welcome" element={<Welcome />} />
+
+      {/* Gym Owner auth (public) */}
+      <Route path="/gym-owner/login" element={<GymOwnerLogin />} />
+      <Route path="/gym-owner/register" element={<GymOwnerRegister />} />
+
+      {/* Policy pages (public) */}
+      <Route path="/terms" element={<PolicyPages />} />
+      <Route path="/privacy" element={<PolicyPages />} />
+      <Route path="/policy" element={<PolicyPages />} />
+
       {/* Public auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -63,6 +84,8 @@ const AuthenticatedApp = () => {
       {/* Onboarding (protected but no shell) */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/gym-owner/onboarding" element={<GymOwnerOnboarding />} />
+        <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
 
         {/* Main app with shell */}
         <Route element={<AppShell />}>
@@ -88,6 +111,10 @@ const AuthenticatedApp = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/subscription" element={<Subscription />} />
+          <Route path="/food-scan" element={<FoodScan />} />
+          <Route path="/challenges" element={<Challenges />} />
+          <Route path="/rewards" element={<Rewards />} />
+          <Route path="/workout/guide" element={<WorkoutGuide />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Route>
       </Route>

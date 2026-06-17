@@ -3,53 +3,19 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Crown, Check, Zap, Star, Sparkles, ChevronRight, Shield } from 'lucide-react';
+import { Crown, Check, Zap, Star, Sparkles, ChevronRight, Shield, Lock, Gift, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-
-const PLANS = [
-  {
-    key: 'free',
-    label: 'Free',
-    price: 0,
-    icon: Zap,
-    iconColor: 'text-muted-foreground',
-    borderColor: 'border-border',
-    features: ['Basic workout tracking', 'Manual nutrition logging', 'Water, step & sleep tracking', 'Community access (view)', '3 AI trainer messages/day'],
-  },
-  {
-    key: 'ai_trainer',
-    label: 'AI Trainer',
-    price: 299,
-    icon: Sparkles,
-    iconColor: 'text-accent',
-    borderColor: 'border-accent',
-    popular: true,
-    features: ['Everything in Free', 'Unlimited AI Trainer chat', 'AI nutrition estimation', 'Personalized workout plans', 'Progress analytics & charts', 'Community posting'],
-  },
-  {
-    key: 'premium_pro',
-    label: 'Premium Pro',
-    price: 699,
-    icon: Crown,
-    iconColor: 'text-yellow-400',
-    borderColor: 'border-yellow-500/50',
-    features: ['Everything in AI Trainer', 'Advanced body analytics', 'Transformation score tracking', 'Gym network access', 'Custom meal planning', 'Priority support'],
-  },
-  {
-    key: 'premium_elite',
-    label: 'Elite',
-    price: 1499,
-    icon: Star,
-    iconColor: 'text-purple-400',
-    borderColor: 'border-purple-500/50',
-    features: ['Everything in Pro', 'Personal trainer matching', 'Video consultations', 'Dedicated fitness coach', 'DNA-based nutrition (coming)', 'VIP community badge'],
-  },
-];
+import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
+import { useNavigate } from 'react-router-dom';
 
 export default function Subscription() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [coupon, setCoupon] = useState('');
+  const [referral, setReferral] = useState('');
+  const [processingPlan, setProcessingPlan] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -60,75 +26,102 @@ export default function Subscription() {
     setLoading(false);
   };
 
-  const handleSubscribe = (plan) => {
-    if (plan.key === 'free') return;
+  const handleSubscribe = async (plan) => {
+    if (plan.key === PLANS.FREE_TRIAL || plan.key === PLANS.FREE) return;
+    setProcessingPlan(plan.key);
+
+    // Stripe integration placeholder
     toast({
-      title: `${plan.label} — ₹${plan.price}/month`,
-      description: 'Payment gateway coming soon! Contact support to activate your plan.',
+      title: `${plan.label} — ₹${plan.price}/${plan.duration}`,
+      description: '🔒 Stripe payment gateway — enter your Stripe keys to activate. Contact support to manually activate.',
     });
+
+    // When Stripe is integrated, this would create a checkout session:
+    // const session = await createStripeCheckoutSession(user.id, plan.key);
+    // window.location.href = session.url;
+
+    setTimeout(() => setProcessingPlan(null), 2000);
   };
 
   if (loading) return <LoadingScreen />;
 
-  const activePlan = current?.plan || 'free';
+  const activePlan = current?.plan || PLANS.FREE;
+  const isActive = isActivePlan(current);
+  const daysLeft = current?.end_date ? getDaysRemaining(current.end_date) : null;
 
   return (
     <>
-      <TopBar title="Plans" showBack />
-      <div className="px-4 py-4 space-y-4 pb-6">
+      <TopBar title="Subscription" showBack />
+      <div className="px-4 py-4 space-y-4 pb-10 max-w-lg mx-auto">
 
+        {/* Hero */}
         <div className="text-center py-2">
-          <div className="w-14 h-14 rounded-2xl bg-yellow-500/15 flex items-center justify-center mx-auto mb-3">
-            <Crown size={26} className="text-yellow-400" />
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-yellow-400/20 to-accent/10 border border-yellow-400/30 flex items-center justify-center mx-auto mb-3">
+            <Crown size={28} className="text-yellow-400" />
           </div>
-          <h2 className="font-heading font-bold text-xl">Unlock Your Potential</h2>
-          <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
-            Choose the plan that matches your fitness ambitions
+          <h2 className="font-heading font-bold text-2xl">Unlock SE7ENFIT</h2>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+            Premium AI fitness coaching, food scanner,<br />animated guides & unlimited everything
           </p>
         </div>
 
-        {current && current.plan !== 'free' && (
+        {/* Active subscription card */}
+        {current && isActive && (
           <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center">
-              <Check size={16} className="text-accent" />
-            </div>
+            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center"><Check size={18} className="text-accent" /></div>
             <div className="flex-1">
-              <p className="text-xs text-muted-foreground">Active Subscription</p>
+              <p className="text-xs text-muted-foreground">Active Plan</p>
               <p className="font-heading font-bold text-accent capitalize">{current.plan.replace(/_/g, ' ')}</p>
+              {daysLeft !== null && <p className="text-[10px] text-muted-foreground">{daysLeft} days remaining</p>}
             </div>
-            {current.end_date && <p className="text-[10px] text-muted-foreground">Until {current.end_date}</p>}
+            {current.end_date && <p className="text-[10px] text-muted-foreground text-right">Until<br />{current.end_date}</p>}
           </div>
         )}
 
+        {/* Expired notice */}
+        {current && !isActive && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-center gap-3">
+            <AlertCircle size={18} className="text-destructive flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-sm text-destructive">Plan Expired</p>
+              <p className="text-xs text-muted-foreground">Renew now to restore full access</p>
+            </div>
+          </div>
+        )}
+
+        {/* Plans */}
         <div className="space-y-3">
-          {PLANS.map(plan => {
-            const Icon = plan.icon;
-            const isActive = activePlan === plan.key;
+          {PLAN_CONFIG.map(plan => {
+            const isCurrentPlan = activePlan === plan.key;
+            const isPopular = plan.popular;
+
             return (
               <div key={plan.key}
                 className={`bg-card border-2 rounded-3xl p-5 relative overflow-hidden transition-all ${
-                  isActive ? 'border-accent shadow-lg shadow-accent/10' : plan.borderColor
-                } ${plan.popular && !isActive ? 'shadow-md shadow-accent/5' : ''}`}>
+                  isCurrentPlan ? 'border-accent shadow-lg shadow-accent/10' :
+                  isPopular ? 'border-accent/50' : plan.border
+                }`}>
 
-                {plan.popular && (
-                  <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-[9px] font-bold px-4 py-1 rounded-b-xl uppercase tracking-widest">
-                    Most Popular
+                {isPopular && !isCurrentPlan && (
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-[9px] font-bold px-5 py-1 rounded-b-xl uppercase tracking-widest">
+                    🔥 Best Choice
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 mb-4 mt-1">
-                  <div className={`w-10 h-10 rounded-xl ${isActive ? 'bg-accent/20' : 'bg-muted'} flex items-center justify-center`}>
-                    <Icon size={19} className={isActive ? 'text-accent' : plan.iconColor} />
+                {plan.savings && (
+                  <div className="absolute top-4 right-4 bg-green-500/10 border border-green-500/30 text-green-400 text-[9px] font-bold px-2 py-1 rounded-full">
+                    {plan.savings}
                   </div>
-                  <div className="flex-1">
-                    <p className="font-heading font-bold text-base">{plan.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {plan.price === 0 ? 'Always free' : `₹${plan.price} / month`}
-                    </p>
-                  </div>
-                  {isActive && (
-                    <span className="text-[10px] bg-accent text-accent-foreground px-2.5 py-1 rounded-full font-semibold">Active</span>
-                  )}
+                )}
+
+                <div className="flex items-end gap-2 mb-1 mt-1">
+                  <p className="font-heading font-black text-xl">{plan.label}</p>
+                  {isCurrentPlan && <span className="text-[10px] bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-bold mb-0.5">ACTIVE</span>}
+                </div>
+
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="font-heading font-black text-3xl">{plan.price === 0 ? 'Free' : `₹${plan.price}`}</span>
+                  {plan.price > 0 && <span className="text-sm text-muted-foreground">/{plan.duration}</span>}
                 </div>
 
                 <div className="space-y-2 mb-4">
@@ -142,18 +135,22 @@ export default function Subscription() {
                   ))}
                 </div>
 
-                {!isActive && plan.key !== 'free' && (
+                {!isCurrentPlan && plan.key !== PLANS.FREE && plan.key !== PLANS.FREE_TRIAL && (
                   <Button
                     onClick={() => handleSubscribe(plan)}
-                    className={`w-full h-11 rounded-xl font-semibold text-sm ${
-                      plan.popular ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-foreground text-background hover:bg-foreground/90'
+                    disabled={processingPlan === plan.key}
+                    className={`w-full h-11 rounded-xl font-semibold text-sm transition-all ${
+                      isPopular ? 'bg-accent text-accent-foreground hover:bg-accent/90 shadow-md shadow-accent/20' :
+                      'bg-foreground text-background hover:bg-foreground/90'
                     }`}
                   >
-                    Get {plan.label} — ₹{plan.price}/mo
-                    <ChevronRight size={15} />
+                    {processingPlan === plan.key ? 'Processing...' : (
+                      <>{isPopular ? '⚡ ' : ''}Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} /></>
+                    )}
                   </Button>
                 )}
-                {isActive && plan.key !== 'free' && (
+
+                {isCurrentPlan && (
                   <div className="flex items-center justify-center gap-2 py-2 text-xs text-accent font-medium">
                     <Shield size={12} /> Your current plan
                   </div>
@@ -163,10 +160,35 @@ export default function Subscription() {
           })}
         </div>
 
-        <div className="text-center space-y-1">
-          <p className="text-[11px] text-muted-foreground">All plans include 7-day money-back guarantee</p>
-          <p className="text-[11px] text-muted-foreground">Prices in INR • Cancel anytime</p>
+        {/* Coupon & referral */}
+        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <p className="font-heading font-semibold text-sm flex items-center gap-2"><Gift size={15} className="text-accent" /> Have a code?</p>
+          <div className="flex gap-2">
+            <input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+              placeholder="COUPON CODE" className="flex-1 h-10 px-3 rounded-xl border border-input bg-muted/40 text-sm uppercase font-mono focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button className="px-3 h-10 rounded-xl bg-accent text-accent-foreground text-xs font-bold">Apply</button>
+          </div>
+          <div className="flex gap-2">
+            <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())}
+              placeholder="REFERRAL CODE" className="flex-1 h-10 px-3 rounded-xl border border-input bg-muted/40 text-sm uppercase font-mono focus:outline-none focus:ring-1 focus:ring-ring" />
+            <button className="px-3 h-10 rounded-xl bg-muted border border-border text-xs font-medium">Apply</button>
+          </div>
         </div>
+
+        {/* Policy */}
+        <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
+          <p className="font-heading font-semibold text-xs flex items-center gap-1.5"><Shield size={12} className="text-muted-foreground" /> Subscription Policy</p>
+          {[
+            'All subscription payments are non-refundable once purchased.',
+            'Paid access remains active until the end of the selected billing period.',
+            'You can cancel future renewal anytime — access continues until expiry.',
+            'Health guidance is for informational purposes only. Consult a doctor before intense exercise.',
+          ].map((p, i) => (
+            <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">• {p}</p>
+          ))}
+        </div>
+
+        <p className="text-center text-[10px] text-muted-foreground">Prices in INR • Payments secured by Stripe • GST included</p>
       </div>
     </>
   );

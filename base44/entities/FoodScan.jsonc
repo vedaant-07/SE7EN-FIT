@@ -1,0 +1,55 @@
+{
+  "name": "FoodScan",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "detected_items": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "total_calories": {
+      "type": "number"
+    },
+    "total_protein_g": {
+      "type": "number"
+    },
+    "total_carbs_g": {
+      "type": "number"
+    },
+    "total_fat_g": {
+      "type": "number"
+    },
+    "total_fiber_g": {
+      "type": "number"
+    },
+    "confidence_score": {
+      "type": "number"
+    },
+    "serving_size": {
+      "type": "string"
+    },
+    "confirmed": {
+      "type": "boolean",
+      "default": false
+    },
+    "saved_to_log": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "date"
+  ]
+}

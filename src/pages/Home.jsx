@@ -193,10 +193,10 @@ export default function Home() {
             {[
               { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', color: 'text-accent bg-accent/10' },
               { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
-              { icon: Droplets, label: 'Add Water', route: '/tracking/water', color: 'text-blue-400 bg-blue-400/10' },
-              { icon: Scale, label: 'Log Weight', route: '/tracking/weight', color: 'text-green-400 bg-green-400/10' },
-              { icon: Activity, label: 'Cardio', route: '/tracking/cardio', color: 'text-red-400 bg-red-400/10' },
-              { icon: Camera, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
+              { icon: Droplets, label: 'Add Water', route: '/tracking', color: 'text-blue-400 bg-blue-400/10' },
+              { icon: Camera, label: 'Food Scan 🤖', route: '/food-scan', color: 'text-green-400 bg-green-400/10' },
+              { icon: Activity, label: 'Challenges', route: '/challenges', color: 'text-red-400 bg-red-400/10' },
+              { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
             ].map(({ icon: Icon, label, route, color }) => (
               <button key={route} onClick={() => navigate(route)}
                 className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
@@ -278,7 +278,7 @@ export default function Home() {
         <div className="grid grid-cols-3 gap-2.5">
           {[
             { label: 'Community', icon: '👥', route: '/community' },
-            { label: 'Tracking', icon: '📊', route: '/tracking' },
+            { label: 'Rewards 🪙', icon: '🪙', route: '/rewards' },
             { label: 'Premium', icon: '⭐', route: '/subscription' },
           ].map(item => (
             <Link key={item.route} to={item.route}>

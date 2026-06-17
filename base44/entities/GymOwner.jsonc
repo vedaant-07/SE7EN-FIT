@@ -1,0 +1,95 @@
+{
+  "name": "GymOwner",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "mobile": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "gym_name": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "opening_time": {
+      "type": "string"
+    },
+    "closing_time": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "facilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "monthly_fee": {
+      "type": "number"
+    },
+    "quarterly_fee": {
+      "type": "number"
+    },
+    "yearly_fee": {
+      "type": "number"
+    },
+    "referral_code": {
+      "type": "string"
+    },
+    "gst_number": {
+      "type": "string"
+    },
+    "business_reg": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number",
+      "default": 0
+    },
+    "total_members": {
+      "type": "number",
+      "default": 0
+    },
+    "total_leads": {
+      "type": "number",
+      "default": 0
+    },
+    "is_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "onboarding_complete": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "owner_name",
+    "gym_name"
+  ]
+}

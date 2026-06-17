@@ -1,0 +1,47 @@
+{
+  "name": "ChallengeParticipant",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "joined_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "current_progress": {
+      "type": "number",
+      "default": 0
+    },
+    "target": {
+      "type": "number"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "coins_earned": {
+      "type": "number",
+      "default": 0
+    },
+    "streak_days": {
+      "type": "number",
+      "default": 0
+    },
+    "last_checkin": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "challenge_id",
+    "user_id"
+  ]
+}

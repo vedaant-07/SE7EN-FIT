@@ -1,12 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Bot, Dumbbell, Apple, Activity } from 'lucide-react';
+import { Home, Bot, Dumbbell, Trophy, Activity } from 'lucide-react';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/workout', icon: Dumbbell, label: 'Workout' },
   { path: '/ai-trainer', icon: Bot, label: 'AI' },
-  { path: '/nutrition', icon: Apple, label: 'Nutrition' },
+  { path: '/challenges', icon: Trophy, label: 'Challenges' },
   { path: '/tracking', icon: Activity, label: 'Track' },
 ];
 
@@ -17,7 +17,8 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/98 backdrop-blur-2xl border-t border-border/60"
          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="max-w-lg mx-auto flex items-center justify-around px-2 pt-2 pb-3">
-        {navItems.map(({ path, icon: Icon, label }) => {
+        {navItems.map(({ path, icon: NavIcon, label }) => {
+          const Icon = NavIcon;
           const isActive = pathname === path || (path !== '/' && pathname.startsWith(path));
           return (
             <Link

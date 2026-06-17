@@ -1,0 +1,48 @@
+{
+  "name": "RewardTransaction",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "earn",
+        "redeem"
+      ]
+    },
+    "coins": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "workout",
+        "steps",
+        "water",
+        "protein",
+        "challenge",
+        "streak",
+        "photo",
+        "referral",
+        "gym",
+        "milestone",
+        "manual"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "coins",
+    "source"
+  ]
+}
