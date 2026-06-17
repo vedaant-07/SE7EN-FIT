@@ -63,6 +63,7 @@ export default function GymOwnerDashboard() {
   const [announcements, setAnnouncements] = useState([]);
   const [announcement, setAnnouncement] = useState('');
   const [replyTexts, setReplyTexts] = useState({});
+  const [settingsSection, setSettingsSection] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -145,9 +146,6 @@ export default function GymOwnerDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${owner.is_approved ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-              {owner.is_approved ? '● Live' : '● Pending'}
-            </div>
             <button onClick={() => setActiveTab('announcements')}
               className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors">
               <Bell size={16} />
@@ -428,7 +426,7 @@ export default function GymOwnerDashboard() {
           )}
 
           {/* ── SETTINGS ── */}
-          {activeTab === 'settings' && (
+          {activeTab === 'settings' && !settingsSection && (
             <div className="space-y-3">
               <p className="font-heading font-bold text-lg">Settings</p>
               {/* Profile Card */}
@@ -447,9 +445,9 @@ export default function GymOwnerDashboard() {
               <div className="space-y-2">
                 {[
                   { label: 'Edit Gym Profile', action: () => navigate('/gym-owner/onboarding'), icon: Edit3, desc: 'Update gym info, timings, pricing' },
-                  { label: 'Notification Preferences', action: () => {}, icon: Bell, desc: 'Manage alert settings' },
-                  { label: 'Subscription & Billing', action: () => {}, icon: Coins, desc: 'View plans & invoices' },
-                  { label: 'Help & Support', action: () => {}, icon: MessageSquare, desc: 'Get help anytime' },
+                  { label: 'Notification Preferences', action: () => setSettingsSection('notifications'), icon: Bell, desc: 'Manage alert settings' },
+                  { label: 'Subscription & Billing', action: () => setSettingsSection('billing'), icon: Coins, desc: 'View plans & invoices' },
+                  { label: 'Help & Support', action: () => setSettingsSection('help'), icon: MessageSquare, desc: 'Get help anytime' },
                 ].map(item => (
                   <button key={item.label} onClick={item.action}
                     className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:border-accent/30 active:scale-[0.99] transition-all">
@@ -472,6 +470,94 @@ export default function GymOwnerDashboard() {
                 </div>
                 <span className="flex-1 text-sm font-semibold text-left">Sign Out</span>
               </button>
+            </div>
+          )}
+
+          {/* ── SETTINGS: NOTIFICATIONS ── */}
+          {activeTab === 'settings' && settingsSection === 'notifications' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 mb-1">
+                <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
+                  <ChevronRight size={16} className="rotate-180" />
+                </button>
+                <p className="font-heading font-bold text-lg">Notification Preferences</p>
+              </div>
+              {[
+                { label: 'New Member Requests', desc: 'Alert when someone requests to join your gym' },
+                { label: 'New Lead Enquiry', desc: 'Alert when a new lead is captured' },
+                { label: 'Member Check-in', desc: 'Alert when a member checks in' },
+                { label: 'Review Posted', desc: 'Alert when a member leaves a review' },
+              ].map(item => (
+                <div key={item.label} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">{item.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.desc}</p>
+                  </div>
+                  <div className="w-10 h-6 bg-accent/30 rounded-full flex items-center px-1">
+                    <div className="w-4 h-4 bg-accent rounded-full ml-auto" />
+                  </div>
+                </div>
+              ))}
+              <p className="text-[10px] text-muted-foreground text-center px-4">Push notification controls coming soon. Email alerts are always active.</p>
+            </div>
+          )}
+
+          {/* ── SETTINGS: BILLING ── */}
+          {activeTab === 'settings' && settingsSection === 'billing' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 mb-1">
+                <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
+                  <ChevronRight size={16} className="rotate-180" />
+                </button>
+                <p className="font-heading font-bold text-lg">Subscription & Billing</p>
+              </div>
+              <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-2xl p-5">
+                <p className="text-xs text-muted-foreground">Current Plan</p>
+                <p className="font-heading font-black text-xl mt-1">Free Plan</p>
+                <p className="text-xs text-muted-foreground mt-1">Basic gym management features included</p>
+              </div>
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <p className="font-semibold text-sm">Pro Plan — Coming Soon</p>
+                {['Unlimited members', 'Advanced analytics', 'Priority support', 'Custom branding'].map(f => (
+                  <div key={f} className="flex items-center gap-2">
+                    <Check size={13} className="text-accent flex-shrink-0" />
+                    <p className="text-xs text-muted-foreground">{f}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-muted/30 border border-border rounded-2xl p-5 text-center">
+                <Coins size={28} className="text-accent mx-auto mb-2" />
+                <p className="text-sm font-semibold">Billing Portal</p>
+                <p className="text-xs text-muted-foreground mt-1">Invoices & payment history — coming soon</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── SETTINGS: HELP ── */}
+          {activeTab === 'settings' && settingsSection === 'help' && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 mb-1">
+                <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
+                  <ChevronRight size={16} className="rotate-180" />
+                </button>
+                <p className="font-heading font-bold text-lg">Help & Support</p>
+              </div>
+              {[
+                { q: 'How do members join my gym?', a: 'Share your referral code. Members enter it during signup to link to your gym.' },
+                { q: 'How do I approve a member?', a: 'Go to Members tab → tap the ✓ button next to any pending member to approve them.' },
+                { q: 'How do I add equipment?', a: 'Go to More Features → Equipment to manage your gym\'s equipment list.' },
+                { q: 'How do I send announcements?', a: 'Go to More Features → Announcements to broadcast messages to all your members.' },
+              ].map(item => (
+                <div key={item.q} className="bg-card border border-border rounded-2xl p-4">
+                  <p className="text-sm font-semibold mb-1">{item.q}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item.a}</p>
+                </div>
+              ))}
+              <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 text-center">
+                <MessageSquare size={24} className="text-accent mx-auto mb-2" />
+                <p className="text-sm font-semibold">Contact Support</p>
+                <p className="text-xs text-muted-foreground mt-1">support@se7enfit.com</p>
+              </div>
             </div>
           )}
 
@@ -766,7 +852,7 @@ export default function GymOwnerDashboard() {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
             return (
-              <button key={item.key} onClick={() => setActiveTab(item.key)}
+              <button key={item.key} onClick={() => { setActiveTab(item.key); setSettingsSection(null); }}
                 className="flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-95">
                 <div className={`w-10 h-7 rounded-xl flex items-center justify-center transition-all ${isActive ? 'bg-accent' : ''}`}>
                   <Icon size={18} className={isActive ? 'text-accent-foreground' : 'text-muted-foreground'} />
