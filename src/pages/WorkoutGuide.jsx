@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { Play, Pause, ChevronRight, ChevronLeft, Check, Zap, Target, Clock, RotateCcw, AlertCircle, Dumbbell, Crown } from 'lucide-react';
+import { getToday } from '@/lib/fitnessUtils';
 
 const EXERCISES_DB = {
   pushup: {
@@ -147,6 +150,7 @@ function ExerciseAnimation({ name, isPlaying }) {
 
 export default function WorkoutGuide() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const exerciseKey = searchParams.get('exercise') || DEFAULT_EXERCISE;
   const exercise = EXERCISES_DB[exerciseKey] || EXERCISES_DB[DEFAULT_EXERCISE];
@@ -156,14 +160,75 @@ export default function WorkoutGuide() {
   const [completedSets, setCompletedSets] = useState(0);
   const [stage, setStage] = useState('guide'); // guide | workout | done
   const [coins] = useState(50);
+  const [saving, setSaving] = useState(false);
 
   const handleCompleteSet = () => {
     if (completedSets < exercise.sets) {
       setCompletedSets(prev => prev + 1);
     }
     if (completedSets + 1 >= exercise.sets) {
-      setStage('done');
+      saveExerciseAndFinish();
     }
+  };
+
+  const saveExerciseAndFinish = async () => {
+    setSaving(true);
+    try {
+      const user = await base44.auth.me();
+      const today = getToday();
+      const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
+      const profile = profiles[0];
+
+      // Save WorkoutLog for this exercise session
+      await base44.entities.WorkoutLog.create({
+        user_id: user.id,
+        gym_id: profile?.primary_gym_id || undefined,
+        date: today,
+        day_name: exercise.name,
+        workout_type: 'strength',
+        exercises: [{ name: exercise.name, sets: exercise.sets, reps: exercise.reps, equipment: exercise.equipment }],
+        duration_minutes: exercise.sets * 2,
+        calories_burned: Math.round(exercise.sets * 15),
+        completed: true,
+      });
+
+      // Update streak / total_workouts on profile
+      if (profile) {
+        await base44.entities.UserProfile.update(profile.id, {
+          total_workouts: (profile.total_workouts || 0) + 1,
+        });
+      }
+
+      // Award reward coins
+      const wallets = await base44.entities.RewardWallet.filter({ user_id: user.id });
+      if (wallets[0]) {
+        await base44.entities.RewardWallet.update(wallets[0].id, {
+          coins_balance: (wallets[0].coins_balance || 0) + coins,
+          total_earned: (wallets[0].total_earned || 0) + coins,
+          last_reward_date: today,
+        });
+      } else {
+        await base44.entities.RewardWallet.create({
+          user_id: user.id,
+          coins_balance: coins,
+          total_earned: coins,
+          last_reward_date: today,
+        });
+      }
+      // Log reward transaction
+      await base44.entities.RewardTransaction.create({
+        user_id: user.id,
+        type: 'earn',
+        coins,
+        reason: `Completed ${exercise.name}`,
+        source: 'workout',
+        date: today,
+      });
+    } catch (e) {
+      console.error('Save exercise error:', e);
+    }
+    setSaving(false);
+    setStage('done');
   };
 
   return (
@@ -281,9 +346,9 @@ export default function WorkoutGuide() {
               <p className="text-sm text-muted-foreground mt-1">Target: {exercise.reps} reps per set</p>
             </div>
 
-            <Button onClick={handleCompleteSet} disabled={completedSets >= exercise.sets}
+            <Button onClick={handleCompleteSet} disabled={completedSets >= exercise.sets || saving}
               className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-bold text-base shadow-lg shadow-accent/25">
-              <Check size={20} /> Complete Set {completedSets + 1}
+              <Check size={20} /> {saving ? 'Saving...' : `Complete Set ${completedSets + 1}`}
             </Button>
 
             <Button variant="outline" onClick={() => setStage('guide')} className="w-full h-11 rounded-xl">

@@ -43,13 +43,7 @@ const statusColors = {
   lost: 'bg-muted text-muted-foreground',
 };
 
-const MOCK_MEMBERS = [
-  { name: 'Rahul Sharma', plan: 'Monthly', status: 'active', joined: '2026-06-01', phone: '9876543210' },
-  { name: 'Priya Singh', plan: 'Quarterly', status: 'active', joined: '2026-05-15', phone: '9123456789' },
-  { name: 'Amit Kumar', plan: 'Monthly', status: 'expired', joined: '2026-04-01', phone: '9988776655' },
-  { name: 'Neha Gupta', plan: 'Annual', status: 'active', joined: '2026-01-10', phone: '9012345678' },
-  { name: 'Vikram Mehta', plan: 'Monthly', status: 'pending', joined: '2026-06-15', phone: '9876501234' },
-];
+
 
 export default function GymOwnerDashboard() {
   const navigate = useNavigate();
@@ -122,7 +116,7 @@ export default function GymOwnerDashboard() {
   const newLeads = leads.filter(l => l.status === 'new').length;
   const convertedLeads = leads.filter(l => l.status === 'converted').length;
   const todayAttendance = attendanceLogs.filter(a => a.date === today).length;
-  const totalRealMembers = memberships.length || MOCK_MEMBERS.length;
+  const totalRealMembers = memberships.length;
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
     : (owner.rating || 4.5);
@@ -243,22 +237,30 @@ export default function GymOwnerDashboard() {
                   <p className="font-heading font-semibold text-sm">Recent Members</p>
                   <button onClick={() => setActiveTab('members')} className="text-xs text-accent font-medium">See all</button>
                 </div>
-                <div className="space-y-2">
-                  {MOCK_MEMBERS.slice(0, 3).map((m, i) => (
-                    <div key={i} className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-black text-accent">{m.name[0]}</span>
+                {memberships.length === 0 ? (
+                  <div className="bg-muted/30 border border-border rounded-2xl p-5 text-center">
+                    <Users size={24} className="text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs font-semibold">No members yet</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Share your referral code to get your first member</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {memberships.slice(0, 3).map((m) => (
+                      <div key={m.id} className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-black text-accent">{(m.user_id || 'U')[0].toUpperCase()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">Member #{m.user_id?.slice(-6)}</p>
+                          <p className="text-xs text-muted-foreground">Joined {m.joined_at || 'Recently'} • {m.total_visits || 0} visits</p>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${statusColors[m.status] || 'bg-muted text-muted-foreground'}`}>
+                          {m.status}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{m.name}</p>
-                        <p className="text-xs text-muted-foreground">{m.plan} • {m.joined}</p>
-                      </div>
-                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${statusColors[m.status]}`}>
-                        {m.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -645,10 +647,10 @@ export default function GymOwnerDashboard() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Total Referrals', value: '24', color: 'text-blue-400', border: 'border-blue-400/20' },
-                  { label: 'Converted', value: '18', color: 'text-emerald-400', border: 'border-emerald-400/20' },
-                  { label: 'Pending', value: '6', color: 'text-amber-400', border: 'border-amber-400/20' },
-                  { label: 'Earnings', value: '₹3,600', color: 'text-purple-400', border: 'border-purple-400/20' },
+                  { label: 'Total via Referral', value: memberships.filter(m => m.referral_code_used).length, color: 'text-blue-400', border: 'border-blue-400/20' },
+                  { label: 'Active Members', value: activeMembers, color: 'text-emerald-400', border: 'border-emerald-400/20' },
+                  { label: 'Pending Approval', value: pendingMembers, color: 'text-amber-400', border: 'border-amber-400/20' },
+                  { label: 'Est. Monthly Rev', value: `₹${(activeMembers * (owner.monthly_fee || 999)).toLocaleString()}`, color: 'text-purple-400', border: 'border-purple-400/20' },
                 ].map(s => (
                   <div key={s.label} className={`bg-card border ${s.border} rounded-2xl p-4`}>
                     <p className={`font-black text-2xl ${s.color}`}>{s.value}</p>

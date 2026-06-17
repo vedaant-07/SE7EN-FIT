@@ -31,13 +31,22 @@ export default function AITrainer() {
   useEffect(() => { loadData(); }, []);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  const [gymEquipment, setGymEquipment] = useState([]);
+
   const loadData = async () => {
     const user = await base44.auth.me();
     const [profiles, subs] = await Promise.all([
       base44.entities.UserProfile.filter({ user_id: user.id }),
       base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
     ]);
-    if (profiles.length) setProfile(profiles[0]);
+    const p = profiles[0] || null;
+    if (p) {
+      setProfile(p);
+      if (p.primary_gym_id) {
+        base44.entities.GymEquipment.filter({ gym_id: p.primary_gym_id })
+          .then(eq => setGymEquipment(eq.filter(e => e.available)));
+      }
+    }
     setSubscription(subs[0] || null);
   };
 
@@ -47,7 +56,11 @@ export default function AITrainer() {
 
   const buildContext = () => {
     if (!profile) return '';
-    return `User: ${profile.full_name}, Age: ${profile.age}, Gender: ${profile.gender}, Height: ${profile.height_cm}cm, Weight: ${profile.weight_kg}kg, Target: ${profile.target_weight_kg}kg, Goal: ${GOALS_LABELS[profile.goal] || profile.goal}, Level: ${profile.fitness_level}, Gym Access: ${profile.gym_access ? 'Yes' : 'No'}, Diet: ${profile.diet_preference?.replace(/_/g, ' ')}, Workout Days: ${profile.workout_days_per_week}/week, Medical Notes: ${profile.medical_notes || 'None'}.`;
+    const equipmentList = gymEquipment.length > 0
+      ? `\nGym Equipment Available: ${gymEquipment.map(e => e.equipment_name).join(', ')}.`
+      : profile.gym_access ? '\nGym Access: Yes (equipment unknown — suggest general gym exercises).' : '\nGym Access: No — suggest bodyweight/home exercises only.';
+    const injuries = profile.medical_notes || profile.injuries;
+    return `User: ${profile.full_name}, Age: ${profile.age}, Gender: ${profile.gender}, Height: ${profile.height_cm}cm, Weight: ${profile.weight_kg}kg, Target: ${profile.target_weight_kg}kg, Goal: ${GOALS_LABELS[profile.goal] || profile.goal}, Level: ${profile.fitness_level}, Diet: ${profile.diet_preference?.replace(/_/g, ' ')}, Workout Days: ${profile.workout_days_per_week}/week${injuries ? `, Injuries/Notes: ${injuries}` : ''}.${equipmentList}`;
   };
 
   const sendMessage = async (text) => {
@@ -67,7 +80,9 @@ CONTEXT: ${buildContext()}
 RULES:
 - Be practical, helpful, and motivational. Use Indian context (Indian foods, local gyms, INR prices).
 - Metric units (kg, cm, kcal). Prices in INR (₹).
-- Add safety disclaimers for injuries/medical. Never recommend steroids or dangerous supplements.
+- CRITICAL: If gym equipment is listed, ONLY suggest exercises using that specific equipment. Do NOT suggest exercises requiring equipment that is NOT in the list.
+- If no gym equipment listed and gym access is No, suggest only bodyweight/home exercises.
+- Add safety disclaimers for injuries/medical conditions. Never recommend steroids or dangerous supplements.
 - Keep responses concise but actionable. Format with markdown. Use emojis sparingly.`;
 
     const fullPrompt = `${systemPrompt}\n\nConversation:\n${messages.map(m => `${m.role}: ${m.content}`).join('\n')}\nuser: ${text}\nassistant:`;

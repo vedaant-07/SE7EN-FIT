@@ -33,8 +33,11 @@ export default function WorkoutLog() {
   const handleSave = async () => {
     setSaving(true);
     const user = await base44.auth.me();
+    const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
+    const profile = profiles[0];
     await base44.entities.WorkoutLog.create({
       user_id: user.id,
+      gym_id: profile?.primary_gym_id || undefined,
       date: getToday(),
       day_name: workout.day_name,
       workout_type: workout.workout_type,
@@ -45,11 +48,9 @@ export default function WorkoutLog() {
       notes: workout.notes,
       completed: true,
     });
-    // Increment total_workouts on profile
-    const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
-    if (profiles.length) {
-      await base44.entities.UserProfile.update(profiles[0].id, {
-        total_workouts: (profiles[0].total_workouts || 0) + 1,
+    if (profile) {
+      await base44.entities.UserProfile.update(profile.id, {
+        total_workouts: (profile.total_workouts || 0) + 1,
       });
     }
     toast({ title: '💪 Workout complete!', description: 'Amazing work! Your progress is updated.' });

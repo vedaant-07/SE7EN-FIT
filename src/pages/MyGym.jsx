@@ -42,13 +42,14 @@ export default function MyGym() {
       setProfile(p);
 
       if (p?.primary_gym_id) {
-        const [owners, equip, attLogs, membershipRec] = await Promise.all([
-          base44.entities.GymOwner.filter({ id: p.primary_gym_id }),
+        const allOwners = await base44.entities.GymOwner.list();
+        const gymOwner = allOwners.find(o => o.id === p.primary_gym_id) || null;
+        const [equip, attLogs, membershipRec] = await Promise.all([
           base44.entities.GymEquipment.filter({ gym_id: p.primary_gym_id }),
           base44.entities.GymAttendanceLog.filter({ user_id: u.id, gym_id: p.primary_gym_id }),
           base44.entities.UserGymMembership.filter({ user_id: u.id, gym_id: p.primary_gym_id }),
         ]);
-        if (owners[0]) setGym(owners[0]);
+        if (gymOwner) setGym(gymOwner);
         setEquipment(equip.filter(e => e.available));
         setAttendance(attLogs);
         setMembership(membershipRec[0] || null);
@@ -72,8 +73,8 @@ export default function MyGym() {
     setLinking(true);
     try {
       const code = referralCode.trim().toUpperCase();
-      const owners = await base44.entities.GymOwner.list();
-      const matched = owners.find(o => o.referral_code?.toUpperCase() === code);
+      const allOwners = await base44.entities.GymOwner.list();
+      const matched = allOwners.find(o => o.referral_code?.toUpperCase() === code);
       if (!matched) {
         toast({ title: 'Invalid referral code', description: 'Please check with your gym owner.', variant: 'destructive' });
         setLinking(false);

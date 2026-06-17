@@ -13,6 +13,7 @@ export default function GymOwnerOnboarding() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [gymOwnerId, setGymOwnerId] = useState(null);
+  const [existingReferralCode, setExistingReferralCode] = useState(null);
   const [form, setForm] = useState({
     gym_name: '', city: '', address: '', description: '',
     opening_time: '06:00', closing_time: '22:00',
@@ -25,6 +26,7 @@ export default function GymOwnerOnboarding() {
       base44.entities.GymOwner.filter({ user_id: user.id }).then(owners => {
         if (owners[0]) {
           setGymOwnerId(owners[0].id);
+          setExistingReferralCode(owners[0].referral_code || null);
           // Pre-fill form if editing
           const o = owners[0];
           setForm(f => ({
@@ -55,13 +57,18 @@ export default function GymOwnerOnboarding() {
     try {
       const user = await base44.auth.me();
       let ownerId = gymOwnerId;
+      let existingCode = existingReferralCode;
       if (!ownerId) {
         const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
-        if (owners[0]) ownerId = owners[0].id;
+        if (owners[0]) { ownerId = owners[0].id; existingCode = owners[0].referral_code; }
       }
-      const referralCode = form.gym_name
-        ? form.gym_name.replace(/\s+/g, '').toUpperCase().slice(0, 6) + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
-        : 'GYM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Only generate new code if one doesn't exist yet
+      const referralCode = existingCode || (
+        form.gym_name
+          ? form.gym_name.replace(/\s+/g, '').toUpperCase().slice(0, 6) + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+          : 'GYM-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+      );
 
       if (ownerId) {
         await base44.entities.GymOwner.update(ownerId, {
@@ -177,6 +184,12 @@ export default function GymOwnerOnboarding() {
               <Camera size={16} className="text-accent" />
               <p className="text-xs text-muted-foreground">Photo upload available in dashboard after setup</p>
             </div>
+            {existingReferralCode && (
+              <div className="bg-accent/5 border border-accent/25 rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground mb-1">Your current referral code (will be preserved)</p>
+                <p className="font-mono font-black text-accent tracking-wider">{existingReferralCode}</p>
+              </div>
+            )}
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep(3)} className="h-12 rounded-xl flex-1"><ChevronLeft size={16} /> Back</Button>
               <Button onClick={handleFinish} className="h-12 rounded-xl flex-1 bg-accent text-accent-foreground" disabled={loading}>
