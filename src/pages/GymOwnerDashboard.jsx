@@ -150,9 +150,6 @@ export default function GymOwnerDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${owner.is_approved ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-              {owner.is_approved ? '● Live' : '● Pending'}
-            </div>
             <button onClick={() => goTab('announcements')}
               className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors">
               <Bell size={16} />
@@ -342,9 +339,7 @@ export default function GymOwnerDashboard() {
                   <p className="font-semibold text-sm">{owner.gym_name || 'My Gym'}</p>
                   <p className="text-xs text-muted-foreground">{owner.owner_name || 'Owner'}</p>
                 </div>
-                <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${owner.is_approved ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-                  {owner.is_approved ? '✓ Live' : '⏳ Pending'}
-                </div>
+
               </div>
               <div className="space-y-2">
                 {[
