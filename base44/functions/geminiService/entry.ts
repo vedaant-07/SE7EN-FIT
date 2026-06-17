@@ -562,6 +562,13 @@ Recommend 3-5 challenges. Make them achievable for the user's level.`;
       return Response.json(result);
     }
 
+    // ── TEST CONNECTION ───────────────────────────────────────────────────────
+    if (action === 'testConnection') {
+      const key = Deno.env.get('GEMINI_API_KEY');
+      if (!key) return Response.json({ success: false, error: 'GEMINI_API_KEY missing' });
+      return Response.json({ success: true, message: 'SE7ENFIT Gemini connected' });
+    }
+
     return Response.json({ error: 'Unknown action' }, { status: 400 });
 
   } catch (error) {

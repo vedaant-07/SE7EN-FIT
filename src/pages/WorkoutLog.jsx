@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, Check } from 'lucide-react';
 import { getToday, MUSCLE_GROUPS } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
+import { awardCoinsOnce } from '@/lib/workoutMemory';
 
 export default function WorkoutLog() {
   const navigate = useNavigate();
@@ -46,10 +47,12 @@ export default function WorkoutLog() {
     const user = await base44.auth.me();
     const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
     const profile = profiles[0];
-    await base44.entities.WorkoutLog.create({
+    const today = getToday();
+
+    const workoutLogRecord = await base44.entities.WorkoutLog.create({
       user_id: user.id,
       gym_id: profile?.primary_gym_id || undefined,
-      date: getToday(),
+      date: today,
       day_name: workout.day_name,
       workout_type: workout.workout_type,
       exercises: exercises.filter(e => e.name),
@@ -59,31 +62,35 @@ export default function WorkoutLog() {
       notes: workout.notes,
       completed: true,
     });
+
+    // Save individual ExerciseLog entries
+    const completedExercises = exercises.filter(e => e.name);
+    for (const ex of completedExercises) {
+      await base44.entities.ExerciseLog.create({
+        user_id: user.id,
+        workout_log_id: workoutLogRecord.id,
+        workout_plan_id: passedDay?.planId || undefined,
+        gym_id: profile?.primary_gym_id || undefined,
+        date: today,
+        exercise_name: ex.name,
+        muscle_group: ex.muscle_group,
+        equipment_used: ex.equipment || undefined,
+        sets: Number(ex.sets) || 0,
+        reps: Number(ex.reps) || 0,
+        weight_kg: Number(ex.weight) || 0,
+        completed: true,
+      });
+    }
+
     if (profile) {
       await base44.entities.UserProfile.update(profile.id, {
         total_workouts: (profile.total_workouts || 0) + 1,
       });
     }
-    // Award 50 coins for completing a workout
-    const coinsToday = getToday();
-    const wallets = await base44.entities.RewardWallet.filter({ user_id: user.id });
-    if (wallets[0]) {
-      await base44.entities.RewardWallet.update(wallets[0].id, {
-        coins_balance: (wallets[0].coins_balance || 0) + 50,
-        total_earned: (wallets[0].total_earned || 0) + 50,
-        last_reward_date: coinsToday,
-      });
-    } else {
-      await base44.entities.RewardWallet.create({
-        user_id: user.id, coins_balance: 50, total_earned: 50, badges: [], last_reward_date: coinsToday,
-      });
-    }
-    await base44.entities.RewardTransaction.create({
-      user_id: user.id, type: 'earn', coins: 50,
-      reason: `Completed workout: ${workout.day_name || 'Training session'}`,
-      source: 'workout', date: coinsToday,
-    });
-    toast({ title: '💪 Workout complete!', description: '+50 coins earned! Amazing work!' });
+
+    // Award 50 coins once per day (duplicate-safe)
+    const awarded = await awardCoinsOnce(user.id, 'workout', today, 50, `Completed workout: ${workout.day_name || 'Training session'}`);
+    toast({ title: '💪 Workout complete!', description: awarded ? '+50 coins earned! Amazing work!' : 'Great session! (Coins already awarded today)' });
     navigate('/workout');
   };
 

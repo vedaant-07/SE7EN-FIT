@@ -5,9 +5,10 @@ import TopBar from '@/components/se7enfit/TopBar';
 import EmptyState from '@/components/se7enfit/EmptyState';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, CheckCircle2, Circle } from 'lucide-react';
+import { Dumbbell, Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, Brain, RefreshCw } from 'lucide-react';
 import { getToday, GOALS_LABELS } from '@/lib/fitnessUtils';
 import AIWorkoutGenerator from '@/components/se7enfit/AIWorkoutGenerator';
+import { getNextWorkoutSuggestion } from '@/lib/workoutMemory';
 
 const PLAN_TEMPLATES = [
   { key: 'push_pull_legs', label: 'Push Pull Legs', emoji: '💪', desc: '3-day split, intermediate' },
@@ -27,6 +28,7 @@ export default function Workout() {
   const [gymOwner, setGymOwner] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [nextWorkout, setNextWorkout] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -44,13 +46,20 @@ export default function Workout() {
     const prof = profiles[0] || null;
     setProfile(prof);
     if (prof?.primary_gym_id) {
-      const [eq, gymData] = await Promise.all([
-        base44.entities.GymEquipment.filter({ gym_id: prof.primary_gym_id }),
-        base44.entities.GymOwner.filter({ user_id: prof.primary_gym_id }),
-      ]).catch(() => [[], []]);
-      setGymEquipment(eq.filter(e => e.available));
-      setGymOwner(gymData[0] || null);
+      try {
+        const [eq, gymData] = await Promise.all([
+          base44.entities.GymEquipment.filter({ gym_id: prof.primary_gym_id }),
+          base44.entities.GymOwner.filter({ id: prof.primary_gym_id }),
+        ]);
+        setGymEquipment(eq.filter(e => e.available));
+        setGymOwner(gymData[0] || null);
+      } catch { /* gym not found, continue */ }
     }
+    // Load workout memory suggestion
+    try {
+      const suggestion = await getNextWorkoutSuggestion(user.id);
+      setNextWorkout(suggestion);
+    } catch { /* non-critical */ }
     setLoading(false);
   };
 
@@ -114,6 +123,28 @@ export default function Workout() {
             </div>
           </Link>
         </div>
+
+        {/* Next Recommended Workout */}
+        {nextWorkout && (
+          <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/25 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain size={15} className="text-accent" />
+              <p className="text-xs font-semibold text-accent uppercase tracking-wide">Next Recommended Workout</p>
+            </div>
+            <p className="font-heading font-bold text-sm">{nextWorkout.label}</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{nextWorkout.reason}</p>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => navigate('/workout/log')}
+                className="flex-1 bg-accent text-accent-foreground rounded-xl py-2 text-xs font-semibold active:scale-95 transition-all">
+                Start Recommended
+              </button>
+              <button onClick={() => navigate('/ai-trainer')}
+                className="flex items-center gap-1 px-3 py-2 border border-border rounded-xl text-xs font-medium text-muted-foreground active:scale-95 transition-all">
+                <Zap size={11} className="text-accent" /> Ask AI
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* AI Workout Generator */}
         <AIWorkoutGenerator
