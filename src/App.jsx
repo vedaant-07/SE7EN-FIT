@@ -25,15 +25,7 @@ import ExerciseLibrary from '@/pages/ExerciseLibrary';
 import Nutrition from '@/pages/Nutrition';
 import NutritionLog from '@/pages/NutritionLog';
 import Tracking from '@/pages/Tracking';
-import WaterTracking from '@/pages/tracking/WaterTracking';
-import StepTracking from '@/pages/tracking/StepTracking';
-import SleepTracking from '@/pages/tracking/SleepTracking';
-import WeightTracking from '@/pages/tracking/WeightTracking';
-import BodyMeasurements from '@/pages/tracking/BodyMeasurements';
-import CardioTracking from '@/pages/tracking/CardioTracking';
-import HabitTracking from '@/pages/tracking/HabitTracking';
-import MoodTracking from '@/pages/tracking/MoodTracking';
-import GymAttendance from '@/pages/tracking/GymAttendance';
+// Old sub-routes redirect to unified tracking dashboard
 import Progress from '@/pages/Progress';
 import Community from '@/pages/Community';
 import Profile from '@/pages/Profile';
@@ -82,15 +74,15 @@ const AuthenticatedApp = () => {
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/nutrition/log" element={<NutritionLog />} />
           <Route path="/tracking" element={<Tracking />} />
-          <Route path="/tracking/water" element={<WaterTracking />} />
-          <Route path="/tracking/steps" element={<StepTracking />} />
-          <Route path="/tracking/sleep" element={<SleepTracking />} />
-          <Route path="/tracking/weight" element={<WeightTracking />} />
-          <Route path="/tracking/measurements" element={<BodyMeasurements />} />
-          <Route path="/tracking/cardio" element={<CardioTracking />} />
-          <Route path="/tracking/habits" element={<HabitTracking />} />
-          <Route path="/tracking/mood" element={<MoodTracking />} />
-          <Route path="/tracking/gym-attendance" element={<GymAttendance />} />
+          <Route path="/tracking/water" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/steps" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/sleep" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/weight" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/measurements" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/cardio" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/habits" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/mood" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/gym-attendance" element={<Navigate to="/tracking" replace />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/community" element={<Community />} />
           <Route path="/profile" element={<Profile />} />

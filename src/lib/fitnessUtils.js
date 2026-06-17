@@ -1,5 +1,6 @@
 // SE7ENFIT Fitness Calculation Utilities
 
+// Exported for use in tracking tabs
 export function calculateBMI(weightKg, heightCm) {
   const heightM = heightCm / 100;
   return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
