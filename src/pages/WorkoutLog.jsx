@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import { Button } from '@/components/ui/button';
@@ -12,19 +12,30 @@ import { useToast } from '@/components/ui/use-toast';
 
 export default function WorkoutLog() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+
+  // Pre-populate from workout day passed via navigation state
+  const passedDay = location.state?.workoutDay;
+  const defaultExercises = passedDay?.exercises?.map(ex => ({
+    name: ex.name || '',
+    muscle_group: (ex.muscles?.[0] || 'chest').toLowerCase().replace(/\s+/g, '_'),
+    sets: typeof ex.sets === 'number' ? ex.sets : 3,
+    reps: typeof ex.reps === 'number' ? ex.reps : 10,
+    weight: '',
+    rest_sec: ex.rest_seconds || 60,
+  })) || [{ name: '', muscle_group: 'chest', sets: 3, reps: 10, weight: '', rest_sec: 60 }];
+
   const [workout, setWorkout] = useState({
-    day_name: '',
+    day_name: passedDay ? `${passedDay.day} — ${passedDay.split}` : '',
     workout_type: 'strength',
-    duration_minutes: '',
-    calories_burned: '',
+    duration_minutes: passedDay?.estimated_duration || '',
+    calories_burned: passedDay?.estimated_calories || '',
     difficulty_rating: 3,
     notes: '',
   });
-  const [exercises, setExercises] = useState([
-    { name: '', muscle_group: 'chest', sets: 3, reps: 10, weight: '', rest_sec: 60 }
-  ]);
+  const [exercises, setExercises] = useState(defaultExercises);
 
   const addExercise = () => setExercises(prev => [...prev, { name: '', muscle_group: 'chest', sets: 3, reps: 10, weight: '', rest_sec: 60 }]);
   const removeExercise = (idx) => setExercises(prev => prev.filter((_, i) => i !== idx));

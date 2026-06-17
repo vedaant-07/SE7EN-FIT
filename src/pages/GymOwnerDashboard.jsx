@@ -16,10 +16,10 @@ import EarningsTab from '@/pages/gym-owner/EarningsTab';
 import GymToast from '@/components/gym-owner/Toast';
 import ConfirmModal from '@/components/gym-owner/ConfirmModal';
 import {
-  Building2, Users, Star, Bell, Settings, Plus,
-  Trophy, Gift, Share2, LogOut, Clock, MapPin, Check, X, CalendarCheck,
-  MessageSquare, Phone, Mail, Coins, UserPlus,
-  Edit3, Send, TrendingUp, ChevronRight, Home, Dumbbell
+  Building2, Users, Star, Bell, Settings,
+  Trophy, Gift, Share2, LogOut, Check, CalendarCheck,
+  MessageSquare, Coins, UserPlus,
+  Edit3, TrendingUp, ChevronRight, Home, Dumbbell
 } from 'lucide-react';
 
 const BOTTOM_NAV = [

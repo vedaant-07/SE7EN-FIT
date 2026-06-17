@@ -70,9 +70,12 @@ export default function UserSignup() {
             base44.entities.GymLead.create({
               gym_id: gymInfo.id,
               owner_id: gymInfo.user_id,
-              name: user.full_name || email,
+              name: user.full_name || email.split('@')[0],
+              email: email,
               source: 'app',
               status: 'new',
+              referral_code_used: gymCode.trim().toUpperCase(),
+              user_id: user.id,
             }),
           ]);
           // Store gym code to pick up during onboarding
