@@ -23,7 +23,23 @@ export default function GymOwnerOnboarding() {
   useEffect(() => {
     base44.auth.me().then(user => {
       base44.entities.GymOwner.filter({ user_id: user.id }).then(owners => {
-        if (owners[0]) setGymOwnerId(owners[0].id);
+        if (owners[0]) {
+          setGymOwnerId(owners[0].id);
+          // Pre-fill form if editing
+          const o = owners[0];
+          setForm(f => ({
+            ...f,
+            gym_name: o.gym_name || f.gym_name,
+            city: o.city || f.city,
+            address: o.address || f.address,
+            description: o.description || f.description,
+            opening_time: o.opening_time || f.opening_time,
+            closing_time: o.closing_time || f.closing_time,
+            monthly_fee: o.monthly_fee || f.monthly_fee,
+            quarterly_fee: o.quarterly_fee || f.quarterly_fee,
+            yearly_fee: o.yearly_fee || f.yearly_fee,
+          }));
+        }
       });
     });
   }, []);
@@ -43,15 +59,26 @@ export default function GymOwnerOnboarding() {
         const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
         if (owners[0]) ownerId = owners[0].id;
       }
+      const referralCode = form.gym_name
+        ? form.gym_name.replace(/\s+/g, '').toUpperCase().slice(0, 6) + '-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+        : 'GYM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
       if (ownerId) {
-        await base44.entities.GymOwner.update(ownerId, { ...form, onboarding_complete: true });
+        await base44.entities.GymOwner.update(ownerId, {
+          ...form,
+          onboarding_complete: true,
+          owner_name: user.full_name || 'Gym Owner',
+          email: user.email,
+          referral_code: referralCode,
+        });
       } else {
-        // Create new GymOwner record if none exists
         await base44.entities.GymOwner.create({
           user_id: user.id,
           owner_name: user.full_name || 'Gym Owner',
+          email: user.email,
           ...form,
           onboarding_complete: true,
+          referral_code: referralCode,
         });
       }
     } catch (err) {

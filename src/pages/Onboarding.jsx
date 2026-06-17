@@ -63,6 +63,9 @@ export default function Onboarding() {
     setSaving(true);
     const user = await base44.auth.me();
     const code = 'SE7' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Check if user signed up with a gym referral code
+    const pendingGymId = localStorage.getItem('pending_gym_id');
+    const pendingGymCode = localStorage.getItem('pending_gym_code');
     await base44.entities.UserProfile.create({
       ...data,
       user_id: user.id,
@@ -77,8 +80,15 @@ export default function Onboarding() {
       transformation_duration_weeks: Number(data.transformation_duration_weeks),
       onboarding_complete: true,
       referral_code: code,
+      primary_gym_id: pendingGymId || undefined,
+      gym_referral_code_used: pendingGymCode || undefined,
+      gym_access: pendingGymId ? true : data.gym_access,
       role: 'user'
     });
+    if (pendingGymId) {
+      localStorage.removeItem('pending_gym_id');
+      localStorage.removeItem('pending_gym_code');
+    }
     navigate('/');
   };
 

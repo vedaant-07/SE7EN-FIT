@@ -1,0 +1,27 @@
+{
+  "name": "GymAnnouncement",
+  "type": "object",
+  "properties": {
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "gym_id",
+    "owner_id",
+    "message"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "name": "GymAttendanceLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "check_in_time": {
+      "type": "string"
+    },
+    "check_out_time": {
+      "type": "string"
+    },
+    "check_in_method": {
+      "type": "string",
+      "enum": [
+        "pin",
+        "owner_manual",
+        "self",
+        "qr_placeholder"
+      ],
+      "default": "self"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "checked_in",
+        "checked_out"
+      ],
+      "default": "checked_in"
+    },
+    "duration_minutes": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "gym_id",
+    "date"
+  ]
+}

@@ -75,6 +75,9 @@
     "medical_notes": {
       "type": "string"
     },
+    "injuries": {
+      "type": "string"
+    },
     "transformation_duration_weeks": {
       "type": "number"
     },
@@ -127,6 +130,12 @@
       "type": "string"
     },
     "referred_by": {
+      "type": "string"
+    },
+    "primary_gym_id": {
+      "type": "string"
+    },
+    "gym_referral_code_used": {
       "type": "string"
     },
     "streak_days": {

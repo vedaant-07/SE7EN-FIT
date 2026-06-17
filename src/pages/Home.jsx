@@ -5,7 +5,7 @@ import TopBar from '@/components/se7enfit/TopBar';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Activity, Heart } from 'lucide-react';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Activity, Heart, Building2 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -201,7 +201,7 @@ export default function Home() {
               { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
               { icon: Droplets, label: 'Add Water', route: '/tracking', color: 'text-blue-400 bg-blue-400/10' },
               { icon: Camera, label: 'Food Scan 🤖', route: '/food-scan', color: 'text-green-400 bg-green-400/10' },
-              { icon: Activity, label: 'Challenges', route: '/challenges', color: 'text-red-400 bg-red-400/10' },
+              { icon: Building2, label: 'My Gym', route: '/my-gym', color: 'text-amber-400 bg-amber-400/10' },
               { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
             ].map(({ icon: Icon, label, route, color }) => (
               <button key={route} onClick={() => navigate(route)}

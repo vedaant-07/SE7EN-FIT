@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
+import GymEquipmentManager from '@/pages/gym-owner/GymEquipmentManager';
 import {
   Building2, Users, Star, Bell, Settings, Plus,
   Trophy, Gift, Share2, LogOut, Clock, MapPin, Check, X, CalendarCheck,
   BarChart3, MessageSquare, Phone, Mail, Coins, UserPlus,
-  Edit3, Send, TrendingUp, ChevronRight, Home
+  Edit3, Send, TrendingUp, ChevronRight, Home, Dumbbell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -21,6 +22,7 @@ const BOTTOM_NAV = [
 
 const MORE_TABS = [
   { key: 'profile', label: 'Gym Profile', icon: Building2 },
+  { key: 'equipment', label: 'Equipment', icon: Dumbbell },
   { key: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { key: 'challenges', label: 'Challenges', icon: Trophy },
   { key: 'rewards', label: 'Rewards', icon: Gift },
@@ -57,6 +59,8 @@ export default function GymOwnerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [leads, setLeads] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [announcement, setAnnouncement] = useState('');
   const [replyTexts, setReplyTexts] = useState({});
 
@@ -78,12 +82,16 @@ export default function GymOwnerDashboard() {
         return;
       }
       setOwner(owners[0]);
-      const [gymLeads, gymReviews] = await Promise.all([
+      const [gymLeads, gymReviews, gymMemberships, gymAttendance] = await Promise.all([
         base44.entities.GymLead.filter({ owner_id: user.id }),
         base44.entities.GymReview.filter({ gym_id: owners[0].id }),
+        base44.entities.UserGymMembership.filter({ gym_id: owners[0].id }),
+        base44.entities.GymAttendanceLog.filter({ gym_id: owners[0].id }),
       ]);
       setLeads(gymLeads);
       setReviews(gymReviews);
+      setMemberships(gymMemberships);
+      setAttendanceLogs(gymAttendance);
     } catch (e) {
       console.error(e);
     }
@@ -108,9 +116,13 @@ export default function GymOwnerDashboard() {
   if (loading) return <LoadingScreen />;
   if (!owner) return null;
 
-  const activeMembers = MOCK_MEMBERS.filter(m => m.status === 'active').length;
+  const today = new Date().toISOString().split('T')[0];
+  const activeMembers = memberships.filter(m => m.status === 'active').length;
+  const pendingMembers = memberships.filter(m => m.status === 'pending').length;
   const newLeads = leads.filter(l => l.status === 'new').length;
   const convertedLeads = leads.filter(l => l.status === 'converted').length;
+  const todayAttendance = attendanceLogs.filter(a => a.date === today).length;
+  const totalRealMembers = memberships.length || MOCK_MEMBERS.length;
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
     : (owner.rating || 4.5);
@@ -172,10 +184,10 @@ export default function GymOwnerDashboard() {
               {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Total Members', value: owner.total_members || MOCK_MEMBERS.length, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-                  { label: 'New Leads', value: newLeads || 0, icon: UserPlus, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
-                  { label: 'Gym Rating', value: `${avgRating} ★`, icon: Star, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
-                  { label: 'Converted', value: convertedLeads, icon: Check, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
+                  { label: 'Total Members', value: totalRealMembers, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
+                  { label: 'New Leads', value: newLeads, icon: UserPlus, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
+                  { label: 'Today Check-ins', value: todayAttendance, icon: CalendarCheck, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
+                  { label: 'Pending Approval', value: pendingMembers, icon: Bell, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
                 ].map(s => {
                   const Icon = s.icon;
                   return (
@@ -195,6 +207,7 @@ export default function GymOwnerDashboard() {
                 <p className="font-heading font-semibold text-sm mb-3">More Features</p>
                 <div className="grid grid-cols-3 gap-2.5">
                   {MORE_TABS.map(item => {
+
                     const Icon = item.icon;
                     return (
                       <button key={item.key} onClick={() => setActiveTab(item.key)}
@@ -208,6 +221,21 @@ export default function GymOwnerDashboard() {
                   })}
                 </div>
               </div>
+
+              {/* Referral Code Quick Access */}
+              {owner.referral_code && (
+                <div className="bg-accent/8 border border-accent/25 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Referral Code — share to get members</p>
+                    <p className="font-mono font-black text-lg text-accent tracking-wider mt-0.5">{owner.referral_code}</p>
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(owner.referral_code); toast({ title: '✅ Copied!' }); }}
+                    className="bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all">
+                    Copy
+                  </button>
+                </div>
+              )}
 
               {/* Recent Activity */}
               <div>
@@ -241,18 +269,14 @@ export default function GymOwnerDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-heading font-bold text-lg">Members</p>
-                  <p className="text-xs text-muted-foreground">{MOCK_MEMBERS.length} total • {activeMembers} active</p>
+                  <p className="text-xs text-muted-foreground">{memberships.length} linked • {activeMembers} active</p>
                 </div>
-                <button className="flex items-center gap-1.5 bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold">
-                  <Plus size={13} /> Add
-                </button>
               </div>
-              {/* Status summary */}
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: 'Active', count: MOCK_MEMBERS.filter(m => m.status === 'active').length, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-                  { label: 'Pending', count: MOCK_MEMBERS.filter(m => m.status === 'pending').length, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-                  { label: 'Expired', count: MOCK_MEMBERS.filter(m => m.status === 'expired').length, color: 'text-red-400', bg: 'bg-red-400/10' },
+                  { label: 'Active', count: activeMembers, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+                  { label: 'Pending', count: pendingMembers, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+                  { label: 'Rejected', count: memberships.filter(m => m.status === 'rejected').length, color: 'text-red-400', bg: 'bg-red-400/10' },
                 ].map(s => (
                   <div key={s.label} className={`${s.bg} rounded-2xl p-3 text-center`}>
                     <p className={`font-black text-xl ${s.color}`}>{s.count}</p>
@@ -260,29 +284,59 @@ export default function GymOwnerDashboard() {
                   </div>
                 ))}
               </div>
-              {MOCK_MEMBERS.map((m, i) => (
-                <div key={i} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                    <span className="font-black text-accent">{m.name[0]}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.plan} • {m.phone}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Joined {m.joined}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${statusColors[m.status]}`}>
-                      {m.status}
-                    </span>
-                    {m.status === 'pending' && (
-                      <div className="flex gap-1.5">
-                        <button className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center"><Check size={12} className="text-emerald-400" /></button>
-                        <button className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center"><X size={12} className="text-red-400" /></button>
-                      </div>
-                    )}
+              {memberships.length === 0 ? (
+                <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
+                  <Users size={32} className="text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm font-semibold">No members yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Share your referral code to get members</p>
+                  <div className="mt-3 bg-accent/10 border border-accent/20 rounded-xl px-4 py-3">
+                    <p className="text-xs text-muted-foreground">Your code</p>
+                    <p className="font-mono font-bold text-accent">{owner.referral_code || 'Set in profile'}</p>
                   </div>
                 </div>
-              ))}
+              ) : (
+                memberships.map((m) => (
+                  <div key={m.id} className="bg-card border border-border rounded-2xl p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
+                        <span className="font-black text-accent text-sm">{(m.user_id || 'U')[0].toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">Member #{m.user_id?.slice(-6) || '------'}</p>
+                        <p className="text-xs text-muted-foreground">Joined {m.joined_at || 'Recently'}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Code: {m.referral_code_used || 'N/A'} • {m.total_visits || 0} visits</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${statusColors[m.status] || 'bg-muted text-muted-foreground'}`}>
+                          {m.status}
+                        </span>
+                        {m.status === 'pending' && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={async () => {
+                                await base44.entities.UserGymMembership.update(m.id, { status: 'active', approved_at: new Date().toISOString().split('T')[0] });
+                                setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'active' } : x));
+                                toast({ title: '✅ Member approved!' });
+                              }}
+                              className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                              <Check size={12} className="text-emerald-400" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await base44.entities.UserGymMembership.update(m.id, { status: 'rejected' });
+                                setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'rejected' } : x));
+                                toast({ title: 'Member rejected' });
+                              }}
+                              className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                              <X size={12} className="text-red-400" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -470,21 +524,45 @@ export default function GymOwnerDashboard() {
             </div>
           )}
 
+          {/* ── EQUIPMENT ── */}
+          {activeTab === 'equipment' && owner && (
+            <GymEquipmentManager gymId={owner.id} ownerId={owner.user_id} />
+          )}
+
           {/* ── ATTENDANCE ── */}
           {activeTab === 'attendance' && (
             <div className="space-y-4">
               <p className="font-heading font-bold text-lg">Attendance</p>
               <div className="bg-gradient-to-br from-accent via-accent/90 to-accent/70 rounded-3xl p-5 text-accent-foreground">
-                <p className="text-sm opacity-80 mb-4">Today's Summary</p>
+                <p className="text-sm opacity-80 mb-4">Today's Check-ins</p>
                 <div className="grid grid-cols-3 gap-3 text-center">
-                  <div><p className="font-black text-3xl">28</p><p className="text-xs opacity-70 mt-0.5">Present</p></div>
-                  <div><p className="font-black text-3xl">10</p><p className="text-xs opacity-70 mt-0.5">Absent</p></div>
-                  <div><p className="font-black text-3xl">74%</p><p className="text-xs opacity-70 mt-0.5">Rate</p></div>
+                  <div><p className="font-black text-3xl">{todayAttendance}</p><p className="text-xs opacity-70 mt-0.5">Present</p></div>
+                  <div><p className="font-black text-3xl">{Math.max(0, totalRealMembers - todayAttendance)}</p><p className="text-xs opacity-70 mt-0.5">Absent</p></div>
+                  <div><p className="font-black text-3xl">{totalRealMembers > 0 ? Math.round((todayAttendance / totalRealMembers) * 100) : 0}%</p><p className="text-xs opacity-70 mt-0.5">Rate</p></div>
                 </div>
                 <div className="bg-white/25 rounded-full h-2 mt-4 overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: '74%' }} />
+                  <div className="h-full bg-white rounded-full" style={{ width: `${totalRealMembers > 0 ? Math.round((todayAttendance / totalRealMembers) * 100) : 0}%` }} />
                 </div>
               </div>
+              {attendanceLogs.filter(a => a.date === today).length > 0 && (
+                <div className="space-y-2">
+                  <p className="font-semibold text-sm">Today's Check-ins</p>
+                  {attendanceLogs.filter(a => a.date === today).map(a => (
+                    <div key={a.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-black text-accent">M</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Member #{a.user_id?.slice(-6)}</p>
+                        <p className="text-xs text-muted-foreground">In: {a.check_in_time}{a.check_out_time ? ` • Out: ${a.check_out_time}` : ' • Still inside'}</p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${a.status === 'checked_out' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                        {a.status === 'checked_out' ? 'Left' : 'Inside'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="bg-muted/30 border border-border rounded-2xl p-6 text-center">
                 <CalendarCheck size={32} className="text-accent mx-auto mb-3" />
                 <p className="text-sm font-semibold">QR Code Check-In</p>
@@ -550,12 +628,20 @@ export default function GymOwnerDashboard() {
           {activeTab === 'referrals' && (
             <div className="space-y-4">
               <p className="font-heading font-bold text-lg">Referrals</p>
-              <div className="bg-card border border-accent/20 rounded-2xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">Your Referral Code</p>
-                <div className="flex items-center justify-between bg-accent/10 rounded-xl px-4 py-3 mt-2">
-                  <span className="font-mono font-black text-xl tracking-widest text-accent">{owner.referral_code || 'SE7EN-GYM'}</span>
-                  <button className="text-xs text-accent font-semibold bg-accent/20 px-3 py-1.5 rounded-lg">Copy</button>
+              <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-2xl p-4">
+                <p className="text-xs text-muted-foreground mb-1">🔑 Your Gym Referral Code</p>
+                <p className="text-[11px] text-muted-foreground mb-3">Share this code with members so they can link your gym during signup</p>
+                <div className="flex items-center justify-between bg-background/60 border border-accent/30 rounded-xl px-4 py-3">
+                  <span className="font-mono font-black text-2xl tracking-widest text-accent">{owner.referral_code || '—'}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(owner.referral_code || ''); toast({ title: '✅ Copied to clipboard!' }); }}
+                    className="text-xs text-accent font-semibold bg-accent/20 px-3 py-1.5 rounded-lg active:scale-95 transition-all">
+                    Copy
+                  </button>
                 </div>
+                {!owner.referral_code && (
+                  <p className="text-xs text-amber-400 mt-2">⚠️ Complete your gym profile to generate a referral code</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -656,8 +742,19 @@ export default function GymOwnerDashboard() {
                   className="w-full h-24 px-3 py-2 rounded-xl border border-input bg-muted/40 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 />
                 <Button
-                  onClick={() => { if (announcement.trim()) { toast({ title: '📢 Announcement sent!' }); setAnnouncement(''); } }}
-                  className="mt-2.5 h-11 rounded-xl bg-accent text-accent-foreground text-sm w-full font-semibold"
+                onClick={async () => {
+                  if (announcement.trim() && owner) {
+                    await base44.entities.GymAnnouncement.create({
+                      gym_id: owner.id,
+                      owner_id: owner.user_id,
+                      message: announcement.trim(),
+                      is_active: true,
+                    });
+                    toast({ title: '📢 Announcement sent!' });
+                    setAnnouncement('');
+                  }
+                }}
+                className="mt-2.5 h-11 rounded-xl bg-accent text-accent-foreground text-sm w-full font-semibold"
                 >
                   <Send size={14} className="mr-2" /> Send Announcement
                 </Button>

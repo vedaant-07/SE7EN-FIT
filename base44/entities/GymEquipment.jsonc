@@ -1,0 +1,49 @@
+{
+  "name": "GymEquipment",
+  "type": "object",
+  "properties": {
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "equipment_name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "cardio",
+        "strength_machine",
+        "free_weights",
+        "cable",
+        "functional",
+        "bodyweight",
+        "other"
+      ]
+    },
+    "target_muscles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "available": {
+      "type": "boolean",
+      "default": true
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "gym_id",
+    "owner_id",
+    "equipment_name"
+  ]
+}

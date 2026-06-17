@@ -1,0 +1,68 @@
+{
+  "name": "UserGymMembership",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "referral_code_used": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "rejected",
+        "inactive"
+      ],
+      "default": "pending"
+    },
+    "joined_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "approved_by_owner_id": {
+      "type": "string"
+    },
+    "membership_plan": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "quarterly",
+        "annual",
+        "trial"
+      ]
+    },
+    "plan_start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "plan_end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "total_visits": {
+      "type": "number",
+      "default": 0
+    },
+    "last_checkin": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "user_id",
+    "gym_id"
+  ]
+}

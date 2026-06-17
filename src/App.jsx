@@ -44,6 +44,7 @@ import GymOwnerLoginNew from '@/pages/GymOwnerLoginNew';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
 import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
 import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
+import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 
 const AuthenticatedApp = () => {
@@ -126,6 +127,7 @@ const AuthenticatedApp = () => {
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/workout/guide" element={<WorkoutGuide />} />
+          <Route path="/my-gym" element={<MyGym />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Route>
       </Route>
