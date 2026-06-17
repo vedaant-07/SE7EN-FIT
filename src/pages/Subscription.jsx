@@ -8,11 +8,25 @@ import { useToast } from '@/components/ui/use-toast';
 import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
 import { useNavigate } from 'react-router-dom';
 
+const RAZORPAY_KEY_ID = 'rzp_test_T1c5k1ZdbXOuYS';
+
+function loadRazorpay() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function Subscription() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const [coupon, setCoupon] = useState('');
   const [referral, setReferral] = useState('');
   const [processingPlan, setProcessingPlan] = useState(null);
@@ -20,8 +34,9 @@ export default function Subscription() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    const user = await base44.auth.me();
-    const subs = await base44.entities.Subscription.filter({ user_id: user.id, status: 'active' });
+    const u = await base44.auth.me();
+    setUser(u);
+    const subs = await base44.entities.Subscription.filter({ user_id: u.id, status: 'active' });
     setCurrent(subs[0] || null);
     setLoading(false);
   };
@@ -30,17 +45,73 @@ export default function Subscription() {
     if (plan.key === PLANS.FREE_TRIAL || plan.key === PLANS.FREE) return;
     setProcessingPlan(plan.key);
 
-    // Stripe integration placeholder
-    toast({
-      title: `${plan.label} — ₹${plan.price}/${plan.duration}`,
-      description: '🔒 Stripe payment gateway — enter your Stripe keys to activate. Contact support to manually activate.',
+    const loaded = await loadRazorpay();
+    if (!loaded) {
+      toast({ title: 'Payment gateway failed to load', description: 'Check your internet connection.', variant: 'destructive' });
+      setProcessingPlan(null);
+      return;
+    }
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: plan.price * 100, // paise
+      currency: 'INR',
+      name: 'SE7ENFIT',
+      description: `${plan.label} Plan`,
+      image: 'https://via.placeholder.com/150?text=SE7ENFIT',
+      prefill: {
+        name: user?.full_name || '',
+        email: user?.email || '',
+      },
+      theme: { color: '#22c55e' },
+      handler: async (response) => {
+        // Payment successful — record subscription
+        const today = new Date();
+        const endDate = new Date(today);
+        if (plan.billing === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
+        else if (plan.billing === 'quarterly') endDate.setMonth(endDate.getMonth() + 3);
+        else if (plan.billing === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
+
+        await base44.entities.Payment.create({
+          user_id: user.id,
+          plan: plan.key,
+          amount: plan.price,
+          currency: 'INR',
+          status: 'success',
+          stripe_session_id: response.razorpay_payment_id,
+          paid_at: new Date().toISOString(),
+        });
+
+        // Deactivate old subscription
+        if (current) {
+          await base44.entities.Subscription.update(current.id, { status: 'expired' });
+        }
+
+        // Create new subscription
+        const newSub = await base44.entities.Subscription.create({
+          user_id: user.id,
+          plan: plan.key,
+          status: 'active',
+          start_date: today.toISOString().split('T')[0],
+          end_date: endDate.toISOString().split('T')[0],
+          payment_id: response.razorpay_payment_id,
+        });
+
+        setCurrent(newSub);
+        toast({ title: `🎉 ${plan.label} Activated!`, description: `Your plan is active until ${endDate.toDateString()}` });
+        setProcessingPlan(null);
+      },
+      modal: {
+        ondismiss: () => setProcessingPlan(null),
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', () => {
+      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
+      setProcessingPlan(null);
     });
-
-    // When Stripe is integrated, this would create a checkout session:
-    // const session = await createStripeCheckoutSession(user.id, plan.key);
-    // window.location.href = session.url;
-
-    setTimeout(() => setProcessingPlan(null), 2000);
+    rzp.open();
   };
 
   if (loading) return <LoadingScreen />;
@@ -188,7 +259,7 @@ export default function Subscription() {
           ))}
         </div>
 
-        <p className="text-center text-[10px] text-muted-foreground">Prices in INR • Payments secured by Stripe • GST included</p>
+        <p className="text-center text-[10px] text-muted-foreground">Prices in INR • Payments secured by Razorpay • GST included</p>
       </div>
     </>
   );
