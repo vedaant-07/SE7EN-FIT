@@ -10,7 +10,6 @@ import {
   Edit3, Send, TrendingUp, ChevronRight, Home, Dumbbell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
 
 const BOTTOM_NAV = [
   { key: 'overview', label: 'Home', icon: Home },
@@ -47,8 +46,14 @@ const statusColors = {
 
 export default function GymOwnerDashboard() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [owner, setOwner] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [leads, setLeads] = useState([]);
@@ -98,7 +103,6 @@ export default function GymOwnerDashboard() {
   const updateLeadStatus = async (leadId, status) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l));
     await base44.entities.GymLead.update(leadId, { status });
-    toast({ title: `Lead marked as ${status}` });
   };
 
   const sendReply = async (reviewId) => {
@@ -107,7 +111,6 @@ export default function GymOwnerDashboard() {
     await base44.entities.GymReview.update(reviewId, { owner_reply: reply });
     setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, owner_reply: reply } : r));
     setReplyTexts(prev => ({ ...prev, [reviewId]: '' }));
-    toast({ title: 'Reply sent!' });
   };
 
   if (loading) return <LoadingScreen />;
@@ -227,9 +230,9 @@ export default function GymOwnerDashboard() {
                     <p className="font-mono font-black text-lg text-accent tracking-wider mt-0.5">{owner.referral_code}</p>
                   </div>
                   <button
-                    onClick={() => { navigator.clipboard.writeText(owner.referral_code); toast({ title: '✅ Copied!' }); }}
-                    className="bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all">
-                    Copy
+                    onClick={() => handleCopy(owner.referral_code)}
+                    className="bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all min-w-[60px]">
+                    {copied ? '✓ Copied' : 'Copy'}
                   </button>
                 </div>
               )}
@@ -321,7 +324,6 @@ export default function GymOwnerDashboard() {
                               onClick={async () => {
                                 await base44.entities.UserGymMembership.update(m.id, { status: 'active', approved_at: new Date().toISOString().split('T')[0] });
                                 setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'active' } : x));
-                                toast({ title: '✅ Member approved!' });
                               }}
                               className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                               <Check size={12} className="text-emerald-400" />
@@ -330,7 +332,6 @@ export default function GymOwnerDashboard() {
                               onClick={async () => {
                                 await base44.entities.UserGymMembership.update(m.id, { status: 'rejected' });
                                 setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'rejected' } : x));
-                                toast({ title: 'Member rejected' });
                               }}
                               className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
                               <X size={12} className="text-red-400" />
@@ -614,9 +615,9 @@ export default function GymOwnerDashboard() {
                 <div className="flex items-center justify-between bg-background/60 border border-accent/30 rounded-xl px-4 py-3">
                   <span className="font-mono font-black text-2xl tracking-widest text-accent">{owner.referral_code || '—'}</span>
                   <button
-                    onClick={() => { navigator.clipboard.writeText(owner.referral_code || ''); toast({ title: '✅ Copied to clipboard!' }); }}
-                    className="text-xs text-accent font-semibold bg-accent/20 px-3 py-1.5 rounded-lg active:scale-95 transition-all">
-                    Copy
+                    onClick={() => handleCopy(owner.referral_code)}
+                    className="text-xs text-accent font-semibold bg-accent/20 px-3 py-1.5 rounded-lg active:scale-95 transition-all min-w-[60px]">
+                    {copied ? '✓ Copied' : 'Copy'}
                   </button>
                 </div>
                 {!owner.referral_code && (
@@ -731,7 +732,6 @@ export default function GymOwnerDashboard() {
                       is_active: true,
                     });
                     setAnnouncements(prev => [newAnn, ...prev]);
-                    toast({ title: '📢 Announcement sent!' });
                     setAnnouncement('');
                   }
                 }}
