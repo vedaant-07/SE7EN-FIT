@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Trash2, CheckCircle2, XCircle, Dumbbell, Edit2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
 
 const PRESET_EQUIPMENT = [
   { name: 'Dumbbells', category: 'free_weights', muscles: ['chest', 'shoulders', 'arms', 'back'] },
@@ -39,13 +38,20 @@ const PRESET_EQUIPMENT = [
 const CATEGORIES = ['cardio', 'strength_machine', 'free_weights', 'cable', 'functional', 'bodyweight', 'other'];
 
 export default function GymEquipmentManager({ gymId, ownerId }) {
-  const { toast } = useToast();
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState('preset'); // 'preset' | 'custom'
   const [customForm, setCustomForm] = useState({ equipment_name: '', category: 'strength_machine', quantity: 1, notes: '' });
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [msgVisible, setMsgVisible] = useState(false);
+
+  const showSuccess = useCallback((msg) => {
+    setSuccessMsg(msg);
+    setMsgVisible(true);
+    setTimeout(() => setMsgVisible(false), 1000);
+  }, []);
 
   useEffect(() => { if (gymId) loadEquipment(); }, [gymId]);
 
@@ -58,7 +64,7 @@ export default function GymEquipmentManager({ gymId, ownerId }) {
 
   const addPreset = async (preset) => {
     if (equipment.find(e => e.equipment_name === preset.name)) {
-      toast({ title: 'Already added', description: `${preset.name} is already in your equipment list` });
+      showSuccess(`${preset.name} already added`);
       return;
     }
     setSaving(true);
@@ -72,7 +78,7 @@ export default function GymEquipmentManager({ gymId, ownerId }) {
       quantity: 1,
     });
     await loadEquipment();
-    toast({ title: `✅ ${preset.name} added` });
+    showSuccess(`✅ ${preset.name} added`);
     setSaving(false);
   };
 
@@ -88,7 +94,7 @@ export default function GymEquipmentManager({ gymId, ownerId }) {
     await loadEquipment();
     setCustomForm({ equipment_name: '', category: 'strength_machine', quantity: 1, notes: '' });
     setShowAdd(false);
-    toast({ title: `✅ ${customForm.equipment_name} added` });
+    showSuccess(`✅ ${customForm.equipment_name} added`);
     setSaving(false);
   };
 
@@ -100,7 +106,7 @@ export default function GymEquipmentManager({ gymId, ownerId }) {
   const deleteItem = async (id) => {
     await base44.entities.GymEquipment.delete(id);
     setEquipment(prev => prev.filter(e => e.id !== id));
-    toast({ title: 'Removed' });
+    showSuccess('Removed');
   };
 
   const alreadyAdded = (name) => equipment.some(e => e.equipment_name === name);
@@ -112,6 +118,17 @@ export default function GymEquipmentManager({ gymId, ownerId }) {
 
   return (
     <div className="space-y-4">
+      {/* Inline success notification */}
+      <div
+        className="overflow-hidden transition-all duration-500"
+        style={{ maxHeight: msgVisible ? '60px' : '0', opacity: msgVisible ? 1 : 0, transform: msgVisible ? 'translateY(0)' : 'translateY(-12px)' }}
+      >
+        <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
+          <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
+          <span className="text-sm font-semibold text-emerald-400">{successMsg}</span>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <p className="font-heading font-bold text-base">Equipment & Tools</p>
