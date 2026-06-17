@@ -1,0 +1,44 @@
+{
+  "name": "MealPlan",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "daily_calories_target": {
+      "type": "number"
+    },
+    "daily_protein_target": {
+      "type": "number"
+    },
+    "meals": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "shopping_list": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_ai_generated": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

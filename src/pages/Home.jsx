@@ -6,6 +6,7 @@ import ProgressRing from '@/components/se7enfit/ProgressRing';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
 import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Activity, Heart, Building2, LogIn, LogOut } from 'lucide-react';
+import AIDailyTip from '@/components/se7enfit/AIDailyTip';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -256,6 +257,9 @@ export default function Home() {
             ))}
           </div>
         </div>
+
+        {/* AI Daily Tip (Gemini-powered) */}
+        <AIDailyTip profile={profile} />
 
         {/* AI Recommendation */}
         <Link to="/ai-trainer" className="block">

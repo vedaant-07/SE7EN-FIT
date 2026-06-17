@@ -1,0 +1,27 @@
+{
+  "name": "AIChat",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "assistant"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "role",
+    "message"
+  ]
+}

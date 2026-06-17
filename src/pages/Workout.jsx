@@ -7,6 +7,7 @@ import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
 import { Dumbbell, Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, CheckCircle2, Circle } from 'lucide-react';
 import { getToday, GOALS_LABELS } from '@/lib/fitnessUtils';
+import AIWorkoutGenerator from '@/components/se7enfit/AIWorkoutGenerator';
 
 const PLAN_TEMPLATES = [
   { key: 'push_pull_legs', label: 'Push Pull Legs', emoji: '💪', desc: '3-day split, intermediate' },
@@ -22,20 +23,34 @@ export default function Workout() {
   const [plans, setPlans] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [gymEquipment, setGymEquipment] = useState([]);
+  const [gymOwner, setGymOwner] = useState(null);
+  const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const user = await base44.auth.me();
-    const [p, logs, profiles] = await Promise.all([
+    const [p, logs, profiles, subs] = await Promise.all([
       base44.entities.WorkoutPlan.filter({ user_id: user.id }),
       base44.entities.WorkoutLog.filter({ user_id: user.id, date: getToday() }),
       base44.entities.UserProfile.filter({ user_id: user.id }),
+      base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
     ]);
     setPlans(p);
     setTodayLogs(logs);
-    setProfile(profiles[0] || null);
+    setSubscription(subs[0] || null);
+    const prof = profiles[0] || null;
+    setProfile(prof);
+    if (prof?.primary_gym_id) {
+      const [eq, gymData] = await Promise.all([
+        base44.entities.GymEquipment.filter({ gym_id: prof.primary_gym_id }),
+        base44.entities.GymOwner.filter({ user_id: prof.primary_gym_id }),
+      ]).catch(() => [[], []]);
+      setGymEquipment(eq.filter(e => e.available));
+      setGymOwner(gymData[0] || null);
+    }
     setLoading(false);
   };
 
@@ -99,6 +114,14 @@ export default function Workout() {
             </div>
           </Link>
         </div>
+
+        {/* AI Workout Generator */}
+        <AIWorkoutGenerator
+          profile={profile}
+          equipment={gymEquipment}
+          gymName={gymOwner?.gym_name || null}
+          subscription={subscription}
+        />
 
         {/* My Plans */}
         <div>

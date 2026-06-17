@@ -1,0 +1,40 @@
+{
+  "name": "AIUsageLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "feature": {
+      "type": "string",
+      "enum": [
+        "ai_trainer",
+        "food_scan",
+        "workout_generation",
+        "exercise_alternative",
+        "meal_plan",
+        "progress_report",
+        "fitness_score_insight",
+        "transformation_insight",
+        "challenge_recommendation",
+        "daily_tip"
+      ]
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "success": {
+      "type": "boolean",
+      "default": true
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "feature",
+    "date"
+  ]
+}

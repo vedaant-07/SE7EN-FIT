@@ -1,0 +1,37 @@
+{
+  "name": "AIRecommendation",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "daily_tip",
+        "meal_plan",
+        "workout_suggestion",
+        "progress_insight",
+        "challenge_recommendation",
+        "transformation_insight",
+        "fitness_score_insight"
+      ]
+    },
+    "content": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "content"
+  ]
+}
