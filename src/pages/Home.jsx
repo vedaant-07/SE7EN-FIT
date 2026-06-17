@@ -210,7 +210,7 @@ export default function Home() {
         </div>
 
         {/* AI Recommendation */}
-        <Link to="/ai-trainer">
+        <Link to="/ai-trainer" className="block mt-2">
           <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-4 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0">
@@ -258,7 +258,7 @@ export default function Home() {
 
         {/* Premium upsell if free */}
         {!isPremium && (
-          <Link to="/subscription">
+          <Link to="/subscription" className="block mt-2">
             <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-4 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
