@@ -37,13 +37,20 @@ export default function GymOwnerOnboarding() {
   const handleFinish = async () => {
     setLoading(true);
     try {
-      if (gymOwnerId) {
-        await base44.entities.GymOwner.update(gymOwnerId, { ...form, onboarding_complete: true });
+      let ownerId = gymOwnerId;
+      if (!ownerId) {
+        const user = await base44.auth.me();
+        const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+        if (owners[0]) ownerId = owners[0].id;
+      }
+      if (ownerId) {
+        await base44.entities.GymOwner.update(ownerId, { ...form, onboarding_complete: true });
       }
       window.location.href = '/gym-owner/dashboard';
     } catch (err) {
       console.error(err);
-    } finally { setLoading(false); }
+      setLoading(false);
+    }
   };
 
   const STEPS = [
