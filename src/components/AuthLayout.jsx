@@ -1,8 +1,17 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 
-export default function AuthLayout({ icon: Icon, title, subtitle, footer, children }) {
+export default function AuthLayout({ icon: Icon, title, subtitle, footer, backTo, children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 relative">
+      {backTo && (
+        <div className="absolute top-4 left-4">
+          <Link to={backTo} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft size={16} /> Back
+          </Link>
+        </div>
+      )}
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">

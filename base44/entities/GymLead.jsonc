@@ -1,0 +1,66 @@
+{
+  "name": "GymLead",
+  "type": "object",
+  "properties": {
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "mobile": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "interest": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "quarterly",
+        "annual",
+        "just_enquiry"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "converted",
+        "lost"
+      ],
+      "default": "new"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "walk_in",
+        "referral",
+        "online",
+        "ad",
+        "app"
+      ],
+      "default": "app"
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "gym_id",
+    "owner_id",
+    "name"
+  ]
+}

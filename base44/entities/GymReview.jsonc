@@ -1,0 +1,32 @@
+{
+  "name": "GymReview",
+  "type": "object",
+  "properties": {
+    "gym_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "review_text": {
+      "type": "string"
+    },
+    "owner_reply": {
+      "type": "string"
+    },
+    "is_verified": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "gym_id",
+    "rating"
+  ]
+}

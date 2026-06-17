@@ -82,7 +82,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Onboarding (protected but no shell) */}
-      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/welcome" replace />} />}>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/gym-owner/onboarding" element={<GymOwnerOnboarding />} />
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />

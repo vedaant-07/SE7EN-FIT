@@ -19,10 +19,18 @@ export default function GymOwnerLogin() {
     setLoading(true);
     try {
       await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = '/gym-owner/dashboard';
+      // After login, check if gym owner profile exists
+      const user = await base44.auth.me();
+      const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+      if (owners.length === 0) {
+        window.location.href = '/gym-owner/register';
+      } else if (!owners[0].onboarding_complete) {
+        window.location.href = '/gym-owner/onboarding';
+      } else {
+        window.location.href = '/gym-owner/dashboard';
+      }
     } catch (err) {
       setError(err.message || 'Invalid email or password');
-    } finally {
       setLoading(false);
     }
   };

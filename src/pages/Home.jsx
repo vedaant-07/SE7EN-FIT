@@ -19,6 +19,12 @@ export default function Home() {
 
   const loadData = async () => {
     const user = await base44.auth.me();
+    // Redirect gym owners to their dashboard
+    const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+    if (owners.length > 0) {
+      navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
+      return;
+    }
     const [profiles, subs] = await Promise.all([
       base44.entities.UserProfile.filter({ user_id: user.id }),
       base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),

@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2, ChevronLeft } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,8 +36,9 @@ export default function Login() {
   return (
     <AuthLayout
       icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to your account"
+      title="User Login"
+      subtitle="Log in to your fitness account"
+      backTo="/welcome"
       footer={
         <>
           Don't have an account?{" "}
