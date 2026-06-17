@@ -55,6 +55,7 @@ export default function GymOwnerDashboard() {
   const [reviews, setReviews] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [announcement, setAnnouncement] = useState('');
   const [replyTexts, setReplyTexts] = useState({});
 
@@ -76,16 +77,18 @@ export default function GymOwnerDashboard() {
         return;
       }
       setOwner(owners[0]);
-      const [gymLeads, gymReviews, gymMemberships, gymAttendance] = await Promise.all([
+      const [gymLeads, gymReviews, gymMemberships, gymAttendance, gymAnnouncements] = await Promise.all([
         base44.entities.GymLead.filter({ owner_id: user.id }),
         base44.entities.GymReview.filter({ gym_id: owners[0].id }),
         base44.entities.UserGymMembership.filter({ gym_id: owners[0].id }),
         base44.entities.GymAttendanceLog.filter({ gym_id: owners[0].id }),
+        base44.entities.GymAnnouncement.filter({ gym_id: owners[0].id }),
       ]);
       setLeads(gymLeads);
       setReviews(gymReviews);
       setMemberships(gymMemberships);
       setAttendanceLogs(gymAttendance);
+      setAnnouncements(gymAnnouncements.filter(a => a.is_active));
     } catch (e) {
       console.error(e);
     }
@@ -170,9 +173,9 @@ export default function GymOwnerDashboard() {
                   </div>
                 </div>
                 <div className="bg-white/20 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: '72%' }} />
+                  <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(100, totalRealMembers > 0 ? 100 : 0)}%` }} />
                 </div>
-                <p className="text-[11px] opacity-70 mt-1.5">72% of monthly target</p>
+                <p className="text-[11px] opacity-70 mt-1.5">{activeMembers} active • {pendingMembers} pending approval</p>
               </div>
 
               {/* Stats Grid */}
@@ -404,10 +407,10 @@ export default function GymOwnerDashboard() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Last Month', value: '₹38,200', color: 'text-blue-400', border: 'border-blue-400/20' },
-                  { label: 'Referral Earn', value: '₹3,600', color: 'text-amber-400', border: 'border-amber-400/20' },
-                  { label: 'Total 2026', value: '₹2,15,400', color: 'text-purple-400', border: 'border-purple-400/20' },
-                  { label: 'Avg/Member', value: `₹${owner.monthly_fee || 999}`, color: 'text-emerald-400', border: 'border-emerald-400/20' },
+                  { label: 'Active Members', value: activeMembers, color: 'text-blue-400', border: 'border-blue-400/20' },
+                  { label: 'Pending Members', value: pendingMembers, color: 'text-amber-400', border: 'border-amber-400/20' },
+                  { label: 'Total Check-ins', value: attendanceLogs.length, color: 'text-purple-400', border: 'border-purple-400/20' },
+                  { label: 'Monthly Rate/Member', value: `₹${owner.monthly_fee || '—'}`, color: 'text-emerald-400', border: 'border-emerald-400/20' },
                 ].map(e => (
                   <div key={e.label} className={`bg-card border ${e.border} rounded-2xl p-4`}>
                     <p className="text-xs text-muted-foreground">{e.label}</p>
@@ -576,27 +579,12 @@ export default function GymOwnerDashboard() {
           {/* ── CHALLENGES ── */}
           {activeTab === 'challenges' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-heading font-bold text-lg">Challenges</p>
-                <button className="flex items-center gap-1.5 bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold">
-                  <Plus size={13} /> Create
-                </button>
+              <p className="font-heading font-bold text-lg">Challenges</p>
+              <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
+                <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm font-semibold">No challenges yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create gym challenges to engage your members</p>
               </div>
-              {['30-Day Transformation', '10K Steps Weekly', 'Best Attendance'].map((c, i) => (
-                <div key={i} className="bg-card border border-border rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="font-semibold text-sm">{c}</p>
-                    <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2.5 py-1 rounded-full font-semibold">Active</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-2.5">
-                    <span>{[12, 8, 20][i]} participants</span>
-                    <span>{[18, 4, 12][i]} days left</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-accent rounded-full" style={{ width: `${[60, 40, 80][i]}%` }} />
-                  </div>
-                </div>
-              ))}
             </div>
           )}
 
@@ -606,23 +594,13 @@ export default function GymOwnerDashboard() {
               <p className="font-heading font-bold text-lg">Rewards</p>
               <div className="bg-gradient-to-br from-amber-400/20 to-amber-400/5 border border-amber-400/25 rounded-2xl p-4">
                 <p className="font-semibold text-sm mb-1">Create Reward Offer</p>
-                <p className="text-xs text-muted-foreground">Offer discounts & perks to loyal members</p>
-                <Button className="mt-3 h-9 rounded-xl bg-amber-400 text-black text-xs font-bold hover:bg-amber-400/90">
-                  <Plus size={13} className="mr-1" /> Create Offer
-                </Button>
+                <p className="text-xs text-muted-foreground">Offer discounts & perks to loyal members — coming soon</p>
               </div>
-              {['Free Month for Referral', '10% Off Annual Plan', 'Free PT Session'].map((r, i) => (
-                <div key={i} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-400/15 flex items-center justify-center flex-shrink-0">
-                    <Gift size={16} className="text-amber-400" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{r}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{[3, 7, 2][i]} redeemed</p>
-                  </div>
-                  <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2.5 py-1 rounded-full font-semibold">Active</span>
-                </div>
-              ))}
+              <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
+                <Gift size={32} className="text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm font-semibold">No reward offers yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create offers to reward and retain your members</p>
+              </div>
             </div>
           )}
 
@@ -746,12 +724,13 @@ export default function GymOwnerDashboard() {
                 <Button
                 onClick={async () => {
                   if (announcement.trim() && owner) {
-                    await base44.entities.GymAnnouncement.create({
+                    const newAnn = await base44.entities.GymAnnouncement.create({
                       gym_id: owner.id,
                       owner_id: owner.user_id,
                       message: announcement.trim(),
                       is_active: true,
                     });
+                    setAnnouncements(prev => [newAnn, ...prev]);
                     toast({ title: '📢 Announcement sent!' });
                     setAnnouncement('');
                   }
@@ -761,13 +740,18 @@ export default function GymOwnerDashboard() {
                   <Send size={14} className="mr-2" /> Send Announcement
                 </Button>
               </div>
-              <p className="text-xs font-semibold text-muted-foreground px-1">Recent</p>
-              {['New batch starting Monday!', 'Holiday closure on Sunday', 'New equipment installed 🏋️'].map((a, i) => (
-                <div key={i} className="bg-card border border-border rounded-xl p-4">
-                  <p className="text-sm font-medium">{a}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1.5">{['2 days ago', '5 days ago', '1 week ago'][i]}</p>
-                </div>
-              ))}
+              {announcements.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground px-1">Recent</p>
+                  {announcements.map(a => (
+                    <div key={a.id} className="bg-card border border-border rounded-xl p-4">
+                      {a.title && <p className="text-xs font-bold mb-0.5">{a.title}</p>}
+                      <p className="text-sm font-medium">{a.message}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1.5">{new Date(a.created_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
 
