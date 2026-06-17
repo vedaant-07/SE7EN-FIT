@@ -211,7 +211,7 @@ export default function Home() {
 
         {/* AI Recommendation */}
         <Link to="/ai-trainer">
-          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl p-4 hover:border-accent/40 transition-all active:scale-[0.98]">
+          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-4 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0">
                 <Bot size={19} className="text-accent" />
@@ -259,7 +259,7 @@ export default function Home() {
         {/* Premium upsell if free */}
         {!isPremium && (
           <Link to="/subscription">
-            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl p-4 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
+            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-4 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
                   <Crown size={19} className="text-yellow-400" />
