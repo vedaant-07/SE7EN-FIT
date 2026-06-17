@@ -6,6 +6,14 @@ import ConfirmModal from '@/components/gym-owner/ConfirmModal';
 
 const EMPTY_FORM = { title: '', description: '', required_coins: 100, quantity: 10, expiry_date: '', terms: '', is_active: true };
 
+const EXAMPLES = [
+  '10% gym membership discount',
+  'Free body composition check',
+  'Free nutrition consultation',
+  'Supplement discount voucher',
+  'Gym merchandise',
+];
+
 export default function RewardsTab({ owner, showToast }) {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,9 +27,8 @@ export default function RewardsTab({ owner, showToast }) {
   const loadOffers = async () => {
     setLoading(true);
     try {
-      // Use GymAnnouncement as a stand-in; in a real scenario a GymRewardOffer entity would exist
-      // For now just use in-memory state (offers not persisted unless entity exists)
-      setOffers([]);
+      const data = await base44.entities.GymRewardOffer.filter({ gym_id: owner.id });
+      setOffers(data);
     } catch { setOffers([]); }
     setLoading(false);
   };
@@ -31,33 +38,37 @@ export default function RewardsTab({ owner, showToast }) {
   const saveOffer = async () => {
     if (!form.title.trim()) { showToast('Offer title is required', 'error'); return; }
     setSaving(true);
-    // Stub save — creates locally until GymRewardOffer entity exists
-    const newOffer = { ...form, id: Date.now().toString(), gym_id: owner.id, required_coins: parseInt(form.required_coins) || 100, quantity: parseInt(form.quantity) || 10 };
-    setOffers(prev => [newOffer, ...prev]);
-    setShowForm(false);
-    setForm({ ...EMPTY_FORM });
-    showToast('Reward offer created!', 'success');
+    try {
+      const created = await base44.entities.GymRewardOffer.create({
+        ...form,
+        gym_id: owner.id,
+        owner_id: owner.user_id,
+        required_coins: parseInt(form.required_coins) || 100,
+        quantity: parseInt(form.quantity) || 10,
+      });
+      setOffers(prev => [created, ...prev]);
+      setShowForm(false);
+      setForm({ ...EMPTY_FORM });
+      showToast('Reward offer created!', 'success');
+    } catch (e) {
+      showToast('Failed to create offer', 'error');
+    }
     setSaving(false);
   };
 
-  const toggleStatus = (id) => {
-    setOffers(prev => prev.map(o => o.id === id ? { ...o, is_active: !o.is_active } : o));
-    showToast('Offer status updated', 'success');
+  const toggleStatus = async (offer) => {
+    const updated = { ...offer, is_active: !offer.is_active };
+    await base44.entities.GymRewardOffer.update(offer.id, { is_active: !offer.is_active });
+    setOffers(prev => prev.map(o => o.id === offer.id ? updated : o));
+    showToast(updated.is_active ? 'Offer activated' : 'Offer deactivated', 'success');
   };
 
-  const deleteOffer = () => {
+  const deleteOffer = async () => {
+    await base44.entities.GymRewardOffer.delete(deleteConfirm);
     setOffers(prev => prev.filter(o => o.id !== deleteConfirm));
     setDeleteConfirm(null);
     showToast('Offer deleted', 'success');
   };
-
-  const EXAMPLES = [
-    '10% gym membership discount',
-    'Free body composition check',
-    'Free nutrition consultation',
-    'Supplement discount voucher',
-    'Gym merchandise',
-  ];
 
   return (
     <div className="space-y-4">
@@ -69,7 +80,6 @@ export default function RewardsTab({ owner, showToast }) {
         </button>
       </div>
 
-      {/* Create Form */}
       {showForm && (
         <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -115,7 +125,6 @@ export default function RewardsTab({ owner, showToast }) {
         </div>
       )}
 
-      {/* Offers List */}
       {loading ? (
         <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
       ) : offers.length === 0 ? (
@@ -147,7 +156,7 @@ export default function RewardsTab({ owner, showToast }) {
               </span>
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              <button onClick={() => toggleStatus(offer.id)}
+              <button onClick={() => toggleStatus(offer)}
                 className={`text-[11px] px-3 py-1.5 rounded-lg font-semibold ${offer.is_active ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'}`}>
                 {offer.is_active ? 'Deactivate' : 'Activate'}
               </button>

@@ -1,6 +1,6 @@
 import React from 'react';
 import TopBar from '@/components/se7enfit/TopBar';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Shield, FileText, Heart, CreditCard, AlertCircle } from 'lucide-react';
 
 const POLICIES = {
@@ -67,7 +67,10 @@ const POLICIES = {
 
 export default function PolicyPages() {
   const [searchParams] = useSearchParams();
-  const type = searchParams.get('type') || 'terms';
+  const { pathname } = useLocation();
+  // Derive type from URL path (/privacy → privacy, /terms → terms) or ?type= param
+  const pathType = pathname === '/privacy' ? 'privacy' : pathname === '/policy' ? 'health' : null;
+  const type = searchParams.get('type') || pathType || 'terms';
   const policy = POLICIES[type] || POLICIES.terms;
   const Icon = policy.icon;
 

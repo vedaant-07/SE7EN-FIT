@@ -3,12 +3,12 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Moon, Heart, Star, Users, Clock, Crown, Lock, ChevronRight, Check } from 'lucide-react';
+import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 
-const CHALLENGES_DATA = [
+const BUILTIN_CHALLENGES = [
   {
     id: 'c1', title: '7-Day Beginner', emoji: '🌟', type: 'steps', icon: Footprints,
     difficulty: 'Easy', days: 7, coins: 200, participants: 1284, color: 'text-accent', bg: 'bg-accent/10',
@@ -59,6 +59,13 @@ const CHALLENGES_DATA = [
   },
 ];
 
+function difficultyStyle(d) {
+  if (d === 'Easy') return 'bg-accent/10 text-accent border-accent/20';
+  if (d === 'Medium') return 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20';
+  if (d === 'Hard') return 'bg-orange-400/10 text-orange-400 border-orange-400/20';
+  return 'bg-red-400/10 text-red-400 border-red-400/20';
+}
+
 export default function Challenges() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -66,25 +73,65 @@ export default function Challenges() {
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [participants, setParticipants] = useState([]);
+  const [gymChallenges, setGymChallenges] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [joiningId, setJoiningId] = useState(null);
+  const [loggingId, setLoggingId] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const u = await base44.auth.me();
     setUser(u);
-    const [subs, parts] = await Promise.all([
+    const [subs, parts, profiles] = await Promise.all([
       base44.entities.Subscription.filter({ user_id: u.id, status: 'active' }),
       base44.entities.ChallengeParticipant.filter({ user_id: u.id }),
+      base44.entities.UserProfile.filter({ user_id: u.id }),
     ]);
     setSubscription(subs[0] || null);
     setParticipants(parts);
+    const p = profiles[0] || null;
+    setProfile(p);
+
+    // Load gym challenges if user is linked to a gym
+    if (p?.primary_gym_id) {
+      try {
+        const gc = await base44.entities.Challenge.filter({ gym_id: p.primary_gym_id });
+        setGymChallenges(gc.filter(c => c.is_active));
+      } catch {}
+    }
     setLoading(false);
   };
 
   const isPremium = subscription && ['premium_monthly', 'premium_quarterly', 'premium_annual'].includes(subscription.plan);
+
+  // Build merged challenge list: gym challenges first (as real DB entries), then builtins
+  const gymChallengesMapped = gymChallenges.map(gc => ({
+    id: gc.id,
+    title: gc.name,
+    emoji: '🏋️',
+    type: gc.type,
+    icon: Trophy,
+    difficulty: 'Gym',
+    days: gc.duration_days || 30,
+    coins: gc.reward_coins || 100,
+    participants: gc.participants_count || 0,
+    color: 'text-accent',
+    bg: 'bg-accent/10',
+    description: gc.rules || gc.description || `A challenge from your gym. ${gc.duration_days || 30} days.`,
+    target: gc.duration_days || 30,
+    unit: 'days',
+    premium: false,
+    isGymChallenge: true,
+  }));
+
+  const allChallenges = [...gymChallengesMapped, ...BUILTIN_CHALLENGES];
   const joinedIds = participants.map(p => p.challenge_id);
+
+  const filtered = activeTab === 'joined'
+    ? allChallenges.filter(c => joinedIds.includes(c.id))
+    : allChallenges;
 
   const handleJoin = async (challenge) => {
     if (challenge.premium && !isPremium) {
@@ -94,30 +141,72 @@ export default function Challenges() {
     if (joinedIds.includes(challenge.id)) return;
     setJoiningId(challenge.id);
     try {
-      await base44.entities.ChallengeParticipant.create({
+      const rec = await base44.entities.ChallengeParticipant.create({
         challenge_id: challenge.id,
         user_id: user.id,
         joined_date: getToday(),
         target: challenge.target,
         current_progress: 0,
       });
-      setParticipants(prev => [...prev, { challenge_id: challenge.id, current_progress: 0, target: challenge.target }]);
+      setParticipants(prev => [...prev, rec]);
       toast({ title: `🎉 Joined ${challenge.title}!`, description: `Earn ${challenge.coins} coins on completion.` });
-    } catch (e) {
+    } catch {
       toast({ title: 'Failed to join', variant: 'destructive' });
     }
     setJoiningId(null);
   };
 
+  const handleLogProgress = async (challenge) => {
+    const participant = participants.find(p => p.challenge_id === challenge.id);
+    if (!participant || participant.completed) return;
+    setLoggingId(challenge.id);
+    try {
+      const newProgress = (participant.current_progress || 0) + 1;
+      const completed = newProgress >= (participant.target || challenge.target);
+      await base44.entities.ChallengeParticipant.update(participant.id, {
+        current_progress: newProgress,
+        completed,
+        completed_date: completed ? getToday() : undefined,
+        last_checkin: getToday(),
+        coins_earned: completed ? challenge.coins : participant.coins_earned || 0,
+      });
+      setParticipants(prev => prev.map(p =>
+        p.id === participant.id ? { ...p, current_progress: newProgress, completed, last_checkin: getToday() } : p
+      ));
+
+      if (completed) {
+        // Award coins
+        const wallets = await base44.entities.RewardWallet.filter({ user_id: user.id });
+        if (wallets[0]) {
+          await base44.entities.RewardWallet.update(wallets[0].id, {
+            coins_balance: (wallets[0].coins_balance || 0) + challenge.coins,
+            total_earned: (wallets[0].total_earned || 0) + challenge.coins,
+          });
+        } else {
+          await base44.entities.RewardWallet.create({
+            user_id: user.id, coins_balance: challenge.coins, total_earned: challenge.coins, badges: [],
+          });
+        }
+        await base44.entities.RewardTransaction.create({
+          user_id: user.id, type: 'earn', coins: challenge.coins,
+          reason: `Completed: ${challenge.title}`, source: 'challenge', date: getToday(),
+        });
+        toast({ title: `🏆 Challenge Complete!`, description: `+${challenge.coins} coins awarded!` });
+      } else {
+        toast({ title: `✅ Progress logged!`, description: `Day ${newProgress} of ${participant.target || challenge.target}` });
+      }
+    } catch {
+      toast({ title: 'Failed to log progress', variant: 'destructive' });
+    }
+    setLoggingId(null);
+  };
+
+  const getParticipant = (challengeId) => participants.find(p => p.challenge_id === challengeId);
   const getProgress = (challenge) => {
-    const p = participants.find(pp => pp.challenge_id === challenge.id);
+    const p = getParticipant(challenge.id);
     if (!p) return 0;
     return Math.min(100, ((p.current_progress || 0) / (p.target || challenge.target)) * 100);
   };
-
-  const filtered = activeTab === 'joined'
-    ? CHALLENGES_DATA.filter(c => joinedIds.includes(c.id))
-    : CHALLENGES_DATA;
 
   if (loading) return <LoadingScreen />;
 
@@ -147,12 +236,19 @@ export default function Challenges() {
           {['all', 'joined'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${activeTab === tab ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
-              {tab === 'all' ? 'All Challenges' : 'My Challenges'}
+              {tab === 'all' ? `All Challenges (${allChallenges.length})` : `My Challenges (${joinedIds.length})`}
             </button>
           ))}
         </div>
 
-        {/* Challenges list */}
+        {/* Gym challenges banner */}
+        {gymChallengesMapped.length > 0 && activeTab === 'all' && (
+          <div className="bg-accent/8 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
+            <Trophy size={13} className="text-accent flex-shrink-0" />
+            <p className="text-xs text-accent font-medium">{gymChallengesMapped.length} challenge{gymChallengesMapped.length > 1 ? 's' : ''} from your gym</p>
+          </div>
+        )}
+
         {filtered.length === 0 ? (
           <div className="text-center py-10">
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
@@ -166,23 +262,36 @@ export default function Challenges() {
               const Icon = challenge.icon;
               const joined = joinedIds.includes(challenge.id);
               const progress = getProgress(challenge);
+              const participant = getParticipant(challenge.id);
               const locked = challenge.premium && !isPremium;
+              const alreadyLoggedToday = participant?.last_checkin === getToday();
+              const isCompleted = participant?.completed;
 
               return (
                 <div key={challenge.id}
-                  className={`bg-card border rounded-3xl p-4 relative overflow-hidden transition-all ${locked ? 'border-border opacity-90' : joined ? 'border-accent/40' : 'border-border'}`}>
+                  className={`bg-card border rounded-3xl p-4 relative overflow-hidden transition-all ${
+                    locked ? 'border-border opacity-90' :
+                    challenge.isGymChallenge ? 'border-accent/30' :
+                    joined ? 'border-accent/30' : 'border-border'
+                  }`}>
 
-                  {locked && (
+                  {challenge.isGymChallenge && (
+                    <div className="absolute top-3 right-3">
+                      <span className="text-[9px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">GYM</span>
+                    </div>
+                  )}
+                  {locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
                       <div className="w-7 h-7 rounded-full bg-yellow-400/15 border border-yellow-400/30 flex items-center justify-center">
                         <Crown size={13} className="text-yellow-400" />
                       </div>
                     </div>
                   )}
-
-                  {joined && !locked && (
+                  {joined && !locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <span className="text-[9px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">JOINED</span>
+                      <span className="text-[9px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">
+                        {isCompleted ? '✓ DONE' : 'JOINED'}
+                      </span>
                     </div>
                   )}
 
@@ -197,7 +306,7 @@ export default function Challenges() {
                   </div>
 
                   <div className="flex items-center gap-3 mb-3 flex-wrap">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${challenge.difficulty === 'Easy' ? 'bg-accent/10 text-accent border-accent/20' : challenge.difficulty === 'Medium' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' : challenge.difficulty === 'Hard' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' : 'bg-red-400/10 text-red-400 border-red-400/20'}`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
                       {challenge.difficulty}
                     </span>
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -214,7 +323,7 @@ export default function Challenges() {
                   {joined && (
                     <div className="mb-3">
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                        <span>Progress</span>
+                        <span>Progress — Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -223,21 +332,35 @@ export default function Challenges() {
                     </div>
                   )}
 
-                  <Button
-                    onClick={() => handleJoin(challenge)}
-                    disabled={joiningId === challenge.id}
-                    className={`w-full h-10 rounded-xl text-xs font-semibold transition-all ${
-                      locked ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/20' :
-                      joined ? 'bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20' :
-                      'bg-accent text-accent-foreground hover:bg-accent/90'
-                    }`}
-                    variant={locked || joined ? 'outline' : 'default'}
-                  >
-                    {locked ? <><Crown size={12} className="mr-1" /> Unlock Premium</> :
-                     joined ? <><Check size={12} className="mr-1" /> In Progress — Log Today</> :
-                     joiningId === challenge.id ? 'Joining...' :
-                     <>Join Challenge <ChevronRight size={13} /></>}
-                  </Button>
+                  {joined && !isCompleted && !locked ? (
+                    <Button
+                      onClick={() => handleLogProgress(challenge)}
+                      disabled={loggingId === challenge.id || alreadyLoggedToday}
+                      className="w-full h-10 rounded-xl text-xs font-semibold bg-accent text-accent-foreground hover:bg-accent/90"
+                    >
+                      {loggingId === challenge.id ? 'Logging...' :
+                       alreadyLoggedToday ? <><Check size={12} className="mr-1" /> Logged Today ✓</> :
+                       <><Plus size={12} className="mr-1" /> Log Today's Progress</>}
+                    </Button>
+                  ) : joined && isCompleted ? (
+                    <div className="w-full h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-semibold text-emerald-400">
+                      <Check size={13} className="mr-1.5" /> Challenge Completed! 🏆
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => handleJoin(challenge)}
+                      disabled={joiningId === challenge.id}
+                      className={`w-full h-10 rounded-xl text-xs font-semibold transition-all ${
+                        locked ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/20' :
+                        'bg-accent text-accent-foreground hover:bg-accent/90'
+                      }`}
+                      variant={locked ? 'outline' : 'default'}
+                    >
+                      {locked ? <><Crown size={12} className="mr-1" /> Unlock Premium</> :
+                       joiningId === challenge.id ? 'Joining...' :
+                       <>Join Challenge <ChevronRight size={13} /></>}
+                    </Button>
+                  )}
                 </div>
               );
             })}

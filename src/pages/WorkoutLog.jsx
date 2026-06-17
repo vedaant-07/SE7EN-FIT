@@ -64,7 +64,26 @@ export default function WorkoutLog() {
         total_workouts: (profile.total_workouts || 0) + 1,
       });
     }
-    toast({ title: '💪 Workout complete!', description: 'Amazing work! Your progress is updated.' });
+    // Award 50 coins for completing a workout
+    const coinsToday = getToday();
+    const wallets = await base44.entities.RewardWallet.filter({ user_id: user.id });
+    if (wallets[0]) {
+      await base44.entities.RewardWallet.update(wallets[0].id, {
+        coins_balance: (wallets[0].coins_balance || 0) + 50,
+        total_earned: (wallets[0].total_earned || 0) + 50,
+        last_reward_date: coinsToday,
+      });
+    } else {
+      await base44.entities.RewardWallet.create({
+        user_id: user.id, coins_balance: 50, total_earned: 50, badges: [], last_reward_date: coinsToday,
+      });
+    }
+    await base44.entities.RewardTransaction.create({
+      user_id: user.id, type: 'earn', coins: 50,
+      reason: `Completed workout: ${workout.day_name || 'Training session'}`,
+      source: 'workout', date: coinsToday,
+    });
+    toast({ title: '💪 Workout complete!', description: '+50 coins earned! Amazing work!' });
     navigate('/workout');
   };
 

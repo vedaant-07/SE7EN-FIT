@@ -1,0 +1,46 @@
+{
+  "name": "GymRewardOffer",
+  "type": "object",
+  "properties": {
+    "gym_id": {
+      "type": "string"
+    },
+    "owner_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "required_coins": {
+      "type": "number",
+      "default": 100
+    },
+    "quantity": {
+      "type": "number",
+      "default": 10
+    },
+    "quantity_claimed": {
+      "type": "number",
+      "default": 0
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "terms": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "gym_id",
+    "owner_id",
+    "title"
+  ]
+}
