@@ -3,13 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import GymEquipmentManager from '@/pages/gym-owner/GymEquipmentManager';
+import GymProfileTab from '@/pages/gym-owner/GymProfileTab';
+import MembersTab from '@/pages/gym-owner/MembersTab';
+import LeadsTab from '@/pages/gym-owner/LeadsTab';
+import AttendanceTab from '@/pages/gym-owner/AttendanceTab';
+import ChallengesTab from '@/pages/gym-owner/ChallengesTab';
+import RewardsTab from '@/pages/gym-owner/RewardsTab';
+import ReferralsTab from '@/pages/gym-owner/ReferralsTab';
+import ReviewsTab from '@/pages/gym-owner/ReviewsTab';
+import AnnouncementsTab from '@/pages/gym-owner/AnnouncementsTab';
+import EarningsTab from '@/pages/gym-owner/EarningsTab';
+import GymToast from '@/components/gym-owner/Toast';
+import ConfirmModal from '@/components/gym-owner/ConfirmModal';
 import {
   Building2, Users, Star, Bell, Settings, Plus,
   Trophy, Gift, Share2, LogOut, Clock, MapPin, Check, X, CalendarCheck,
-  BarChart3, MessageSquare, Phone, Mail, Coins, UserPlus,
+  MessageSquare, Phone, Mail, Coins, UserPlus,
   Edit3, Send, TrendingUp, ChevronRight, Home, Dumbbell
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const BOTTOM_NAV = [
   { key: 'overview', label: 'Home', icon: Home },
@@ -30,40 +41,46 @@ const MORE_TABS = [
   { key: 'announcements', label: 'Announcements', icon: Bell },
 ];
 
-const LEAD_STATUSES = ['new', 'contacted', 'converted', 'lost'];
-
 const statusColors = {
   active: 'bg-emerald-500/15 text-emerald-400',
-  expired: 'bg-red-500/15 text-red-400',
   pending: 'bg-amber-500/15 text-amber-400',
+  rejected: 'bg-red-500/15 text-red-400',
+  inactive: 'bg-muted text-muted-foreground',
   new: 'bg-blue-500/15 text-blue-400',
   contacted: 'bg-purple-500/15 text-purple-400',
   converted: 'bg-emerald-500/15 text-emerald-400',
   lost: 'bg-muted text-muted-foreground',
 };
 
-
-
 export default function GymOwnerDashboard() {
   const navigate = useNavigate();
   const [owner, setOwner] = useState(null);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text || '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [settingsSection, setSettingsSection] = useState(null);
+
+  // Data
   const [leads, setLeads] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
-  const [announcement, setAnnouncement] = useState('');
-  const [replyTexts, setReplyTexts] = useState({});
-  const [settingsSection, setSettingsSection] = useState(null);
+
+  // Toast
+  const [toasts, setToasts] = useState([]);
+  const showToast = (message, type = 'success') => setToasts(prev => [...prev, { message, type }]);
+
+  // Copy state for referral code on overview
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    showToast('Copied!', 'success');
+  };
+
+  // Logout confirm
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -73,10 +90,8 @@ export default function GymOwnerDashboard() {
       const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
       if (owners.length === 0) {
         const newOwner = await base44.entities.GymOwner.create({
-          user_id: user.id,
-          owner_name: user.full_name || 'Gym Owner',
-          gym_name: 'My Gym',
-          onboarding_complete: false,
+          user_id: user.id, owner_name: user.full_name || 'Gym Owner',
+          gym_name: 'My Gym', onboarding_complete: false,
         });
         setOwner(newOwner);
         setLoading(false);
@@ -95,24 +110,11 @@ export default function GymOwnerDashboard() {
       setMemberships(gymMemberships);
       setAttendanceLogs(gymAttendance);
       setAnnouncements(gymAnnouncements.filter(a => a.is_active));
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
     setLoading(false);
   };
 
-  const updateLeadStatus = async (leadId, status) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l));
-    await base44.entities.GymLead.update(leadId, { status });
-  };
-
-  const sendReply = async (reviewId) => {
-    const reply = replyTexts[reviewId];
-    if (!reply?.trim()) return;
-    await base44.entities.GymReview.update(reviewId, { owner_reply: reply });
-    setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, owner_reply: reply } : r));
-    setReplyTexts(prev => ({ ...prev, [reviewId]: '' }));
-  };
+  const goTab = (key) => { setActiveTab(key); setSettingsSection(null); };
 
   if (loading) return <LoadingScreen />;
   if (!owner) return null;
@@ -121,18 +123,20 @@ export default function GymOwnerDashboard() {
   const activeMembers = memberships.filter(m => m.status === 'active').length;
   const pendingMembers = memberships.filter(m => m.status === 'pending').length;
   const newLeads = leads.filter(l => l.status === 'new').length;
-  const convertedLeads = leads.filter(l => l.status === 'converted').length;
   const todayAttendance = attendanceLogs.filter(a => a.date === today).length;
+  const insideNow = attendanceLogs.filter(a => a.date === today && a.status === 'checked_in').length;
   const totalRealMembers = memberships.length;
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
-    : (owner.rating || 4.5);
-
+    : (owner.rating || 0);
+  const monthlyRevenue = activeMembers * (owner.monthly_fee || 999);
   const tabLabel = [...BOTTOM_NAV, ...MORE_TABS].find(t => t.key === activeTab)?.label || '';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Header */}
+      <GymToast toasts={toasts} setToasts={setToasts} />
+
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-14">
@@ -146,8 +150,11 @@ export default function GymOwnerDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab('announcements')}
-              className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center relative hover:bg-muted transition-colors">
+            <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${owner.is_approved ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+              {owner.is_approved ? '● Live' : '● Pending'}
+            </div>
+            <button onClick={() => goTab('announcements')}
+              className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors">
               <Bell size={16} />
             </button>
           </div>
@@ -161,59 +168,74 @@ export default function GymOwnerDashboard() {
           {/* ── OVERVIEW ── */}
           {activeTab === 'overview' && (
             <>
-              {/* Revenue Hero Card */}
+              {/* Revenue Hero */}
               <div className="bg-gradient-to-br from-accent via-accent/90 to-accent/70 rounded-3xl p-5 text-accent-foreground">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-sm font-medium opacity-80">Monthly Revenue</p>
-                    <p className="font-heading font-black text-3xl mt-1">₹{(activeMembers * (owner.monthly_fee || 999)).toLocaleString()}</p>
-                    <p className="text-xs opacity-70 mt-0.5">June 2026 • {activeMembers} active members</p>
+                    <p className="font-heading font-black text-3xl mt-1">₹{monthlyRevenue.toLocaleString()}</p>
+                    <p className="text-xs opacity-70 mt-0.5">{new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' })} • {activeMembers} active</p>
                   </div>
-                  <div className="bg-white/20 rounded-2xl p-3">
+                  <button onClick={() => goTab('earnings')} className="bg-white/20 rounded-2xl p-3 active:scale-95 transition-all">
                     <TrendingUp size={22} />
-                  </div>
+                  </button>
                 </div>
                 <div className="bg-white/20 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: `${Math.min(100, totalRealMembers > 0 ? 100 : 0)}%` }} />
+                  <div className="h-full bg-white rounded-full" style={{ width: `${activeMembers > 0 ? Math.min(100, activeMembers * 10) : 5}%` }} />
                 </div>
-                <p className="text-[11px] opacity-70 mt-1.5">{activeMembers} active • {pendingMembers} pending approval</p>
+                <p className="text-[11px] opacity-70 mt-1.5">{activeMembers} active • {pendingMembers} pending • {todayAttendance} today</p>
               </div>
 
-              {/* Stats Grid */}
+              {/* Clickable Stats Grid */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Total Members', value: totalRealMembers, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-                  { label: 'New Leads', value: newLeads, icon: UserPlus, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
-                  { label: 'Today Check-ins', value: todayAttendance, icon: CalendarCheck, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' },
-                  { label: 'Pending Approval', value: pendingMembers, icon: Bell, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
+                  { label: 'Total Members', value: totalRealMembers, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20', tab: 'members' },
+                  { label: 'New Leads', value: newLeads, icon: UserPlus, color: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20', tab: 'leads' },
+                  { label: 'Today Check-ins', value: todayAttendance, icon: CalendarCheck, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20', tab: 'attendance' },
+                  { label: 'Pending Approval', value: pendingMembers, icon: Bell, color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20', tab: 'members' },
                 ].map(s => {
                   const Icon = s.icon;
                   return (
-                    <div key={s.label} className={`bg-card border ${s.border} rounded-2xl p-4`}>
+                    <button key={s.label} onClick={() => goTab(s.tab)}
+                      className={`bg-card border ${s.border} rounded-2xl p-4 text-left active:scale-[0.98] transition-all hover:border-opacity-60`}>
                       <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-3`}>
                         <Icon size={16} className={s.color} />
                       </div>
                       <p className={`font-heading font-black text-2xl ${s.color}`}>{s.value}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
 
-              {/* More Features */}
+              {/* Secondary stats */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Inside Now', value: insideNow, tab: 'attendance', color: 'text-cyan-400' },
+                  { label: 'Avg Rating', value: avgRating > 0 ? avgRating : '—', tab: 'reviews', color: 'text-amber-400' },
+                  { label: 'Total Leads', value: leads.length, tab: 'leads', color: 'text-purple-400' },
+                ].map(s => (
+                  <button key={s.label} onClick={() => goTab(s.tab)}
+                    className="bg-card border border-border rounded-2xl p-3 text-center active:scale-[0.98] transition-all hover:border-accent/30">
+                    <p className={`font-black text-xl ${s.color}`}>{s.value}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* More Features Grid */}
               <div>
                 <p className="font-heading font-semibold text-sm mb-3">More Features</p>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-4 gap-2">
                   {MORE_TABS.map(item => {
-
                     const Icon = item.icon;
                     return (
-                      <button key={item.key} onClick={() => setActiveTab(item.key)}
-                        className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
+                      <button key={item.key} onClick={() => goTab(item.key)}
+                        className="bg-card border border-border rounded-2xl p-3 flex flex-col items-center gap-1.5 hover:border-accent/30 active:scale-95 transition-all">
                         <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center">
-                          <Icon size={16} className="text-accent" />
+                          <Icon size={15} className="text-accent" />
                         </div>
-                        <span className="text-[10px] font-semibold text-center leading-tight">{item.label}</span>
+                        <span className="text-[9px] font-semibold text-center leading-tight">{item.label}</span>
                       </button>
                     );
                   })}
@@ -224,22 +246,27 @@ export default function GymOwnerDashboard() {
               {owner.referral_code && (
                 <div className="bg-accent/8 border border-accent/25 rounded-2xl p-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Referral Code — share to get members</p>
+                    <p className="text-xs text-muted-foreground">Referral Code</p>
                     <p className="font-mono font-black text-lg text-accent tracking-wider mt-0.5">{owner.referral_code}</p>
                   </div>
-                  <button
-                    onClick={() => handleCopy(owner.referral_code)}
-                    className="bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all min-w-[60px]">
-                    {copied ? '✓ Copied' : 'Copy'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleCopy(owner.referral_code)}
+                      className="bg-accent text-accent-foreground px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all min-w-[60px]">
+                      {copied ? '✓ Copied' : 'Copy'}
+                    </button>
+                    <button onClick={() => goTab('referrals')}
+                      className="border border-accent/30 text-accent px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all">
+                      View
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Recent Activity */}
+              {/* Recent Members */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-heading font-semibold text-sm">Recent Members</p>
-                  <button onClick={() => setActiveTab('members')} className="text-xs text-accent font-medium">See all</button>
+                  <button onClick={() => goTab('members')} className="text-xs text-accent font-medium">See all</button>
                 </div>
                 {memberships.length === 0 ? (
                   <div className="bg-muted/30 border border-border rounded-2xl p-5 text-center">
@@ -250,7 +277,8 @@ export default function GymOwnerDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {memberships.slice(0, 3).map((m) => (
-                      <div key={m.id} className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3">
+                      <button key={m.id} onClick={() => goTab('members')}
+                        className="w-full bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-all">
                         <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
                           <span className="text-sm font-black text-accent">{(m.user_id || 'U')[0].toUpperCase()}</span>
                         </div>
@@ -261,7 +289,7 @@ export default function GymOwnerDashboard() {
                         <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${statusColors[m.status] || 'bg-muted text-muted-foreground'}`}>
                           {m.status}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -271,165 +299,41 @@ export default function GymOwnerDashboard() {
 
           {/* ── MEMBERS ── */}
           {activeTab === 'members' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-heading font-bold text-lg">Members</p>
-                  <p className="text-xs text-muted-foreground">{memberships.length} linked • {activeMembers} active</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: 'Active', count: activeMembers, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-                  { label: 'Pending', count: pendingMembers, color: 'text-amber-400', bg: 'bg-amber-400/10' },
-                  { label: 'Rejected', count: memberships.filter(m => m.status === 'rejected').length, color: 'text-red-400', bg: 'bg-red-400/10' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-2xl p-3 text-center`}>
-                    <p className={`font-black text-xl ${s.color}`}>{s.count}</p>
-                    <p className="text-[10px] text-muted-foreground">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-              {memberships.length === 0 ? (
-                <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
-                  <Users size={32} className="text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-semibold">No members yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Share your referral code to get members</p>
-                  <div className="mt-3 bg-accent/10 border border-accent/20 rounded-xl px-4 py-3">
-                    <p className="text-xs text-muted-foreground">Your code</p>
-                    <p className="font-mono font-bold text-accent">{owner.referral_code || 'Set in profile'}</p>
-                  </div>
-                </div>
-              ) : (
-                memberships.map((m) => (
-                  <div key={m.id} className="bg-card border border-border rounded-2xl p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                        <span className="font-black text-accent text-sm">{(m.user_id || 'U')[0].toUpperCase()}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm">Member #{m.user_id?.slice(-6) || '------'}</p>
-                        <p className="text-xs text-muted-foreground">Joined {m.joined_at || 'Recently'}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Code: {m.referral_code_used || 'N/A'} • {m.total_visits || 0} visits</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${statusColors[m.status] || 'bg-muted text-muted-foreground'}`}>
-                          {m.status}
-                        </span>
-                        {m.status === 'pending' && (
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={async () => {
-                                await base44.entities.UserGymMembership.update(m.id, { status: 'active', approved_at: new Date().toISOString().split('T')[0] });
-                                setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'active' } : x));
-                              }}
-                              className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                              <Check size={12} className="text-emerald-400" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                await base44.entities.UserGymMembership.update(m.id, { status: 'rejected' });
-                                setMemberships(prev => prev.map(x => x.id === m.id ? { ...x, status: 'rejected' } : x));
-                              }}
-                              className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
-                              <X size={12} className="text-red-400" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <MembersTab
+              owner={owner}
+              memberships={memberships}
+              setMemberships={setMemberships}
+              attendanceLogs={attendanceLogs}
+              showToast={showToast}
+            />
           )}
 
           {/* ── LEADS ── */}
           {activeTab === 'leads' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-heading font-bold text-lg">Leads</p>
-                  <p className="text-xs text-muted-foreground">{leads.length} total • {newLeads} new</p>
-                </div>
-                <span className="bg-blue-500/15 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-xl">{newLeads} New</span>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {LEAD_STATUSES.map(s => (
-                  <div key={s} className="bg-card border border-border rounded-xl p-2.5 text-center">
-                    <p className="font-black text-lg">{leads.filter(l => l.status === s).length}</p>
-                    <p className="text-[9px] text-muted-foreground capitalize mt-0.5">{s}</p>
-                  </div>
-                ))}
-              </div>
-              {leads.length === 0 ? (
-                <div className="bg-muted/30 border border-border rounded-2xl p-10 text-center">
-                  <UserPlus size={32} className="text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-semibold">No leads yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Enquiries from the app appear here</p>
-                </div>
-              ) : (
-                leads.map(lead => (
-                  <div key={lead.id} className="bg-card border border-border rounded-2xl p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <p className="font-semibold text-sm">{lead.name}</p>
-                        <p className="text-xs text-muted-foreground">{lead.mobile} • {lead.city}</p>
-                      </div>
-                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-semibold flex-shrink-0 ${statusColors[lead.status]}`}>
-                        {lead.status}
-                      </span>
-                    </div>
-                    {lead.notes && <p className="text-xs text-muted-foreground mb-2 italic">"{lead.notes}"</p>}
-                    <div className="flex gap-1.5 flex-wrap">
-                      {LEAD_STATUSES.filter(s => s !== lead.status).map(s => (
-                        <button key={s} onClick={() => updateLeadStatus(lead.id, s)}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-muted hover:bg-muted/60 transition-all capitalize">
-                          → {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <LeadsTab
+              owner={owner}
+              leads={leads}
+              setLeads={setLeads}
+              memberships={memberships}
+              setMemberships={setMemberships}
+              showToast={showToast}
+            />
           )}
 
           {/* ── EARNINGS ── */}
           {activeTab === 'earnings' && (
-            <div className="space-y-4">
-              <p className="font-heading font-bold text-lg">Earnings</p>
-              <div className="bg-gradient-to-br from-accent via-accent/90 to-accent/70 rounded-3xl p-5 text-accent-foreground">
-                <p className="text-sm opacity-80">This Month</p>
-                <p className="font-heading font-black text-3xl mt-1">₹{(activeMembers * (owner.monthly_fee || 999)).toLocaleString()}</p>
-                <p className="text-xs opacity-70 mt-1">June 2026</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Active Members', value: activeMembers, color: 'text-blue-400', border: 'border-blue-400/20' },
-                  { label: 'Pending Members', value: pendingMembers, color: 'text-amber-400', border: 'border-amber-400/20' },
-                  { label: 'Total Check-ins', value: attendanceLogs.length, color: 'text-purple-400', border: 'border-purple-400/20' },
-                  { label: 'Monthly Rate/Member', value: `₹${owner.monthly_fee || '—'}`, color: 'text-emerald-400', border: 'border-emerald-400/20' },
-                ].map(e => (
-                  <div key={e.label} className={`bg-card border ${e.border} rounded-2xl p-4`}>
-                    <p className="text-xs text-muted-foreground">{e.label}</p>
-                    <p className={`font-heading font-black text-xl mt-1.5 ${e.color}`}>{e.value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-muted/30 border border-border rounded-2xl p-5 text-center">
-                <Coins size={30} className="text-accent mx-auto mb-2" />
-                <p className="text-sm font-semibold">Bank Payout Setup</p>
-                <p className="text-xs text-muted-foreground mt-1">Direct bank payouts — coming soon</p>
-              </div>
-            </div>
+            <EarningsTab
+              owner={owner}
+              memberships={memberships}
+              attendanceLogs={attendanceLogs}
+              showToast={showToast}
+            />
           )}
 
           {/* ── SETTINGS ── */}
           {activeTab === 'settings' && !settingsSection && (
             <div className="space-y-3">
               <p className="font-heading font-bold text-lg">Settings</p>
-              {/* Profile Card */}
               <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0">
                   <Building2 size={20} className="text-accent" />
@@ -444,9 +348,10 @@ export default function GymOwnerDashboard() {
               </div>
               <div className="space-y-2">
                 {[
-                  { label: 'Edit Gym Profile', action: () => navigate('/gym-owner/onboarding'), icon: Edit3, desc: 'Update gym info, timings, pricing' },
+                  { label: 'Edit Gym Profile', action: () => navigate('/gym-owner/onboarding'), icon: Edit3, desc: 'Update gym info, timings & pricing' },
                   { label: 'Notification Preferences', action: () => setSettingsSection('notifications'), icon: Bell, desc: 'Manage alert settings' },
                   { label: 'Subscription & Billing', action: () => setSettingsSection('billing'), icon: Coins, desc: 'View plans & invoices' },
+                  { label: 'Terms & Privacy', action: () => navigate('/terms'), icon: MessageSquare, desc: 'Legal documents' },
                   { label: 'Help & Support', action: () => setSettingsSection('help'), icon: MessageSquare, desc: 'Get help anytime' },
                 ].map(item => (
                   <button key={item.label} onClick={item.action}
@@ -462,8 +367,7 @@ export default function GymOwnerDashboard() {
                   </button>
                 ))}
               </div>
-              <button
-                onClick={() => { base44.auth.logout(); navigate('/welcome'); }}
+              <button onClick={() => setLogoutConfirm(true)}
                 className="w-full bg-red-500/5 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400 active:scale-[0.99] transition-all">
                 <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
                   <LogOut size={15} className="text-red-400" />
@@ -473,20 +377,21 @@ export default function GymOwnerDashboard() {
             </div>
           )}
 
-          {/* ── SETTINGS: NOTIFICATIONS ── */}
+          {/* SETTINGS: NOTIFICATIONS */}
           {activeTab === 'settings' && settingsSection === 'notifications' && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3">
                 <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
                   <ChevronRight size={16} className="rotate-180" />
                 </button>
                 <p className="font-heading font-bold text-lg">Notification Preferences</p>
               </div>
               {[
-                { label: 'New Member Requests', desc: 'Alert when someone requests to join your gym' },
+                { label: 'New Member Requests', desc: 'Alert when someone requests to join' },
                 { label: 'New Lead Enquiry', desc: 'Alert when a new lead is captured' },
                 { label: 'Member Check-in', desc: 'Alert when a member checks in' },
                 { label: 'Review Posted', desc: 'Alert when a member leaves a review' },
+                { label: 'Announcement Delivery', desc: 'Alert when announcements are delivered' },
               ].map(item => (
                 <div key={item.label} className="bg-card border border-border rounded-2xl p-4 flex items-center justify-between">
                   <div>
@@ -502,10 +407,10 @@ export default function GymOwnerDashboard() {
             </div>
           )}
 
-          {/* ── SETTINGS: BILLING ── */}
+          {/* SETTINGS: BILLING */}
           {activeTab === 'settings' && settingsSection === 'billing' && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3">
                 <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
                   <ChevronRight size={16} className="rotate-180" />
                 </button>
@@ -516,37 +421,38 @@ export default function GymOwnerDashboard() {
                 <p className="font-heading font-black text-xl mt-1">Free Plan</p>
                 <p className="text-xs text-muted-foreground mt-1">Basic gym management features included</p>
               </div>
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
                 <p className="font-semibold text-sm">Pro Plan — Coming Soon</p>
-                {['Unlimited members', 'Advanced analytics', 'Priority support', 'Custom branding'].map(f => (
+                {['Unlimited members & leads', 'Advanced analytics & reports', 'Priority support', 'Custom branding', 'Multiple gym locations'].map(f => (
                   <div key={f} className="flex items-center gap-2">
                     <Check size={13} className="text-accent flex-shrink-0" />
                     <p className="text-xs text-muted-foreground">{f}</p>
                   </div>
                 ))}
               </div>
-              <div className="bg-muted/30 border border-border rounded-2xl p-5 text-center">
-                <Coins size={28} className="text-accent mx-auto mb-2" />
-                <p className="text-sm font-semibold">Billing Portal</p>
-                <p className="text-xs text-muted-foreground mt-1">Invoices & payment history — coming soon</p>
-              </div>
+              <button onClick={() => showToast('Billing portal — coming soon!', 'info')}
+                className="w-full h-11 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-all">
+                View Invoices & Payment History
+              </button>
             </div>
           )}
 
-          {/* ── SETTINGS: HELP ── */}
+          {/* SETTINGS: HELP */}
           {activeTab === 'settings' && settingsSection === 'help' && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3">
                 <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
                   <ChevronRight size={16} className="rotate-180" />
                 </button>
                 <p className="font-heading font-bold text-lg">Help & Support</p>
               </div>
               {[
-                { q: 'How do members join my gym?', a: 'Share your referral code. Members enter it during signup to link to your gym.' },
-                { q: 'How do I approve a member?', a: 'Go to Members tab → tap the ✓ button next to any pending member to approve them.' },
-                { q: 'How do I add equipment?', a: 'Go to More Features → Equipment to manage your gym\'s equipment list.' },
-                { q: 'How do I send announcements?', a: 'Go to More Features → Announcements to broadcast messages to all your members.' },
+                { q: 'How do members join my gym?', a: 'Share your referral code. Members enter it during signup on SE7ENFIT to link your gym.' },
+                { q: 'How do I approve a member?', a: 'Go to Members tab → tap the ✓ button next to any pending member.' },
+                { q: 'How do I add equipment?', a: 'Go to More Features → Equipment. Add from presets or create custom equipment.' },
+                { q: 'How do I send announcements?', a: 'Go to More Features → Announcements to broadcast messages to all connected members.' },
+                { q: 'How do I track attendance?', a: 'Go to More Features → Attendance. Generate a daily PIN or manually check in members.' },
+                { q: 'How do I create challenges?', a: 'Go to More Features → Challenges. Create attendance, steps, or workout challenges.' },
               ].map(item => (
                 <div key={item.q} className="bg-card border border-border rounded-2xl p-4">
                   <p className="text-sm font-semibold mb-1">{item.q}</p>
@@ -557,63 +463,22 @@ export default function GymOwnerDashboard() {
                 <MessageSquare size={24} className="text-accent mx-auto mb-2" />
                 <p className="text-sm font-semibold">Contact Support</p>
                 <p className="text-xs text-muted-foreground mt-1">support@se7enfit.com</p>
+                <button onClick={() => showToast('Support request sent! We\'ll email you within 24 hours.', 'success')}
+                  className="mt-3 bg-accent text-accent-foreground text-xs font-semibold px-4 py-2 rounded-xl w-full">
+                  Send Support Request
+                </button>
               </div>
             </div>
           )}
 
           {/* ── GYM PROFILE ── */}
           {activeTab === 'profile' && (
-            <div className="space-y-4">
-              <p className="font-heading font-bold text-lg">Gym Profile</p>
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-                {[
-                  { label: 'Gym Name', value: owner.gym_name || 'Not set', icon: Building2 },
-                  { label: 'City', value: owner.city || 'Not set', icon: MapPin },
-                  { label: 'Address', value: owner.address || 'Not set', icon: MapPin },
-                  { label: 'Timings', value: `${owner.opening_time || '6:00'} – ${owner.closing_time || '22:00'}`, icon: Clock },
-                  { label: 'Email', value: owner.email || 'Not set', icon: Mail },
-                  { label: 'Mobile', value: owner.mobile || 'Not set', icon: Phone },
-                ].map(item => (
-                  <div key={item.label} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <item.icon size={13} className="text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{item.label}</p>
-                      <p className="text-sm font-medium mt-0.5">{item.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-card border border-border rounded-2xl p-4">
-                <p className="font-heading font-semibold text-sm mb-3">Membership Pricing</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: 'Monthly', value: owner.monthly_fee || 999 },
-                    { label: 'Quarterly', value: owner.quarterly_fee || 2499 },
-                    { label: 'Annual', value: owner.yearly_fee || 7999 },
-                  ].map(p => (
-                    <div key={p.label} className="bg-accent/8 border border-accent/20 rounded-xl p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground">{p.label}</p>
-                      <p className="font-bold text-sm text-accent mt-1">₹{p.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {owner.facilities?.length > 0 && (
-                <div className="bg-card border border-border rounded-2xl p-4">
-                  <p className="font-heading font-semibold text-sm mb-3">Facilities</p>
-                  <div className="flex flex-wrap gap-2">
-                    {owner.facilities.map(f => (
-                      <span key={f} className="text-[11px] bg-accent/10 text-accent px-2.5 py-1 rounded-full font-medium">{f}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <Button onClick={() => navigate('/gym-owner/onboarding')} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground">
-                <Edit3 size={15} className="mr-2" /> Edit Gym Profile
-              </Button>
-            </div>
+            <GymProfileTab
+              owner={owner}
+              setOwner={setOwner}
+              showToast={showToast}
+              onEditFull={() => navigate('/gym-owner/onboarding')}
+            />
           )}
 
           {/* ── EQUIPMENT ── */}
@@ -623,236 +488,67 @@ export default function GymOwnerDashboard() {
 
           {/* ── ATTENDANCE ── */}
           {activeTab === 'attendance' && (
-            <div className="space-y-4">
-              <p className="font-heading font-bold text-lg">Attendance</p>
-              <div className="bg-gradient-to-br from-accent via-accent/90 to-accent/70 rounded-3xl p-5 text-accent-foreground">
-                <p className="text-sm opacity-80 mb-4">Today's Check-ins</p>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div><p className="font-black text-3xl">{todayAttendance}</p><p className="text-xs opacity-70 mt-0.5">Present</p></div>
-                  <div><p className="font-black text-3xl">{Math.max(0, totalRealMembers - todayAttendance)}</p><p className="text-xs opacity-70 mt-0.5">Absent</p></div>
-                  <div><p className="font-black text-3xl">{totalRealMembers > 0 ? Math.round((todayAttendance / totalRealMembers) * 100) : 0}%</p><p className="text-xs opacity-70 mt-0.5">Rate</p></div>
-                </div>
-                <div className="bg-white/25 rounded-full h-2 mt-4 overflow-hidden">
-                  <div className="h-full bg-white rounded-full" style={{ width: `${totalRealMembers > 0 ? Math.round((todayAttendance / totalRealMembers) * 100) : 0}%` }} />
-                </div>
-              </div>
-              {attendanceLogs.filter(a => a.date === today).length > 0 && (
-                <div className="space-y-2">
-                  <p className="font-semibold text-sm">Today's Check-ins</p>
-                  {attendanceLogs.filter(a => a.date === today).map(a => (
-                    <div key={a.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-black text-accent">M</span>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Member #{a.user_id?.slice(-6)}</p>
-                        <p className="text-xs text-muted-foreground">In: {a.check_in_time}{a.check_out_time ? ` • Out: ${a.check_out_time}` : ' • Still inside'}</p>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${a.status === 'checked_out' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-                        {a.status === 'checked_out' ? 'Left' : 'Inside'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="bg-muted/30 border border-border rounded-2xl p-6 text-center">
-                <CalendarCheck size={32} className="text-accent mx-auto mb-3" />
-                <p className="text-sm font-semibold">QR Code Check-In</p>
-                <p className="text-xs text-muted-foreground mt-1">Generate QR for member check-in — coming soon</p>
-              </div>
-            </div>
+            <AttendanceTab
+              owner={owner}
+              memberships={memberships}
+              attendanceLogs={attendanceLogs}
+              setAttendanceLogs={setAttendanceLogs}
+              showToast={showToast}
+            />
           )}
 
           {/* ── CHALLENGES ── */}
           {activeTab === 'challenges' && (
-            <div className="space-y-3">
-              <p className="font-heading font-bold text-lg">Challenges</p>
-              <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
-                <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm font-semibold">No challenges yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Create gym challenges to engage your members</p>
-              </div>
-            </div>
+            <ChallengesTab owner={owner} showToast={showToast} />
           )}
 
           {/* ── REWARDS ── */}
           {activeTab === 'rewards' && (
-            <div className="space-y-3">
-              <p className="font-heading font-bold text-lg">Rewards</p>
-              <div className="bg-gradient-to-br from-amber-400/20 to-amber-400/5 border border-amber-400/25 rounded-2xl p-4">
-                <p className="font-semibold text-sm mb-1">Create Reward Offer</p>
-                <p className="text-xs text-muted-foreground">Offer discounts & perks to loyal members — coming soon</p>
-              </div>
-              <div className="bg-muted/30 border border-border rounded-2xl p-8 text-center">
-                <Gift size={32} className="text-muted-foreground mx-auto mb-3" />
-                <p className="text-sm font-semibold">No reward offers yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Create offers to reward and retain your members</p>
-              </div>
-            </div>
+            <RewardsTab owner={owner} showToast={showToast} />
           )}
 
           {/* ── REFERRALS ── */}
           {activeTab === 'referrals' && (
-            <div className="space-y-4">
-              <p className="font-heading font-bold text-lg">Referrals</p>
-              <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-2xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">🔑 Your Gym Referral Code</p>
-                <p className="text-[11px] text-muted-foreground mb-3">Share this code with members so they can link your gym during signup</p>
-                <div className="flex items-center justify-between bg-background/60 border border-accent/30 rounded-xl px-4 py-3">
-                  <span className="font-mono font-black text-2xl tracking-widest text-accent">{owner.referral_code || '—'}</span>
-                  <button
-                    onClick={() => handleCopy(owner.referral_code)}
-                    className="text-xs text-accent font-semibold bg-accent/20 px-3 py-1.5 rounded-lg active:scale-95 transition-all min-w-[60px]">
-                    {copied ? '✓ Copied' : 'Copy'}
-                  </button>
-                </div>
-                {!owner.referral_code && (
-                  <p className="text-xs text-amber-400 mt-2">⚠️ Complete your gym profile to generate a referral code</p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Total via Referral', value: memberships.filter(m => m.referral_code_used).length, color: 'text-blue-400', border: 'border-blue-400/20' },
-                  { label: 'Active Members', value: activeMembers, color: 'text-emerald-400', border: 'border-emerald-400/20' },
-                  { label: 'Pending Approval', value: pendingMembers, color: 'text-amber-400', border: 'border-amber-400/20' },
-                  { label: 'Est. Monthly Rev', value: `₹${(activeMembers * (owner.monthly_fee || 999)).toLocaleString()}`, color: 'text-purple-400', border: 'border-purple-400/20' },
-                ].map(s => (
-                  <div key={s.label} className={`bg-card border ${s.border} rounded-2xl p-4`}>
-                    <p className={`font-black text-2xl ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ReferralsTab
+              owner={owner}
+              setOwner={setOwner}
+              memberships={memberships}
+              showToast={showToast}
+              onNavigateToEarnings={() => goTab('earnings')}
+            />
           )}
 
           {/* ── REVIEWS ── */}
           {activeTab === 'reviews' && (
-            <div className="space-y-3">
-              <p className="font-heading font-bold text-lg">Reviews</p>
-              <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-5">
-                <div className="text-center">
-                  <p className="font-black text-5xl text-accent leading-none">{avgRating}</p>
-                  <div className="flex gap-0.5 justify-center mt-2">
-                    {[1,2,3,4,5].map(s => (
-                      <Star key={s} size={13} className={parseFloat(avgRating) >= s ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'} />
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">{reviews.length} reviews</p>
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  {[5,4,3,2,1].map(star => {
-                    const count = reviews.filter(r => Math.round(r.rating) === star).length;
-                    const pct = reviews.length > 0 ? (count / reviews.length) * 100 : (star === 5 ? 70 : star === 4 ? 20 : 10);
-                    return (
-                      <div key={star} className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground w-3">{star}</span>
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              {reviews.length === 0 ? (
-                <div className="bg-muted/30 border border-border rounded-2xl p-10 text-center">
-                  <Star size={32} className="text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-semibold">No reviews yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Member reviews will appear here</p>
-                </div>
-              ) : reviews.map(review => (
-                <div key={review.id} className="bg-card border border-border rounded-2xl p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-semibold text-sm">{review.user_name || 'Anonymous'}</p>
-                      <div className="flex gap-0.5 mt-0.5">
-                        {[1,2,3,4,5].map(s => <Star key={s} size={11} className={review.rating >= s ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'} />)}
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{review.created_date ? new Date(review.created_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}</span>
-                  </div>
-                  {review.review_text && <p className="text-sm text-muted-foreground leading-relaxed mb-3">"{review.review_text}"</p>}
-                  {review.owner_reply ? (
-                    <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
-                      <p className="text-[10px] text-accent font-semibold mb-1">Your Reply</p>
-                      <p className="text-xs text-muted-foreground">{review.owner_reply}</p>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        value={replyTexts[review.id] || ''}
-                        onChange={(e) => setReplyTexts(prev => ({ ...prev, [review.id]: e.target.value }))}
-                        placeholder="Reply to this review..."
-                        className="flex-1 h-9 px-3 rounded-xl border border-input bg-muted/40 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                      />
-                      <button onClick={() => sendReply(review.id)} className="w-9 h-9 rounded-xl bg-accent flex items-center justify-center">
-                        <Send size={13} className="text-accent-foreground" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <ReviewsTab
+              reviews={reviews}
+              setReviews={setReviews}
+              showToast={showToast}
+            />
           )}
 
           {/* ── ANNOUNCEMENTS ── */}
           {activeTab === 'announcements' && (
-            <div className="space-y-3">
-              <p className="font-heading font-bold text-lg">Announcements</p>
-              <div className="bg-card border border-border rounded-2xl p-4">
-                <p className="text-sm font-semibold mb-3">Send to All Members</p>
-                <textarea
-                  value={announcement}
-                  onChange={(e) => setAnnouncement(e.target.value)}
-                  placeholder="Write your message to all gym members..."
-                  className="w-full h-24 px-3 py-2 rounded-xl border border-input bg-muted/40 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <Button
-                onClick={async () => {
-                  if (announcement.trim() && owner) {
-                    const newAnn = await base44.entities.GymAnnouncement.create({
-                      gym_id: owner.id,
-                      owner_id: owner.user_id,
-                      message: announcement.trim(),
-                      is_active: true,
-                    });
-                    setAnnouncements(prev => [newAnn, ...prev]);
-                    setAnnouncement('');
-                  }
-                }}
-                className="mt-2.5 h-11 rounded-xl bg-accent text-accent-foreground text-sm w-full font-semibold"
-                >
-                  <Send size={14} className="mr-2" /> Send Announcement
-                </Button>
-              </div>
-              {announcements.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold text-muted-foreground px-1">Recent</p>
-                  {announcements.map(a => (
-                    <div key={a.id} className="bg-card border border-border rounded-xl p-4">
-                      {a.title && <p className="text-xs font-bold mb-0.5">{a.title}</p>}
-                      <p className="text-sm font-medium">{a.message}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1.5">{new Date(a.created_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
+            <AnnouncementsTab
+              owner={owner}
+              announcements={announcements}
+              setAnnouncements={setAnnouncements}
+              showToast={showToast}
+            />
           )}
 
         </div>
       </div>
 
-      {/* Bottom Navigation Bar */}
+      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-lg mx-auto flex items-center justify-around px-2 h-16">
           {BOTTOM_NAV.map(item => {
             const Icon = item.icon;
-            const isActive = activeTab === item.key;
+            const isActive = activeTab === item.key || (item.key === 'settings' && activeTab === 'settings');
             return (
-              <button key={item.key} onClick={() => { setActiveTab(item.key); setSettingsSection(null); }}
+              <button key={item.key} onClick={() => goTab(item.key)}
                 className="flex flex-col items-center gap-1 flex-1 py-2 transition-all active:scale-95">
                 <div className={`w-10 h-7 rounded-xl flex items-center justify-center transition-all ${isActive ? 'bg-accent' : ''}`}>
                   <Icon size={18} className={isActive ? 'text-accent-foreground' : 'text-muted-foreground'} />
@@ -865,6 +561,17 @@ export default function GymOwnerDashboard() {
           })}
         </div>
       </nav>
+
+      {/* Logout Confirm */}
+      <ConfirmModal
+        open={logoutConfirm}
+        title="Sign Out"
+        message="Are you sure you want to sign out of your gym dashboard?"
+        confirmLabel="Sign Out"
+        confirmClass="bg-red-500 text-white"
+        onConfirm={() => { base44.auth.logout(); navigate('/welcome'); }}
+        onCancel={() => setLogoutConfirm(false)}
+      />
     </div>
   );
 }
