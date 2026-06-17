@@ -110,13 +110,13 @@ export default function Home() {
           <div className="flex items-center gap-5">
             <ProgressRing percent={fitnessScore} size={88} strokeWidth={7}>
               <div className="text-center">
-                <p className="text-xl font-bold font-heading leading-none">{fitnessScore}</p>
-                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Score</p>
+                <p className="text-2xl font-bold font-heading leading-none">{fitnessScore}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Score</p>
               </div>
             </ProgressRing>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1">Today's Fitness</p>
-              <p className={`font-heading font-bold text-base ${scoreColor}`}>{scoreLabel}</p>
+              <p className={`font-heading font-bold text-lg ${scoreColor}`}>{scoreLabel}</p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {todayData.workoutDone && <Badge label="Workout ✓" />}
                 {todayData.steps >= stepGoal && <Badge label="Steps ✓" />}
@@ -131,9 +131,9 @@ export default function Home() {
             {rings.map(r => (
               <button key={r.label} onClick={() => navigate(r.route)} className="flex-1 flex flex-col items-center gap-2 active:scale-95 transition-all">
                 <ProgressRing percent={r.percent} size={44} strokeWidth={4} color={r.color}>
-                  <span className="text-[10px] font-bold">{Math.round(r.percent)}%</span>
-                </ProgressRing>
-                <span className="text-[10px] text-muted-foreground">{r.label}</span>
+                  <span className="text-[11px] font-bold">{Math.round(r.percent)}%</span>
+                  </ProgressRing>
+                   <span className="text-xs text-muted-foreground">{r.label}</span>
               </button>
             ))}
           </div>
@@ -142,42 +142,42 @@ export default function Home() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-2.5">
           <MetricCard
-            icon={<Flame size={15} />} label="Calories"
+            icon={<Flame size={20} />} label="Calories"
             value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`}
             percent={(todayData.calories / calorieTarget) * 100}
             onClick={() => navigate('/nutrition')}
             color="text-orange-400" barColor="bg-orange-400"
           />
           <MetricCard
-            icon={<Zap size={15} />} label="Protein"
+            icon={<Zap size={20} />} label="Protein"
             value={`${todayData.protein}g`} sub={`/ ${proteinTarget}g`}
             percent={(todayData.protein / proteinTarget) * 100}
             onClick={() => navigate('/nutrition')}
             color="text-green-400" barColor="bg-green-400"
           />
           <MetricCard
-            icon={<Droplets size={15} />} label="Water"
+            icon={<Droplets size={20} />} label="Water"
             value={`${Math.round(todayData.water / 250)}`} sub={`/ ${Math.round(waterGoal / 250)} glasses`}
             percent={(todayData.water / waterGoal) * 100}
             onClick={() => navigate('/tracking/water')}
             color="text-blue-400" barColor="bg-blue-400"
           />
           <MetricCard
-            icon={<Footprints size={15} />} label="Steps"
+            icon={<Footprints size={20} />} label="Steps"
             value={todayData.steps.toLocaleString()} sub={`/ ${stepGoal.toLocaleString()}`}
             percent={(todayData.steps / stepGoal) * 100}
             onClick={() => navigate('/tracking/steps')}
             color="text-purple-400" barColor="bg-purple-400"
           />
           <MetricCard
-            icon={<Moon size={15} />} label="Sleep"
+            icon={<Moon size={20} />} label="Sleep"
             value={`${todayData.sleep}h`} sub={`/ ${profile.sleep_goal_hours || 7}h goal`}
             percent={(todayData.sleep / (profile.sleep_goal_hours || 7)) * 100}
             onClick={() => navigate('/tracking/sleep')}
             color="text-indigo-400" barColor="bg-indigo-400"
           />
           <MetricCard
-            icon={<Dumbbell size={15} />} label="Workout"
+            icon={<Dumbbell size={20} />} label="Workout"
             value={todayData.workoutDone ? 'Done!' : 'Pending'}
             sub={todayData.workoutDone ? 'Great job 💪' : 'Tap to start'}
             percent={todayData.workoutDone ? 100 : 0}
