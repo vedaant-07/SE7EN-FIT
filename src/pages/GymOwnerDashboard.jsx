@@ -62,7 +62,18 @@ export default function GymOwnerDashboard() {
     try {
       const user = await base44.auth.me();
       const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
-      if (owners.length === 0) { navigate('/gym-owner/onboarding'); return; }
+      if (owners.length === 0) {
+        // Create a minimal GymOwner record so the dashboard loads
+        const newOwner = await base44.entities.GymOwner.create({
+          user_id: user.id,
+          owner_name: user.full_name || 'Gym Owner',
+          gym_name: 'My Gym',
+          onboarding_complete: false,
+        });
+        setOwner(newOwner);
+        setLoading(false);
+        return;
+      }
       setOwner(owners[0]);
 
       const [gymLeads, gymReviews] = await Promise.all([
@@ -72,8 +83,7 @@ export default function GymOwnerDashboard() {
       setLeads(gymLeads);
       setReviews(gymReviews);
     } catch (e) {
-      navigate('/gym-owner/login');
-      return;
+      console.error(e);
     }
     setLoading(false);
   };
