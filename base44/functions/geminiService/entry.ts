@@ -126,19 +126,6 @@ async function logAiUsage(base44, userId, feature, success, errorMessage = null)
   } catch { /* non-critical */ }
 }
 
-// Debug helper — remove after testing
-async function testGeminiDirect() {
-  const key = getGeminiApiKey();
-  const url = `${GEMINI_API_BASE}/${GEMINI_TEXT_MODEL}:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: 'Say hello' }] }] }),
-  });
-  const text = await res.text();
-  return { status: res.status, body: text.slice(0, 500) };
-}
-
 // ─── Main Handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -155,19 +142,6 @@ Deno.serve(async (req) => {
     const plan = subs[0]?.plan || 'free';
 
     // ── AI TRAINER ────────────────────────────────────────────────────────────
-    if (action === 'testConnection') {
-      const result = await testGeminiDirect();
-      return Response.json(result);
-    }
-
-    if (action === 'listModels') {
-      const key = getGeminiApiKey();
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${key}`);
-      const data = await res.json();
-      const names = (data.models || []).map(m => m.name).filter(n => n.includes('gemini'));
-      return Response.json({ models: names.slice(0, 20) });
-    }
-
     if (action === 'askAiTrainer') {
       const { message, context } = params;
       const check = await validateAiUsageLimit(base44, user.id, 'ai_trainer', plan);

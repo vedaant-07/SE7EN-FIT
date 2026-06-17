@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus } from 'lucide-react';
+import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus, Bot, RefreshCw } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -78,6 +78,8 @@ export default function Challenges() {
   const [activeTab, setActiveTab] = useState('all');
   const [joiningId, setJoiningId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
+  const [aiRecs, setAiRecs] = useState(null);
+  const [loadingAiRecs, setLoadingAiRecs] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -201,6 +203,24 @@ export default function Challenges() {
     setLoggingId(null);
   };
 
+  const handleAiRecommend = async () => {
+    setLoadingAiRecs(true);
+    try {
+      const stats = {
+        joined: participants.length,
+        completed: participants.filter(p => p.completed).length,
+        coinsEarned: participants.reduce((s, p) => s + (p.coins_earned || 0), 0),
+      };
+      const res = await base44.functions.invoke('geminiService', { action: 'recommendChallenges', profile, stats });
+      if (res.data?.locked) { navigate('/subscription'); return; }
+      if (res.data?.error) throw new Error(res.data.error);
+      setAiRecs(res.data?.recommendedChallenges || []);
+    } catch (e) {
+      toast({ title: 'AI unavailable', description: e.message, variant: 'destructive' });
+    }
+    setLoadingAiRecs(false);
+  };
+
   const getParticipant = (challengeId) => participants.find(p => p.challenge_id === challengeId);
   const getProgress = (challenge) => {
     const p = getParticipant(challenge.id);
@@ -240,6 +260,41 @@ export default function Challenges() {
             </button>
           ))}
         </div>
+
+        {/* AI Recommendations */}
+        {activeTab === 'all' && (
+          <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Bot size={15} className="text-accent" />
+                <p className="text-sm font-semibold">AI Challenge Picks</p>
+              </div>
+              <button onClick={handleAiRecommend} disabled={loadingAiRecs}
+                className="text-xs text-accent font-medium flex items-center gap-1 disabled:opacity-50">
+                {loadingAiRecs ? <RefreshCw size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                {aiRecs ? 'Refresh' : 'Get Picks'}
+              </button>
+            </div>
+            {!aiRecs && !loadingAiRecs && (
+              <p className="text-xs text-muted-foreground">Tap "Get Picks" for personalized challenge recommendations based on your goal.</p>
+            )}
+            {loadingAiRecs && <p className="text-xs text-muted-foreground">Analyzing your profile…</p>}
+            {aiRecs && (
+              <div className="space-y-2 mt-2">
+                {aiRecs.map((rec, i) => (
+                  <div key={i} className="bg-card/60 rounded-xl p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-semibold">{rec.challengeName}</p>
+                      <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full whitespace-nowrap">{rec.difficulty}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{rec.reason}</p>
+                    <p className="text-[11px] text-accent mt-0.5">🎯 {rec.expectedBenefit}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Gym challenges banner */}
         {gymChallengesMapped.length > 0 && activeTab === 'all' && (

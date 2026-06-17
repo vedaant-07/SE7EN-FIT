@@ -6,11 +6,11 @@ import EmptyState from '@/components/se7enfit/EmptyState';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Award, ChevronDown } from 'lucide-react';
+import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Award, ChevronDown, Bot, RefreshCw, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getToday, calculateBMI, getBMICategory } from '@/lib/fitnessUtils';
 
-const TABS = ['Weight', 'Body', 'Photos', 'Score'];
+const TABS = ['Weight', 'Body', 'Photos', 'AI Report'];
 
 export default function Progress() {
   const { toast } = useToast();
@@ -24,6 +24,8 @@ export default function Progress() {
   const [showAddWeight, setShowAddWeight] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [saving, setSaving] = useState(false);
+  const [aiReport, setAiReport] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -42,6 +44,34 @@ export default function Progress() {
     setPhotos(pp);
     setWorkoutLogs(wkl);
     setLoading(false);
+  };
+
+  const handleGenerateReport = async () => {
+    setLoadingReport(true);
+    try {
+      const user = await base44.auth.me();
+      const [nl, wl, wkl, sl, stl] = await Promise.all([
+        base44.entities.NutritionLog.filter({ user_id: user.id }, '-date', 30),
+        base44.entities.WeightLog.filter({ user_id: user.id }, '-date', 10),
+        base44.entities.WorkoutLog.filter({ user_id: user.id }, '-date', 14),
+        base44.entities.SleepLog.filter({ user_id: user.id }, '-date', 7),
+        base44.entities.StepLog.filter({ user_id: user.id }, '-date', 7),
+      ]);
+      const logs = {
+        weightLogs: wl.map(l => ({ date: l.date, weight_kg: l.weight_kg })),
+        workoutLogs: wkl.map(l => ({ date: l.date, completed: l.completed, calories_burned: l.calories_burned })),
+        nutritionLogs: nl.map(l => ({ date: l.date, calories: l.calories, protein_g: l.protein_g })),
+        sleepLogs: sl.map(l => ({ date: l.date, hours: l.hours })),
+        stepLogs: stl.map(l => ({ date: l.date, steps: l.steps })),
+        profile: { goal: profile?.goal, fitness_level: profile?.fitness_level, weight_kg: profile?.weight_kg, target_weight_kg: profile?.target_weight_kg },
+      };
+      const res = await base44.functions.invoke('geminiService', { action: 'generateProgressReport', logs, period: 'weekly' });
+      if (res.data?.error) throw new Error(res.data.error);
+      setAiReport(res.data);
+    } catch (e) {
+      toast({ title: 'Report failed', description: e.message, variant: 'destructive' });
+    }
+    setLoadingReport(false);
   };
 
   const handleAddWeight = async () => {
@@ -269,36 +299,97 @@ export default function Progress() {
           </div>
         )}
 
-        {/* Tab: Score */}
-        {activeTab === 'Score' && (
+        {/* Tab: AI Report */}
+        {activeTab === 'AI Report' && (
           <div className="space-y-4">
-            <h3 className="font-heading font-semibold text-sm">Transformation Score</h3>
-            <div className="bg-card border border-border rounded-3xl p-6 text-center">
-              <ProgressRing percent={progressToTarget} size={120} strokeWidth={8}>
-                <div>
-                  <p className="text-2xl font-bold font-heading">{progressToTarget}%</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Progress</p>
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading font-semibold text-sm">AI Progress Report</h3>
+              <Button
+                onClick={handleGenerateReport}
+                disabled={loadingReport}
+                size="sm"
+                className="h-8 rounded-xl bg-accent text-accent-foreground text-xs px-3 gap-1.5"
+              >
+                {loadingReport ? <><RefreshCw size={11} className="animate-spin" /> Analyzing…</> : <><Bot size={11} /> Generate</>}
+              </Button>
+            </div>
+
+            {!aiReport && !loadingReport && (
+              <div className="bg-card border border-border rounded-3xl p-6 text-center space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
+                  <Bot size={24} className="text-accent" />
                 </div>
-              </ProgressRing>
-              <p className="text-sm font-medium mt-4">
-                {progressToTarget >= 80 ? '🔥 Almost there! Keep pushing!' :
-                 progressToTarget >= 50 ? '💪 Halfway to your goal!' :
-                 progressToTarget >= 20 ? '🚀 Great start! Stay consistent!' :
-                 '📌 Start your journey — every kg counts!'}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <Award size={20} className="text-yellow-400 mx-auto mb-2" />
-                <p className="text-xl font-bold font-heading">{completedWorkouts}</p>
-                <p className="text-xs text-muted-foreground">Workouts done</p>
+                <p className="font-heading font-semibold">AI will analyze your last 7–30 days</p>
+                <p className="text-xs text-muted-foreground">Workouts, nutrition, sleep, steps, and weight trends — all in one smart report.</p>
+                <Button onClick={handleGenerateReport} className="h-10 rounded-xl bg-accent text-accent-foreground text-sm px-6">Generate Report</Button>
               </div>
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <Scale size={20} className="text-accent mx-auto mb-2" />
-                <p className="text-xl font-bold font-heading">{Math.abs(weightChange)}</p>
-                <p className="text-xs text-muted-foreground">kg {weightChange <= 0 ? 'lost' : 'gained'}</p>
+            )}
+
+            {loadingReport && (
+              <div className="bg-card border border-border rounded-3xl p-8 text-center">
+                <RefreshCw size={28} className="animate-spin text-accent mx-auto mb-3" />
+                <p className="text-sm font-medium">Analyzing your progress…</p>
+                <p className="text-xs text-muted-foreground mt-1">This takes a few seconds</p>
               </div>
-            </div>
+            )}
+
+            {aiReport && (
+              <div className="space-y-3">
+                {/* Summary */}
+                <div className="bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20 rounded-3xl p-4">
+                  <p className="text-[10px] text-accent uppercase tracking-wider font-bold mb-1.5">Summary</p>
+                  <p className="text-sm leading-relaxed">{aiReport.summary}</p>
+                </div>
+
+                {/* Top Wins */}
+                {aiReport.topWins?.length > 0 && (
+                  <div className="bg-card border border-border rounded-2xl p-4">
+                    <p className="text-xs font-bold text-emerald-400 mb-2">🏆 Top Wins</p>
+                    <ul className="space-y-1">
+                      {aiReport.topWins.map((w, i) => <li key={i} className="text-xs text-muted-foreground flex gap-2"><span className="text-emerald-400">✓</span>{w}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Problems */}
+                {aiReport.problems?.length > 0 && (
+                  <div className="bg-card border border-border rounded-2xl p-4">
+                    <p className="text-xs font-bold text-orange-400 mb-2">⚠️ Areas to Improve</p>
+                    <ul className="space-y-1">
+                      {aiReport.problems.map((p, i) => <li key={i} className="text-xs text-muted-foreground flex gap-2"><span className="text-orange-400">•</span>{p}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Next Week Focus */}
+                {aiReport.nextWeekFocus?.length > 0 && (
+                  <div className="bg-card border border-border rounded-2xl p-4">
+                    <p className="text-xs font-bold text-blue-400 mb-2">🎯 Next Week Focus</p>
+                    <ul className="space-y-1">
+                      {aiReport.nextWeekFocus.map((f, i) => <li key={i} className="text-xs text-muted-foreground flex gap-2"><ChevronRight size={11} className="text-blue-400 mt-0.5 flex-shrink-0" />{f}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Analysis sections */}
+                {[
+                  { label: '🏋️ Workout', key: 'workoutAnalysis' },
+                  { label: '🥗 Nutrition', key: 'nutritionAnalysis' },
+                  { label: '💧 Water', key: 'waterAnalysis' },
+                  { label: '😴 Sleep', key: 'sleepAnalysis' },
+                  { label: '⚖️ Weight', key: 'weightAnalysis' },
+                ].filter(s => aiReport[s.key]).map(s => (
+                  <div key={s.key} className="bg-card border border-border rounded-2xl p-4">
+                    <p className="text-xs font-bold mb-1.5">{s.label}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{aiReport[s.key]}</p>
+                  </div>
+                ))}
+
+                <Button onClick={handleGenerateReport} variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs gap-1.5">
+                  <RefreshCw size={11} /> Regenerate Report
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
