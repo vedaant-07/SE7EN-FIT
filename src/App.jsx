@@ -38,6 +38,10 @@ import Rewards from '@/pages/Rewards';
 import PolicyPages from '@/pages/PolicyPages';
 import GymOwnerLogin from '@/pages/GymOwnerLogin';
 import GymOwnerRegister from '@/pages/GymOwnerRegister';
+import UserLogin from '@/pages/UserLogin';
+import UserSignup from '@/pages/UserSignup';
+import GymOwnerLoginNew from '@/pages/GymOwnerLoginNew';
+import GymOwnerSignup from '@/pages/GymOwnerSignup';
 import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
 import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -66,9 +70,15 @@ const AuthenticatedApp = () => {
       {/* Welcome / landing */}
       <Route path="/welcome" element={<Welcome />} />
 
-      {/* Gym Owner auth (public) */}
-      <Route path="/gym-owner/login" element={<GymOwnerLogin />} />
-      <Route path="/gym-owner/register" element={<GymOwnerRegister />} />
+      {/* New clean auth routes */}
+      <Route path="/login/user" element={<UserLogin />} />
+      <Route path="/signup/user" element={<UserSignup />} />
+      <Route path="/login/gym-owner" element={<GymOwnerLoginNew />} />
+      <Route path="/signup/gym-owner" element={<GymOwnerSignup />} />
+
+      {/* Legacy gym owner auth routes (keep for backward compat) */}
+      <Route path="/gym-owner/login" element={<GymOwnerLoginNew />} />
+      <Route path="/gym-owner/register" element={<GymOwnerSignup />} />
 
       {/* Policy pages (public) */}
       <Route path="/terms" element={<PolicyPages />} />
@@ -90,6 +100,7 @@ const AuthenticatedApp = () => {
         {/* Main app with shell */}
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
+          <Route path="/user-dashboard" element={<Home />} />
           <Route path="/ai-trainer" element={<AITrainer />} />
           <Route path="/workout" element={<Workout />} />
           <Route path="/workout/log" element={<WorkoutLog />} />
