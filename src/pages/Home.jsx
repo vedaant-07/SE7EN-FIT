@@ -210,8 +210,8 @@ export default function Home() {
         </div>
 
         {/* AI Recommendation */}
-        <Link to="/ai-trainer" className="block mt-2">
-          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-4 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
+        <Link to="/ai-trainer" className="block">
+          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-5 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0">
                 <Bot size={19} className="text-accent" />
@@ -258,8 +258,8 @@ export default function Home() {
 
         {/* Premium upsell if free */}
         {!isPremium && (
-          <Link to="/subscription" className="block mt-2">
-            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-4 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
+          <Link to="/subscription" className="block">
+            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-5 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
                   <Crown size={19} className="text-yellow-400" />
@@ -301,12 +301,13 @@ function MetricCard({ icon, label, value, sub, percent, onClick, color, barColor
       onClick={onClick}
       className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent/30 active:scale-[0.97] transition-all w-full"
     >
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${color} bg-current/10`} style={{ backgroundColor: 'rgba(0,0,0,0)' }}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`} style={{ background: 'color-mix(in srgb, currentColor 12%, transparent)' }}>
         <span className={color}>{icon}</span>
       </div>
-      <p className="text-base font-bold font-heading leading-none">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">{label} <span className="opacity-60">{sub}</span></p>
-      <div className="mt-2.5 h-1 bg-muted rounded-full overflow-hidden">
+      <p className="text-lg font-bold font-heading leading-none">{value}</p>
+      <p className="text-xs font-semibold text-foreground/80 mt-1">{label}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5 opacity-70">{sub}</p>
+      <div className="mt-2.5 h-1.5 bg-muted rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
     </button>

@@ -61,27 +61,36 @@ export default function Notifications() {
             description="You're all caught up! Notifications about your workouts, meals, and milestones will appear here."
           />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {notifications.map(notif => {
               const Icon = TYPE_ICONS[notif.type] || Bell;
+              const typeColors = {
+                workout: 'bg-accent/15 text-accent', meal: 'bg-orange-400/15 text-orange-400',
+                water: 'bg-blue-400/15 text-blue-400', steps: 'bg-purple-400/15 text-purple-400',
+                sleep: 'bg-indigo-400/15 text-indigo-400', weight: 'bg-pink-400/15 text-pink-400',
+                progress: 'bg-yellow-400/15 text-yellow-400', subscription: 'bg-yellow-500/15 text-yellow-400',
+                challenge: 'bg-red-400/15 text-red-400', motivation: 'bg-green-400/15 text-green-400',
+                report: 'bg-cyan-400/15 text-cyan-400', system: 'bg-muted text-muted-foreground',
+              };
+              const iconColor = typeColors[notif.type] || 'bg-muted text-muted-foreground';
               return (
                 <div
                   key={notif.id}
                   onClick={() => !notif.is_read && markRead(notif.id)}
-                  className={`bg-card border rounded-2xl p-4 flex gap-3 cursor-pointer transition-all active:scale-[0.99] ${
-                    !notif.is_read ? 'border-accent/30 bg-accent/3' : 'border-border'
+                  className={`bg-card border rounded-2xl p-4 flex gap-3.5 cursor-pointer transition-all active:scale-[0.99] ${
+                    !notif.is_read ? 'border-accent/30' : 'border-border opacity-80'
                   }`}
                 >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${!notif.is_read ? 'bg-accent/15 text-accent' : 'bg-muted text-muted-foreground'}`}>
-                    <Icon size={16} />
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                    <Icon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-medium ${!notif.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</p>
-                      {!notif.is_read && <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0 mt-1.5" />}
+                      <p className={`text-sm font-semibold leading-snug ${!notif.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>{notif.title}</p>
+                      {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-accent flex-shrink-0 mt-1" />}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{notif.message}</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1.5">
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{notif.message}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1.5 font-medium">
                       {notif.created_date ? new Date(notif.created_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}
                     </p>
                   </div>
