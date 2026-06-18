@@ -20,13 +20,6 @@ export default function UserLogin() {
     setLoading(true);
     try {
       await base44.auth.loginViaEmailPassword(email, password);
-      const user = await base44.auth.me();
-      if (user.role === 'admin') {
-        await base44.auth.logout();
-        setError('Owner/Admin access is available only on the SE7EN FIT admin website.');
-        setLoading(false);
-        return;
-      }
       window.location.href = '/user-dashboard';
     } catch (err) {
       setError(err.message || 'Invalid email or password');

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Dumbbell, Utensils, TrendingUp, User } from 'lucide-react';
+import { Home, Bot, Dumbbell, Trophy, Activity } from 'lucide-react';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
   { path: '/workout', icon: Dumbbell, label: 'Workout' },
-  { path: '/nutrition', icon: Utensils, label: 'Food' },
-  { path: '/progress', icon: TrendingUp, label: 'Progress' },
-  { path: '/profile', icon: User, label: 'Profile' },
+  { path: '/ai-trainer', icon: Bot, label: 'AI' },
+  { path: '/challenges', icon: Trophy, label: 'Challenges' },
+  { path: '/tracking', icon: Activity, label: 'Track' },
 ];
 
 export default function BottomNav() {

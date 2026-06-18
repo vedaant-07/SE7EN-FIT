@@ -5,7 +5,7 @@ import TopBar from '@/components/se7enfit/TopBar';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown } from 'lucide-react';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Activity, Heart, Building2, LogIn, LogOut } from 'lucide-react';
 import AIDailyTip from '@/components/se7enfit/AIDailyTip';
 
 export default function Home() {
@@ -14,12 +14,19 @@ export default function Home() {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [todayData, setTodayData] = useState({ calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false });
+  const [gymStatus, setGymStatus] = useState({ gym: null, todayLog: null });
   const today = getToday();
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const user = await base44.auth.me();
+    // Redirect gym owners to their dashboard
+    const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+    if (owners.length > 0) {
+      navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
+      return;
+    }
     const [profiles, subs] = await Promise.all([
       base44.entities.UserProfile.filter({ user_id: user.id }),
       base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
@@ -28,6 +35,18 @@ export default function Home() {
     const p = profiles[0];
     setProfile(p);
     setSubscription(subs[0] || null);
+
+    // Load gym check-in status
+    if (p.primary_gym_id) {
+      try {
+        const [gymOwners, attLogs] = await Promise.all([
+          base44.entities.GymOwner.list(),
+          base44.entities.GymAttendanceLog.filter({ user_id: user.id, gym_id: p.primary_gym_id, date: today }),
+        ]);
+        const gymOwner = gymOwners.find(o => o.id === p.primary_gym_id);
+        setGymStatus({ gym: gymOwner || null, todayLog: attLogs[0] || null });
+      } catch {}
+    }
 
     const [nutritionLogs, waterLogs, stepLogs, sleepLogs, workoutLogs] = await Promise.all([
       base44.entities.NutritionLog.filter({ user_id: user.id, date: today }),
@@ -187,6 +206,35 @@ export default function Home() {
           />
         </div>
 
+        {/* Gym Check-in Card */}
+        {gymStatus.gym && (
+          <button onClick={() => navigate('/my-gym')}
+            className={`w-full rounded-2xl p-4 flex items-center gap-3 border transition-all active:scale-[0.98] ${
+              gymStatus.todayLog?.status === 'checked_in'
+                ? 'bg-emerald-500/10 border-emerald-500/30'
+                : 'bg-card border-border hover:border-accent/30'
+            }`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              gymStatus.todayLog?.status === 'checked_in' ? 'bg-emerald-500/20' : 'bg-accent/10'
+            }`}>
+              {gymStatus.todayLog?.status === 'checked_in'
+                ? <LogOut size={18} className="text-emerald-400" />
+                : <LogIn size={18} className="text-accent" />}
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold">{gymStatus.gym.gym_name || 'My Gym'}</p>
+              <p className="text-xs text-muted-foreground">
+                {gymStatus.todayLog?.status === 'checked_in'
+                  ? `Checked in at ${gymStatus.todayLog.check_in_time} — tap to check out`
+                  : gymStatus.todayLog?.status === 'checked_out'
+                  ? `✓ Session done — ${gymStatus.todayLog.duration_minutes || 0} min`
+                  : 'Tap to check in to your gym'}
+              </p>
+            </div>
+            <ChevronRight size={15} className="text-muted-foreground flex-shrink-0" />
+          </button>
+        )}
+
         {/* Quick Actions */}
         <div>
           <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
@@ -196,7 +244,7 @@ export default function Home() {
               { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
               { icon: Droplets, label: 'Add Water', route: '/tracking', color: 'text-blue-400 bg-blue-400/10' },
               { icon: Camera, label: 'Food Scan 🤖', route: '/food-scan', color: 'text-green-400 bg-green-400/10' },
-              { icon: Trophy, label: 'Challenges', route: '/challenges', color: 'text-yellow-400 bg-yellow-400/10' },
+              { icon: Building2, label: 'My Gym', route: '/my-gym', color: 'text-amber-400 bg-amber-400/10' },
               { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
             ].map(({ icon: Icon, label, route, color }) => (
               <button key={route} onClick={() => navigate(route)}
