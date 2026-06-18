@@ -1,6 +1,6 @@
 workflows:
-  se7enfit-android-health-apk:
-    name: SE7EN FIT Android Health APK
+  se7enfit-android-release-apk:
+    name: SE7EN FIT Android Release APK
     max_build_duration: 60
 
     environment:
@@ -24,10 +24,10 @@ workflows:
           cd mobile/android
           chmod +x gradlew
 
-      - name: Build ARM64 debug APK
+      - name: Build standalone release APK
         script: |
           cd mobile/android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew clean :app:assembleRelease --no-daemon --stacktrace
 
     artifacts:
-      - mobile/android/app/build/outputs/apk/debug/*.apk
+      - mobile/android/app/build/outputs/apk/release/*.apk
