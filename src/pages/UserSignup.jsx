@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dumbbell, Mail, Lock, Loader2, ChevronLeft, Hash, Building2 } from 'lucide-react';
+import { Dumbbell, Mail, Lock, Loader2, ChevronLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import GoogleIcon from '@/components/GoogleIcon';
 
@@ -13,13 +13,10 @@ export default function UserSignup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [gymCode, setGymCode] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [gymInfo, setGymInfo] = useState(null);
-  const [gymCodeError, setGymCodeError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,55 +31,12 @@ export default function UserSignup() {
     } finally { setLoading(false); }
   };
 
-  const validateGymCode = async (code) => {
-    if (!code.trim()) { setGymInfo(null); setGymCodeError(''); return; }
-    const owners = await base44.entities.GymOwner.list();
-    const matched = owners.find(o => o.referral_code?.toUpperCase() === code.trim().toUpperCase());
-    if (matched) {
-      setGymInfo(matched);
-      setGymCodeError('');
-    } else {
-      setGymInfo(null);
-      setGymCodeError('Invalid gym referral code. Please check with your gym owner.');
-    }
-  };
-
   const handleVerify = async () => {
     setError('');
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode: otp });
       if (result?.access_token) base44.auth.setToken(result.access_token);
-      // If gym code provided and valid, link gym after verification
-      if (gymInfo) {
-        try {
-          const user = await base44.auth.me();
-          const today = new Date().toISOString().split('T')[0];
-          await Promise.all([
-            base44.entities.UserGymMembership.create({
-              user_id: user.id,
-              gym_id: gymInfo.id,
-              owner_id: gymInfo.user_id,
-              referral_code_used: gymCode.trim().toUpperCase(),
-              status: 'pending',
-              joined_at: today,
-            }),
-            base44.entities.GymLead.create({
-              gym_id: gymInfo.id,
-              owner_id: gymInfo.user_id,
-              name: user.full_name || email.split('@')[0],
-              email: email,
-              source: 'app',
-              status: 'new',
-              referral_code_used: gymCode.trim().toUpperCase(),
-              user_id: user.id,
-            }),
-          ]);
-          // Store gym code to pick up during onboarding
-          localStorage.setItem('pending_gym_id', gymInfo.id);
-          localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
-        } catch {}
-      }
       window.location.href = '/onboarding';
     } catch (err) {
       setError(err.message || 'Invalid code');
@@ -183,31 +137,6 @@ export default function UserSignup() {
                 value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
-          {/* Optional Gym Referral Code */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Building2 size={13} className="text-accent" />
-              Gym Referral Code <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <div className="relative">
-              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="e.g. SE7EN-GYM-001"
-                value={gymCode}
-                onChange={(e) => { setGymCode(e.target.value.toUpperCase()); }}
-                onBlur={() => validateGymCode(gymCode)}
-                className="pl-10 h-12 rounded-xl font-mono tracking-wider"
-              />
-            </div>
-            {gymInfo && (
-              <div className="flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-xl p-3">
-                <Building2 size={14} className="text-accent flex-shrink-0" />
-                <p className="text-xs text-accent font-semibold">✓ {gymInfo.gym_name} — {gymInfo.city}</p>
-              </div>
-            )}
-            {gymCodeError && <p className="text-xs text-destructive">{gymCodeError}</p>}
-          </div>
-
           <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : 'Create Account'}
           </Button>

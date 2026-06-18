@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, LogOut, Edit2, Check, Crown, Flame, Dumbbell, Award, ChevronRight, Settings, Bell, Users, TrendingUp, Shield, Share2 } from 'lucide-react';
+import { User, LogOut, Edit2, Check, Crown, Flame, Dumbbell, ChevronRight, Bell, Users, TrendingUp, Share2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Profile() {
@@ -72,9 +72,6 @@ export default function Profile() {
     { label: 'Subscription & Plans', icon: Crown, path: '/subscription', color: 'text-yellow-500' },
   ];
 
-  if (profile?.role === 'admin') {
-    MENU_ITEMS.push({ label: 'Admin Dashboard', icon: Shield, path: '/admin', color: 'text-red-400' });
-  }
 
   return (
     <>
@@ -261,6 +258,13 @@ export default function Profile() {
         <Button variant="outline" onClick={() => setShowLogout(true)} className="w-full h-11 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/5 gap-2">
           <LogOut size={15} /> Log Out
         </Button>
+
+        {/* Legal & version */}
+        <div className="flex justify-center gap-5 pt-1">
+          <Link to="/terms" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
+          <Link to="/privacy" className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
+        </div>
+        <p className="text-center text-[10px] text-muted-foreground pb-2">SE7ENFIT v1.0.0</p>
       </div>
 
       <ConfirmModal
