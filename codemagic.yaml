@@ -1,0 +1,34 @@
+workflows:
+  se7enfit-android-baseline:
+    name: SE7EN FIT Android Baseline APK
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      node: 20
+      java: 17
+
+    cache:
+      cache_paths:
+        - ~/.gradle/caches
+        - ~/.gradle/wrapper
+        - mobile/node_modules
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          cd mobile
+          npm ci
+
+      - name: Fix Gradle permission
+        script: |
+          cd mobile/android
+          chmod +x gradlew
+
+      - name: Build debug APK
+        script: |
+          cd mobile/android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+    artifacts:
+      - mobile/android/app/build/outputs/apk/debug/*.apk
