@@ -36,16 +36,8 @@ import FoodScan from '@/pages/FoodScan';
 import Challenges from '@/pages/Challenges';
 import Rewards from '@/pages/Rewards';
 import PolicyPages from '@/pages/PolicyPages';
-import GymOwnerLogin from '@/pages/GymOwnerLogin';
-import GymOwnerRegister from '@/pages/GymOwnerRegister';
 import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
-import GymOwnerLoginNew from '@/pages/GymOwnerLoginNew';
-import GymOwnerSignup from '@/pages/GymOwnerSignup';
-import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
-import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
-import MyGym from '@/pages/MyGym';
-import AdminDashboard from '@/pages/admin/AdminDashboard';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -71,15 +63,9 @@ const AuthenticatedApp = () => {
       {/* Welcome / landing */}
       <Route path="/welcome" element={<Welcome />} />
 
-      {/* New clean auth routes */}
+      {/* Auth routes */}
       <Route path="/login/user" element={<UserLogin />} />
       <Route path="/signup/user" element={<UserSignup />} />
-      <Route path="/login/gym-owner" element={<GymOwnerLoginNew />} />
-      <Route path="/signup/gym-owner" element={<GymOwnerSignup />} />
-
-      {/* Legacy gym owner auth routes (keep for backward compat) */}
-      <Route path="/gym-owner/login" element={<GymOwnerLoginNew />} />
-      <Route path="/gym-owner/register" element={<GymOwnerSignup />} />
 
       {/* Policy pages (public) */}
       <Route path="/terms" element={<PolicyPages />} />
@@ -95,8 +81,6 @@ const AuthenticatedApp = () => {
       {/* Onboarding (protected but no shell) */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/welcome" replace />} />}>
         <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/gym-owner/onboarding" element={<GymOwnerOnboarding />} />
-        <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
 
         {/* Main app with shell */}
         <Route element={<AppShell />}>
@@ -127,8 +111,7 @@ const AuthenticatedApp = () => {
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/workout/guide" element={<WorkoutGuide />} />
-          <Route path="/my-gym" element={<MyGym />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+
         </Route>
       </Route>
 

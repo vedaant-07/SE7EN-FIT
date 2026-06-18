@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Dumbbell, Building2, Zap, ChevronRight, Loader2 } from 'lucide-react';
+import { Dumbbell, Zap, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function Welcome() {
   const navigate = useNavigate();
@@ -11,14 +11,8 @@ export default function Welcome() {
     base44.auth.isAuthenticated().then(async (authed) => {
       if (authed) {
         try {
-          const user = await base44.auth.me();
-          const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
-          if (owners.length > 0) {
-            navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
-          } else {
-            const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
-            navigate(profiles.length > 0 ? '/user-dashboard' : '/onboarding', { replace: true });
-          }
+          const profiles = await base44.entities.UserProfile.filter({ user_id: (await base44.auth.me()).id });
+          navigate(profiles.length > 0 ? '/user-dashboard' : '/onboarding', { replace: true });
         } catch {
           setChecking(false);
         }
@@ -66,9 +60,8 @@ export default function Welcome() {
           </p>
         </div>
 
-        {/* TWO BIG CTA BUTTONS */}
+        {/* CTA */}
         <div className="space-y-4 mb-6">
-          {/* User */}
           <button
             onClick={() => navigate('/login/user')}
             className="w-full h-16 bg-accent text-accent-foreground rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 shadow-lg shadow-accent/25 active:scale-[0.98] transition-all hover:bg-accent/90"
@@ -77,25 +70,10 @@ export default function Welcome() {
               <Dumbbell size={22} />
             </div>
             <div className="flex-1 text-left">
-              <div className="font-bold">Continue as User</div>
+              <div className="font-bold">Get Started</div>
               <div className="text-xs font-normal opacity-75">Track fitness, nutrition & more</div>
             </div>
             <ChevronRight size={20} />
-          </button>
-
-          {/* Gym Owner */}
-          <button
-            onClick={() => navigate('/login/gym-owner')}
-            className="w-full min-h-[64px] bg-card border-2 border-accent/40 rounded-2xl font-heading font-bold flex items-center px-5 gap-4 active:scale-[0.98] transition-all hover:border-accent hover:bg-accent/5"
-          >
-            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-              <Building2 size={22} className="text-accent" />
-            </div>
-            <div className="flex-1 text-left py-3">
-              <div className="font-bold text-base leading-tight">Continue as Gym Owner</div>
-              <div className="text-xs font-normal text-muted-foreground mt-0.5">Manage members, leads & earnings</div>
-            </div>
-            <ChevronRight size={20} className="text-muted-foreground flex-shrink-0" />
           </button>
         </div>
 
