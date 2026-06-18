@@ -19,7 +19,7 @@ export default function GymToast({ toasts, setToasts }) {
   };
 
   return (
-    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
       <div className={`border rounded-2xl px-4 py-3 flex items-center gap-3 shadow-lg ${colors[toast.type || 'success']}`}>
         <Icon size={16} className="flex-shrink-0" />
         <p className="text-sm font-semibold">{toast.message}</p>
