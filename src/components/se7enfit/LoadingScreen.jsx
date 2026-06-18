@@ -7,13 +7,13 @@ export default function LoadingScreen({ fullScreen }) {
         <div className="font-display font-bold text-3xl tracking-tight">
           SE<span className="text-accent">7</span>ENFIT
         </div>
-        <div className="w-8 h-8 border-3 border-muted border-t-accent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-transparent border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-transparent border-t-accent rounded-full animate-spin" />
     </div>
   );
 }
