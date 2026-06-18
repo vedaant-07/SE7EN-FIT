@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  FREE_TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PlanType {
+  FREE_7_DAYS
+  BASIC_MONTHLY
+  PREMIUM_MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true)
+
+  heightCm     Float?
+  weightKg     Float?
+  goal         String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+  workoutLogs   WorkoutLog[]
+  foodLogs      FoodLog[]
+  progressLogs  ProgressLog[]
+  challengeJoins ChallengeParticipant[]
+}
+
+model Subscription {
+  id          String             @id @default(cuid())
+  userId      String
+  planType    PlanType
+  status      SubscriptionStatus @default(FREE_TRIAL)
+  amountInr   Int
+  startsAt    DateTime
+  endsAt      DateTime
+  paymentId   String?
+  provider    String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workout {
+  id              String   @id @default(cuid())
+  title           String
+  category        String
+  muscleGroup     String?
+  difficulty      String
+  durationMinutes Int
+  caloriesBurn    Int?
+  animatedGuideUrl String?
+  instructions    String? @db.Text
+  isPremium       Boolean @default(false)
+  createdAt       DateTime @default(now())
+
+  logs WorkoutLog[]
+}
+
+model WorkoutLog {
+  id              String   @id @default(cuid())
+  userId          String
+  workoutId       String?
+  title           String
+  durationMinutes Int
+  caloriesBurned  Int?
+  completedAt     DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workout Workout? @relation(fields: [workoutId], references: [id], onDelete: SetNull)
+}
+
+model FoodLog {
+  id          String   @id @default(cuid())
+  userId      String
+  foodName    String
+  calories    Float
+  proteinGram Float
+  carbsGram   Float?
+  fatGram     Float?
+  imageUrl    String?
+  scannedByAi Boolean  @default(false)
+  loggedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProgressLog {
+  id        String   @id @default(cuid())
+  userId    String
+  weightKg  Float?
+  chestCm   Float?
+  waistCm   Float?
+  armsCm    Float?
+  notes     String?
+  photoUrl  String?
+  loggedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Challenge {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  targetValue Int
+  rewardCoins Int      @default(0)
+  startsAt    DateTime
+  endsAt      DateTime
+  isPremium   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id          String   @id @default(cuid())
+  userId      String
+  challengeId String
+  progress    Int      @default(0)
+  isCompleted Boolean  @default(false)
+  joinedAt     DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  coinsNeeded Int
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+}
