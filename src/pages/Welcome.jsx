@@ -86,16 +86,16 @@ export default function Welcome() {
           {/* Gym Owner */}
           <button
             onClick={() => navigate('/login/gym-owner')}
-            className="w-full h-16 bg-card border-2 border-accent/40 rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 active:scale-[0.98] transition-all hover:border-accent hover:bg-accent/5"
+            className="w-full min-h-[64px] bg-card border-2 border-accent/40 rounded-2xl font-heading font-bold flex items-center px-5 gap-4 active:scale-[0.98] transition-all hover:border-accent hover:bg-accent/5"
           >
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
               <Building2 size={22} className="text-accent" />
             </div>
-            <div className="flex-1 text-left">
-              <div className="font-bold">Continue as Gym Owner</div>
-              <div className="text-xs font-normal text-muted-foreground">Manage members, leads & earnings</div>
+            <div className="flex-1 text-left py-3">
+              <div className="font-bold text-base leading-tight">Continue as Gym Owner</div>
+              <div className="text-xs font-normal text-muted-foreground mt-0.5">Manage members, leads & earnings</div>
             </div>
-            <ChevronRight size={20} className="text-muted-foreground" />
+            <ChevronRight size={20} className="text-muted-foreground flex-shrink-0" />
           </button>
         </div>
 

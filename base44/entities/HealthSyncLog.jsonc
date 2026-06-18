@@ -1,0 +1,49 @@
+{
+  "name": "HealthSyncLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "android",
+        "ios",
+        "manual"
+      ],
+      "default": "manual"
+    },
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "steps",
+        "sleep",
+        "heart_rate",
+        "weight",
+        "calories",
+        "workouts"
+      ]
+    },
+    "last_synced_at": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "error_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "platform",
+    "sync_type"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "name": "ExerciseLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "workout_log_id": {
+      "type": "string"
+    },
+    "workout_plan_id": {
+      "type": "string"
+    },
+    "gym_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "exercise_name": {
+      "type": "string"
+    },
+    "muscle_group": {
+      "type": "string"
+    },
+    "equipment_used": {
+      "type": "string"
+    },
+    "sets": {
+      "type": "number"
+    },
+    "reps": {
+      "type": "number"
+    },
+    "weight_kg": {
+      "type": "number"
+    },
+    "duration_seconds": {
+      "type": "number"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "date",
+    "exercise_name"
+  ]
+}
