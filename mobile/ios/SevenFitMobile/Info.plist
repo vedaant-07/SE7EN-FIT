@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<key>NSHealthShareUsageDescription</key>
+<string>SE7EN FIT uses your health data to show your steps, calories, distance, workout progress, weight and height inside your fitness dashboard.</string>
+<key>NSHealthUpdateUsageDescription</key>
+<string>SE7EN FIT may save workout and fitness progress data to Apple Health only when you allow it.</string>
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
