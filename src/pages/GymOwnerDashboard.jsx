@@ -133,11 +133,17 @@ export default function GymOwnerDashboard() {
   const tabLabel = [...BOTTOM_NAV, ...MORE_TABS].find(t => t.key === activeTab)?.label || '';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
+      {/* Ambient background glow layers */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-accent/10 rounded-full blur-[100px]" />
+        <div className="absolute top-1/3 -right-24 w-64 h-64 bg-accent/8 rounded-full blur-[80px]" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-48 bg-accent/6 rounded-full blur-[80px]" />
+      </div>
       <GymToast toasts={toasts} setToasts={setToasts} />
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50"
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2.5">
@@ -159,7 +165,7 @@ export default function GymOwnerDashboard() {
       </header>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative z-10">
         <div className="max-w-lg mx-auto px-4 pt-4 pb-28 space-y-4">
 
           {/* ── OVERVIEW ── */}
@@ -536,7 +542,7 @@ export default function GymOwnerDashboard() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border/40"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-lg mx-auto flex items-center justify-around px-2 h-16">
           {BOTTOM_NAV.map(item => {
