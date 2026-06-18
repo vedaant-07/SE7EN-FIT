@@ -135,8 +135,8 @@ export default function Home() {
               </div>
             </ProgressRing>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-accent uppercase tracking-widest font-bold mb-1">Today's Fitness</p>
-              <p className={`font-heading font-bold text-xl ${scoreColor} drop-shadow-[0_0_8px_currentColor]`}>{scoreLabel}</p>
+              <p className="text-sm text-accent uppercase tracking-widest font-extrabold mb-1">Today's Fitness</p>
+              <p className="font-heading font-bold text-xl text-white">{scoreLabel}</p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
                 {todayData.workoutDone && <Badge label="Workout ✓" />}
                 {todayData.steps >= stepGoal && <Badge label="Steps ✓" />}
@@ -153,7 +153,7 @@ export default function Home() {
                 <ProgressRing percent={r.percent} size={44} strokeWidth={4} color={r.color}>
                   <span className="text-[11px] font-bold">{Math.round(r.percent)}%</span>
                   </ProgressRing>
-                   <span className="text-xs text-muted-foreground">{r.label}</span>
+                   <span className="text-xs font-bold text-white">{r.label}</span>
               </button>
             ))}
           </div>
