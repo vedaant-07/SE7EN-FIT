@@ -15,7 +15,8 @@
     "react-native": "0.86.0",
     "react-native-health": "^1.19.0",
     "react-native-health-connect": "^3.5.3",
-    "react-native-safe-area-context": "^5.5.2"
+    "react-native-safe-area-context": "^5.5.2",
+    "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
