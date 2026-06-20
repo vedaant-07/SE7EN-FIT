@@ -46,6 +46,7 @@ import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
 import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import Support from '@/pages/Support';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -129,6 +130,7 @@ const AuthenticatedApp = () => {
           <Route path="/workout/guide" element={<WorkoutGuide />} />
           <Route path="/my-gym" element={<MyGym />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/support" element={<Support />} />
         </Route>
       </Route>
 

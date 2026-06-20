@@ -347,7 +347,7 @@ export default function GymOwnerDashboard() {
                   { label: 'Notification Preferences', action: () => setSettingsSection('notifications'), icon: Bell, desc: 'Manage alert settings' },
                   { label: 'Subscription & Billing', action: () => setSettingsSection('billing'), icon: Coins, desc: 'View plans & invoices' },
                   { label: 'Terms & Privacy', action: () => navigate('/terms'), icon: MessageSquare, desc: 'Legal documents' },
-                  { label: 'Help & Support', action: () => setSettingsSection('help'), icon: MessageSquare, desc: 'Get help anytime' },
+                  { label: 'Help & Support', action: () => navigate('/support'), icon: MessageSquare, desc: 'Get help anytime' },
                 ].map(item => (
                   <button key={item.label} onClick={item.action}
                     className="w-full bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:border-accent/30 active:scale-[0.99] transition-all">
@@ -439,40 +439,6 @@ export default function GymOwnerDashboard() {
                 className="w-full h-11 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-all">
                 View Invoices & Payment History
               </button>
-            </div>
-          )}
-
-          {/* SETTINGS: HELP */}
-          {activeTab === 'settings' && settingsSection === 'help' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setSettingsSection(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center">
-                  <ChevronRight size={16} className="rotate-180" />
-                </button>
-                <p className="font-heading font-bold text-lg">Help & Support</p>
-              </div>
-              {[
-                { q: 'How do members join my gym?', a: 'Share your referral code. Members enter it during signup on SE7ENFIT to link your gym.' },
-                { q: 'How do I approve a member?', a: 'Go to Members tab → tap the ✓ button next to any pending member.' },
-                { q: 'How do I add equipment?', a: 'Go to More Features → Equipment. Add from presets or create custom equipment.' },
-                { q: 'How do I send announcements?', a: 'Go to More Features → Announcements to broadcast messages to all connected members.' },
-                { q: 'How do I track attendance?', a: 'Go to More Features → Attendance. Generate a daily PIN or manually check in members.' },
-                { q: 'How do I create challenges?', a: 'Go to More Features → Challenges. Create attendance, steps, or workout challenges.' },
-              ].map(item => (
-                <div key={item.q} className="bg-card border border-border rounded-2xl p-4">
-                  <p className="text-sm font-semibold mb-1">{item.q}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.a}</p>
-                </div>
-              ))}
-              <div className="bg-accent/8 border border-accent/20 rounded-2xl p-4 text-center">
-                <MessageSquare size={24} className="text-accent mx-auto mb-2" />
-                <p className="text-sm font-semibold">Contact Support</p>
-                <p className="text-xs text-muted-foreground mt-1">support@se7enfit.com</p>
-                <button onClick={() => showToast('Support request sent! We\'ll email you within 24 hours.', 'success')}
-                  className="mt-3 bg-accent text-accent-foreground text-xs font-semibold px-4 py-2 rounded-xl w-full">
-                  Send Support Request
-                </button>
-              </div>
             </div>
           )}
 

@@ -8,7 +8,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
 import { useNavigate } from 'react-router-dom';
 
-const RAZORPAY_KEY_ID = 'rzp_test_T1c5k1ZdbXOuYS';
+// ⚠️ Replace with your live Razorpay key before production launch
+// Get your key from: https://dashboard.razorpay.com/app/keys
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
 function loadRazorpay() {
   return new Promise((resolve) => {
@@ -63,7 +65,7 @@ export default function Subscription() {
         name: user?.full_name || '',
         email: user?.email || '',
       },
-      theme: { color: '#22c55e' },
+      theme: { color: '#4ade80' },
       handler: async (response) => {
         // Payment successful — record subscription
         const today = new Date();

@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import { Users, Dumbbell, CreditCard, TrendingUp, Shield, ChevronRight, Activity, Eye, CheckCircle, XCircle, Crown } from 'lucide-react';
+import { Users, Dumbbell, CreditCard, TrendingUp, Shield, ChevronRight, Activity, Eye, CheckCircle, XCircle, Crown, ClipboardList } from 'lucide-react';
+import ProductionReport from '@/pages/admin/ProductionReport';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-const TABS = ['Overview', 'Users', 'Gyms', 'Subscriptions'];
+const TABS = ['Overview', 'Users', 'Gyms', 'Subscriptions', 'Launch Report'];
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -160,6 +161,9 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
+
+        {/* Launch Report Tab */}
+        {activeTab === 'Launch Report' && <ProductionReport />}
 
         {/* Overview Tab */}
         {activeTab === 'Overview' && (

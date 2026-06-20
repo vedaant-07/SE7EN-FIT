@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, LogOut, Edit2, Check, Crown, Flame, Dumbbell, Award, ChevronRight, Settings, Bell, Users, TrendingUp, Shield, Share2 } from 'lucide-react';
+import { User, LogOut, Edit2, Check, Crown, Flame, Dumbbell, Award, ChevronRight, Settings, Bell, Users, TrendingUp, Shield, Share2, HelpCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Profile() {
@@ -70,6 +70,7 @@ export default function Profile() {
     { label: 'Notifications', icon: Bell, path: '/notifications', color: 'text-yellow-400' },
     { label: 'Community', icon: Users, path: '/community', color: 'text-purple-400' },
     { label: 'Subscription & Plans', icon: Crown, path: '/subscription', color: 'text-yellow-500' },
+    { label: 'Help & Support', icon: HelpCircle, path: '/support', color: 'text-blue-400' },
   ];
 
   if (profile?.role === 'admin') {
