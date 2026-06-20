@@ -6,11 +6,11 @@ import EmptyState from '@/components/se7enfit/EmptyState';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
 import { Button } from '@/components/ui/button';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Award, ChevronDown, Bot, RefreshCw, ChevronRight } from 'lucide-react';
+import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Award, ChevronDown, Bot, RefreshCw, ChevronRight, BarChart2, Calendar, Dumbbell, Flame, Footprints, Moon, Droplets } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getToday, calculateBMI, getBMICategory } from '@/lib/fitnessUtils';
 
-const TABS = ['Weight', 'Body', 'Photos', 'AI Report'];
+const TABS = ['Weight', 'Body', 'Photos', 'Reports', 'AI Report'];
 
 export default function Progress() {
   const { toast } = useToast();
@@ -26,6 +26,8 @@ export default function Progress() {
   const [saving, setSaving] = useState(false);
   const [aiReport, setAiReport] = useState(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [summaryReports, setSummaryReports] = useState([]);
+  const [summaryPeriod, setSummaryPeriod] = useState('weekly');
 
   useEffect(() => { loadData(); }, []);
 
@@ -43,6 +45,9 @@ export default function Progress() {
     setMeasurements(bm);
     setPhotos(pp);
     setWorkoutLogs(wkl);
+    // Load summary reports
+    const reports = await base44.entities.WeeklySummaryReport.filter({ user_id: user.id }, '-week_start', 20);
+    setSummaryReports(reports);
     setLoading(false);
   };
 
@@ -294,6 +299,134 @@ export default function Progress() {
                     {p.photo_url && <img src={p.photo_url} alt="Progress" className="w-full h-full object-cover" />}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab: Reports */}
+        {activeTab === 'Reports' && (
+          <div className="space-y-4">
+            {/* Period toggle */}
+            <div className="flex gap-2">
+              {['weekly', 'monthly'].map(p => (
+                <button key={p} onClick={() => setSummaryPeriod(p)}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                    summaryPeriod === p ? 'bg-accent text-accent-foreground border-accent' : 'bg-card border-border text-muted-foreground'
+                  }`}>
+                  {p === 'weekly' ? '📅 Weekly' : '🗓️ Monthly'}
+                </button>
+              ))}
+            </div>
+
+            {summaryReports.filter(r => r.period === summaryPeriod).length === 0 ? (
+              <div className="bg-card border border-border rounded-3xl p-6 text-center space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto">
+                  <BarChart2 size={24} className="text-accent" />
+                </div>
+                <p className="font-heading font-semibold">No {summaryPeriod} reports yet</p>
+                <p className="text-xs text-muted-foreground">
+                  {summaryPeriod === 'weekly'
+                    ? 'Weekly reports are auto-generated every Sunday night. Keep logging your data!'
+                    : 'Monthly reports are auto-generated on the 1st of each month. Keep logging daily!'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {summaryReports.filter(r => r.period === summaryPeriod).map(report => {
+                  const start = new Date(report.week_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  const end = new Date(report.week_end).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const wChange = report.weight_change_kg;
+                  return (
+                    <div key={report.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {/* Header */}
+                      <div className="bg-accent/10 border-b border-border/50 px-4 py-3 flex items-center justify-between">
+                        <div>
+                          <p className="font-heading font-bold text-sm">{start} – {end}</p>
+                          <p className="text-[10px] text-muted-foreground capitalize">{report.period} Report</p>
+                        </div>
+                        {wChange !== null && wChange !== undefined && (
+                          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                            wChange < 0 ? 'bg-green-400/15 text-green-400' : wChange > 0 ? 'bg-red-400/15 text-red-400' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {wChange < 0 ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
+                            {wChange > 0 ? '+' : ''}{wChange} kg
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-4 space-y-4">
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { icon: Dumbbell, label: 'Workouts', value: report.total_workouts || 0, unit: '', color: 'text-accent bg-accent/10' },
+                            { icon: Flame, label: 'Avg Cals', value: report.avg_daily_calories || 0, unit: 'kcal', color: 'text-orange-400 bg-orange-400/10' },
+                            { icon: Footprints, label: 'Avg Steps', value: report.avg_daily_steps ? Math.round(report.avg_daily_steps).toLocaleString() : 0, unit: '', color: 'text-purple-400 bg-purple-400/10' },
+                            { icon: Moon, label: 'Avg Sleep', value: report.avg_sleep_hours || 0, unit: 'h', color: 'text-indigo-400 bg-indigo-400/10' },
+                            { icon: Droplets, label: 'Avg Water', value: report.avg_water_ml ? Math.round(report.avg_water_ml / 250) : 0, unit: 'glasses', color: 'text-blue-400 bg-blue-400/10' },
+                            { icon: Calendar, label: 'Days Logged', value: report.days_logged || 0, unit: `/${summaryPeriod === 'weekly' ? 7 : 30}`, color: 'text-yellow-400 bg-yellow-400/10' },
+                          ].map(s => (
+                            <div key={s.label} className={`rounded-xl p-2.5 ${s.color.split(' ')[1]} flex flex-col items-center text-center`}>
+                              <s.icon size={13} className={s.color.split(' ')[0]} />
+                              <p className={`font-bold text-sm mt-1 ${s.color.split(' ')[0]}`}>{s.value}<span className="text-[9px] font-normal ml-0.5">{s.unit}</span></p>
+                              <p className="text-[9px] text-muted-foreground">{s.label}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* AI Summary */}
+                        {report.ai_summary && (
+                          <div className="bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-accent uppercase tracking-wider mb-1">AI Summary</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{report.ai_summary}</p>
+                          </div>
+                        )}
+
+                        {/* Wins */}
+                        {report.top_wins?.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-emerald-400 mb-1.5">🏆 Top Wins</p>
+                            <ul className="space-y-1">
+                              {report.top_wins.map((w, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex gap-2 items-start">
+                                  <span className="text-emerald-400 mt-0.5 flex-shrink-0">✓</span>{w}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Improve */}
+                        {report.areas_to_improve?.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-orange-400 mb-1.5">⚠️ Improve</p>
+                            <ul className="space-y-1">
+                              {report.areas_to_improve.map((a, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex gap-2 items-start">
+                                  <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>{a}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Next focus */}
+                        {report.next_focus?.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-blue-400 mb-1.5">🎯 Next Focus</p>
+                            <ul className="space-y-1">
+                              {report.next_focus.map((f, i) => (
+                                <li key={i} className="text-xs text-muted-foreground flex gap-2 items-start">
+                                  <ChevronRight size={10} className="text-blue-400 mt-0.5 flex-shrink-0" />{f}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

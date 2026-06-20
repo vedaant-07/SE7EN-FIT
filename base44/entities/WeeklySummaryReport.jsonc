@@ -1,0 +1,84 @@
+{
+  "name": "WeeklySummaryReport",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "period": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "monthly"
+      ]
+    },
+    "week_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "week_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "avg_weight_kg": {
+      "type": "number"
+    },
+    "weight_change_kg": {
+      "type": "number"
+    },
+    "total_workouts": {
+      "type": "number"
+    },
+    "total_workout_calories": {
+      "type": "number"
+    },
+    "avg_daily_calories": {
+      "type": "number"
+    },
+    "avg_daily_protein_g": {
+      "type": "number"
+    },
+    "avg_daily_steps": {
+      "type": "number"
+    },
+    "avg_sleep_hours": {
+      "type": "number"
+    },
+    "avg_water_ml": {
+      "type": "number"
+    },
+    "days_logged": {
+      "type": "number"
+    },
+    "fitness_score_avg": {
+      "type": "number"
+    },
+    "ai_summary": {
+      "type": "string"
+    },
+    "top_wins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "areas_to_improve": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_focus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "user_id",
+    "period",
+    "week_start",
+    "week_end"
+  ]
+}
