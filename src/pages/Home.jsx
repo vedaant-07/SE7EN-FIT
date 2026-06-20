@@ -160,7 +160,7 @@ export default function Home() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-3 gap-2.5">
           <MetricCard
             icon={<Flame size={20} />} label="Calories"
             value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`}
@@ -351,15 +351,17 @@ function MetricCard({ icon, label, value, sub, percent, onClick, color, barColor
   return (
     <button
       onClick={onClick}
-      className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent/30 active:scale-[0.97] transition-all w-full"
+      className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-[0.97] transition-all w-full"
     >
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`} style={{ background: 'color-mix(in srgb, currentColor 12%, transparent)' }}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${color}`} style={{ background: 'color-mix(in srgb, currentColor 15%, transparent)' }}>
         <span className={color}>{icon}</span>
       </div>
-      <p className="text-lg font-bold font-heading leading-none">{value}</p>
-      <p className="text-xs font-semibold text-foreground/80 mt-1">{label}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5 opacity-70">{sub}</p>
-      <div className="mt-2.5 h-1.5 bg-muted rounded-full overflow-hidden">
+      <div className="text-center w-full px-1">
+        <p className="text-sm font-bold font-heading leading-none">{value}</p>
+        <p className="text-[10px] font-semibold text-foreground/80 mt-0.5">{label}</p>
+        <p className="text-[9px] text-muted-foreground opacity-70">{sub}</p>
+      </div>
+      <div className="w-full px-2 h-1 bg-muted rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
       </div>
     </button>
