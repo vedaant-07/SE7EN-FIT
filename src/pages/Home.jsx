@@ -238,21 +238,21 @@ export default function Home() {
         {/* Quick Actions */}
         <div>
           <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', color: 'text-accent bg-accent/10' },
-              { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
-              { icon: Droplets, label: 'Add Water', route: '/tracking', color: 'text-blue-400 bg-blue-400/10' },
-              { icon: Camera, label: 'Food Scan 🤖', route: '/food-scan', color: 'text-green-400 bg-green-400/10' },
-              { icon: Building2, label: 'My Gym', route: '/my-gym', color: 'text-amber-400 bg-amber-400/10' },
-              { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
-            ].map(({ icon: Icon, label, route, color }) => (
+              { icon: Dumbbell,  label: 'Log Workout', route: '/workout/log',    iconColor: 'text-accent',     bg: 'bg-accent/15' },
+              { icon: Utensils,  label: 'Log Meal',    route: '/nutrition/log',  iconColor: 'text-orange-400', bg: 'bg-orange-400/15' },
+              { icon: Droplets,  label: 'Add Water',   route: '/tracking',       iconColor: 'text-blue-400',   bg: 'bg-blue-400/15' },
+              { icon: Camera,    label: 'Food Scan 🤖', route: '/food-scan',     iconColor: 'text-green-400',  bg: 'bg-green-400/15' },
+              { icon: Building2, label: 'My Gym',      route: '/my-gym',         iconColor: 'text-amber-400',  bg: 'bg-amber-400/15' },
+              { icon: Scale,     label: 'Progress',    route: '/progress',       iconColor: 'text-purple-400', bg: 'bg-purple-400/15' },
+            ].map(({ icon: Icon, label, route, iconColor, bg }) => (
               <button key={route} onClick={() => navigate(route)}
-                className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
-                  <Icon size={17} />
+                className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center gap-3 hover:border-accent/30 active:scale-95 transition-all">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${bg}`}>
+                  <Icon size={26} className={iconColor} strokeWidth={1.8} />
                 </div>
-                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                <span className="text-xs font-semibold text-center leading-tight">{label}</span>
               </button>
             ))}
           </div>
