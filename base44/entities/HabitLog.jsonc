@@ -9,6 +9,12 @@
       "type": "string",
       "format": "date"
     },
+    "habits_completed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "habit": {
       "type": "string"
     },
@@ -19,7 +25,6 @@
   },
   "required": [
     "user_id",
-    "date",
-    "habit"
+    "date"
   ]
 }
