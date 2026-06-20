@@ -248,9 +248,9 @@ export default function Home() {
               { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
             ].map(({ icon: Icon, label, route, color }) => (
               <button key={route} onClick={() => navigate(route)}
-                className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
-                  <Icon size={17} />
+                className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${color}`}>
+                  <Icon size={22} />
                 </div>
                 <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
               </button>
