@@ -261,18 +261,18 @@ export default function Profile() {
         <Button variant="outline" onClick={() => setShowLogout(true)} className="w-full h-11 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/5 gap-2">
           <LogOut size={15} /> Log Out
         </Button>
-      </div>
 
-      <ConfirmModal
-        open={showLogout}
-        title="Log out?"
-        description="You'll need to sign in again to access your fitness data."
-        confirmLabel="Log Out"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={() => base44.auth.logout('/login')}
-        onCancel={() => setShowLogout(false)}
-      />
+        <ConfirmModal
+          open={showLogout}
+          title="Log out?"
+          description="You'll need to sign in again to access your fitness data."
+          confirmLabel="Log Out"
+          cancelLabel="Cancel"
+          destructive
+          onConfirm={() => base44.auth.logout('/login')}
+          onCancel={() => setShowLogout(false)}
+        />
+      </div>
     </>
   );
 }

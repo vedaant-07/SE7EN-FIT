@@ -369,6 +369,16 @@ export default function GymOwnerDashboard() {
                 </div>
                 <span className="flex-1 text-sm font-semibold text-left">Sign Out</span>
               </button>
+
+              <ConfirmModal
+                open={logoutConfirm}
+                title="Sign Out"
+                message="Are you sure you want to sign out of your gym dashboard?"
+                confirmLabel="Sign Out"
+                confirmClass="bg-red-500 text-white"
+                onConfirm={() => { base44.auth.logout(); navigate('/welcome'); }}
+                onCancel={() => setLogoutConfirm(false)}
+              />
             </div>
           )}
 
@@ -557,16 +567,6 @@ export default function GymOwnerDashboard() {
         </div>
       </nav>
 
-      {/* Logout Confirm */}
-      <ConfirmModal
-        open={logoutConfirm}
-        title="Sign Out"
-        message="Are you sure you want to sign out of your gym dashboard?"
-        confirmLabel="Sign Out"
-        confirmClass="bg-red-500 text-white"
-        onConfirm={() => { base44.auth.logout(); navigate('/welcome'); }}
-        onCancel={() => setLogoutConfirm(false)}
-      />
     </div>
   );
 }
