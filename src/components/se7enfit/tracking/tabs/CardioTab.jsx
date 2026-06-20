@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Check, X } from 'lucide-react';
+import { Heart, Check, X, Radio } from 'lucide-react';
+import LiveTracker from '@/components/se7enfit/tracking/LiveTracker';
 import { getToday } from '@/lib/fitnessUtils';
 import { buildWeekData, buildMonthData, calcStreak, getTrackingInsight } from '@/lib/trackingUtils';
 import { TodayProgressCard, AIInsightCard, StreakCard, AchievementBadge, HistoryItem, DeviceSyncBanner } from '../TrackingWidgets';
@@ -23,6 +24,7 @@ export default function CardioTab({ profile }) {
   const [insightLoading, setInsightLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [showLive, setShowLive] = useState(false);
   const today = getToday();
   const cardioGoalMin = 150; // WHO weekly cardio recommendation in minutes
 
@@ -79,19 +81,46 @@ export default function CardioTab({ profile }) {
   const monthData = buildMonthData(durationLogs, 'date', 'duration_minutes', 'sum');
   const streak = calcStreak(logs);
 
+  const handleLiveSession = async (session) => {
+    const user = await base44.auth.me();
+    await base44.entities.CardioLog.create({
+      user_id: user.id, date: today,
+      activity: form.activity,
+      duration_minutes: Math.round(session.durationSec / 60),
+      distance_km: Math.round(session.distanceKm * 100) / 100,
+      calories_burned: session.calories,
+      avg_heart_rate: session.heartRate || undefined,
+    });
+    toast({ title: `✅ ${form.activity} session saved — ${Math.round(session.durationSec / 60)} min, ${session.distanceKm.toFixed(2)} km` });
+    setShowLive(false);
+    loadData();
+  };
+
   return (
     <div className="space-y-4">
+      {/* Live tracker */}
+      <div className="flex gap-2 items-center">
+        <Select value={form.activity} onValueChange={v => setForm(p => ({ ...p, activity: v }))}>
+          <SelectTrigger className="h-10 rounded-xl bg-card border-border flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>{ACTIVITIES.map(a => <SelectItem key={a} value={a}>{ACTIVITY_EMOJI[a]} {a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>)}</SelectContent>
+        </Select>
+        <button onClick={() => setShowLive(p => !p)}
+          className={`h-10 px-4 rounded-xl border font-semibold text-sm flex items-center gap-2 transition-all active:scale-[0.98] flex-shrink-0 ${
+            showLive ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-card border-border hover:border-accent/30'
+          }`}>
+          <Radio size={14} className={showLive ? 'animate-pulse' : ''} />
+          {showLive ? 'Stop' : 'Live'}
+        </button>
+      </div>
+      {showLive && <LiveTracker activity={form.activity} weightKg={profile?.weight_kg || 70} onSessionEnd={handleLiveSession} />}
+
       <TodayProgressCard label="Cardio This Week" value={weekMin} unit="min" goalValue={cardioGoalMin} goalUnit="min (WHO)" percent={percent} color="#ef4444">
         <p className="text-[11px] text-muted-foreground mt-1">Today: {todayMin} min · {todayLogs.reduce((s, l) => s + (l.calories_burned || 0), 0)} kcal burned</p>
       </TodayProgressCard>
 
-      {/* Add form */}
+      {/* Manual log form */}
       <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-        <p className="font-heading font-semibold text-sm flex items-center gap-1.5"><Heart size={14} className="text-red-400" /> Log Cardio</p>
-        <Select value={form.activity} onValueChange={v => setForm(p => ({ ...p, activity: v }))}>
-          <SelectTrigger className="h-9 rounded-xl bg-background border-border"><SelectValue /></SelectTrigger>
-          <SelectContent>{ACTIVITIES.map(a => <SelectItem key={a} value={a}>{ACTIVITY_EMOJI[a]} {a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>)}</SelectContent>
-        </Select>
+        <p className="font-heading font-semibold text-sm flex items-center gap-1.5"><Heart size={14} className="text-red-400" /> Manual Log</p>
         <div className="grid grid-cols-2 gap-2">
           <div><Label className="text-[11px]">Duration (min)</Label><Input type="number" placeholder="30" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: e.target.value }))} className="h-9 mt-0.5 rounded-lg bg-background border-border" /></div>
           <div><Label className="text-[11px]">Distance (km)</Label><Input type="number" step="0.1" placeholder="3.5" value={form.distance_km} onChange={e => setForm(p => ({ ...p, distance_km: e.target.value }))} className="h-9 mt-0.5 rounded-lg bg-background border-border" /></div>

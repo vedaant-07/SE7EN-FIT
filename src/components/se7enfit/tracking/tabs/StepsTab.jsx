@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Footprints, Plus, MapPin, Flame, Pencil, Check, X } from 'lucide-react';
+import { Footprints, Plus, MapPin, Flame, Pencil, Check, X, Radio } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { buildWeekData, buildMonthData, calcStreak, getTrackingInsight } from '@/lib/trackingUtils';
 import { TodayProgressCard, AIInsightCard, StreakCard, AchievementBadge, HistoryItem, DeviceSyncBanner } from '../TrackingWidgets';
 import { WeekBarChart, MonthLineChart } from '../TrackingChart';
+import LiveTracker from '@/components/se7enfit/tracking/LiveTracker';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function StepsTab({ profile }) {
@@ -18,6 +19,7 @@ export default function StepsTab({ profile }) {
   const [insightLoading, setInsightLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState('');
+  const [showLive, setShowLive] = useState(false);
   const today = getToday();
   const goal = profile?.daily_step_goal || 8000;
 
@@ -78,8 +80,41 @@ export default function StepsTab({ profile }) {
   const monthData = buildMonthData(logs, 'date', 'steps', 'first');
   const streak = calcStreak(logs);
 
+  const handleLiveSession = async (session) => {
+    const user = await base44.auth.me();
+    const existing = logs.find(l => l.date === today);
+    if (existing) {
+      await base44.entities.StepLog.update(existing.id, {
+        steps: (existing.steps || 0) + session.steps,
+        distance_km: Math.round(((existing.distance_km || 0) + session.distanceKm) * 100) / 100,
+        calories_burned: (existing.calories_burned || 0) + session.calories,
+      });
+    } else {
+      await base44.entities.StepLog.create({
+        user_id: user.id, date: today,
+        steps: session.steps,
+        distance_km: Math.round(session.distanceKm * 100) / 100,
+        calories_burned: session.calories,
+        source: 'step_sensor',
+      });
+    }
+    toast({ title: `✅ Live session saved — ${session.steps.toLocaleString()} steps, ${session.distanceKm.toFixed(2)} km` });
+    setShowLive(false);
+    loadData();
+  };
+
   return (
     <div className="space-y-4">
+      {/* Live Tracker toggle */}
+      <button onClick={() => setShowLive(p => !p)}
+        className={`w-full h-11 rounded-xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+          showLive ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-card border-border text-foreground hover:border-accent/30'
+        }`}>
+        <Radio size={15} className={showLive ? 'text-accent animate-pulse' : ''} />
+        {showLive ? 'Hide Live Tracker' : '🔴 Start Live Tracking'}
+      </button>
+      {showLive && <LiveTracker activity="walking" weightKg={profile?.weight_kg || 70} onSessionEnd={handleLiveSession} />}
+
       {/* Today */}
       <TodayProgressCard label="Steps Today" value={todaySteps.toLocaleString()} unit="steps" goalValue={goal.toLocaleString()} goalUnit="steps" percent={percent} color="#a855f7">
         <div className="flex gap-3 mt-1.5">
