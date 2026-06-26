@@ -5,7 +5,7 @@ import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
-const isNativeCapacitor = import.meta.env.MODE === 'capacitor' || Capacitor.isNativePlatform();
+const isNativeCapacitor = import.meta.env.MODE === 'capacitor' || Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.location.hostname === 'localhost' && !window.location.port);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
