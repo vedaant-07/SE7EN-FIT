@@ -22,11 +22,11 @@ export default function GymOwnerLoginNew() {
       const user = await base44.auth.me();
       const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
       if (owners.length === 0) {
-        window.location.href = '/signup/gym-owner';
+        navigate('/signup/gym-owner', { replace: true });
       } else if (!owners[0].onboarding_complete) {
-        window.location.href = '/gym-owner/onboarding';
+        navigate('/gym-owner/onboarding', { replace: true });
       } else {
-        window.location.href = '/gym-owner/dashboard';
+        navigate('/gym-owner/dashboard', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Invalid email or password');
@@ -38,7 +38,6 @@ export default function GymOwnerLoginNew() {
     <div className="min-h-screen bg-background flex flex-col px-6 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header */}
       <div className="flex items-center gap-3 pt-14 mb-8">
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
           <ChevronLeft size={18} />
@@ -55,20 +54,14 @@ export default function GymOwnerLoginNew() {
           <p className="text-muted-foreground text-sm mt-1.5">Access your gym dashboard</p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="email" type="email" autoComplete="email" autoFocus placeholder="gym@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-12 rounded-xl" required />
+              <Input id="email" type="email" autoComplete="email" autoFocus placeholder="gym@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
           <div className="space-y-2">
@@ -78,9 +71,7 @@ export default function GymOwnerLoginNew() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 h-12 rounded-xl" required />
+              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
           <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
@@ -88,10 +79,7 @@ export default function GymOwnerLoginNew() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          New gym owner?{' '}
-          <Link to="/signup/gym-owner" className="text-accent font-medium hover:underline">Register your gym</Link>
-        </p>
+        <p className="text-center text-sm text-muted-foreground mt-6">New gym owner? <Link to="/signup/gym-owner" className="text-accent font-medium hover:underline">Register your gym</Link></p>
       </div>
     </div>
   );
