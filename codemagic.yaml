@@ -7,7 +7,6 @@ workflows:
       node: 20
       java: 21
       vars:
-        VITE_BASE44_APP_BASE_URL: ""
         CI: "1"
 
     scripts:
