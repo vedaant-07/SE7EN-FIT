@@ -1,8 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { base44 } from '@/api/base44Client';
-import { appParams } from '@/lib/app-params';
-import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
 const isNativeCapacitor = import.meta.env.MODE === 'capacitor' || Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.location.hostname === 'localhost' && !window.location.port);
@@ -14,102 +12,43 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
     checkAppState();
   }, []);
 
-  const checkAppState = async () => {
-    if (isNativeCapacitor) {
-      setAppPublicSettings({ id: appParams.appId || 'se7en-fit-native', public_settings: {} });
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-      setAuthError(null);
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
-      return;
-    }
+  const completeStartup = async () => {
+    const authed = await base44.auth.isAuthenticated();
+    const currentUser = authed ? await base44.auth.me() : null;
+    setUser(currentUser);
+    setIsAuthenticated(Boolean(authed));
+    setAuthChecked(true);
+    setAuthError(null);
+    setAppPublicSettings({ id: 'se7enfit-local', public_settings: {} });
+    setIsLoadingPublicSettings(false);
+    setIsLoadingAuth(false);
+  };
 
+  const checkAppState = async () => {
     try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-      
-      const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token,
-        interceptResponses: true
-      });
-      
-      try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-        setAppPublicSettings(publicSettings);
-        
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-          setAuthChecked(true);
-        }
-        setIsLoadingPublicSettings(false);
-      } catch (appError) {
-        console.error('App state check failed:', appError);
-        
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
-          }
-        } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
-        }
-        setIsLoadingPublicSettings(false);
-        setIsLoadingAuth(false);
-      }
+      await completeStartup();
     } catch (error) {
-      console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
+      console.error('App startup failed:', error);
+      setAuthError({ type: 'unknown', message: error.message || 'Failed to load app' });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
+      setAuthChecked(true);
     }
   };
 
   const checkUserAuth = async () => {
-    if (isNativeCapacitor) {
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      setAuthChecked(true);
-      return;
-    }
-
     try {
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const authed = await base44.auth.isAuthenticated();
+      const currentUser = authed ? await base44.auth.me() : null;
       setUser(currentUser);
-      setIsAuthenticated(true);
+      setIsAuthenticated(Boolean(authed));
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
@@ -117,29 +56,13 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
-      
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = () => {
+    base44.auth.logout();
     setUser(null);
     setIsAuthenticated(false);
-    
-    if (isNativeCapacitor) {
-      return;
-    }
-
-    if (shouldRedirect) {
-      base44.auth.logout(window.location.href);
-    } else {
-      base44.auth.logout();
-    }
   };
 
   const navigateToLogin = () => {
@@ -147,14 +70,13 @@ export const AuthProvider = ({ children }) => {
       window.location.hash = '#/welcome';
       return;
     }
-
-    base44.auth.redirectToLogin(window.location.href);
+    window.location.href = '/welcome';
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
@@ -173,7 +95,7 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
