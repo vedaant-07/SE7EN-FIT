@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes, Navigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -47,6 +48,8 @@ import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import Support from '@/pages/Support';
+
+const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
