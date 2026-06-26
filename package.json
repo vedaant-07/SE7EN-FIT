@@ -6,14 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:capacitor": "vite build --mode capacitor",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "cap:add:android": "cap add android",
-    "cap:sync:android": "npm run build && cap sync android",
+    "cap:sync:android": "npm run build:capacitor && cap sync android",
     "cap:open:android": "cap open android",
-    "cap:build:android": "npm run build && cap sync android && cd android && ./gradlew :app:assembleDebug --no-daemon"
+    "cap:build:android": "npm run build:capacitor && cap sync android && cd android && ./gradlew :app:assembleDebug --no-daemon"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.34",
