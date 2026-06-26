@@ -49,7 +49,8 @@ import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import Support from '@/pages/Support';
 
-const Router = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
+const isCapacitorBuild = import.meta.env.MODE === 'capacitor';
+const Router = isCapacitorBuild || Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,37 +73,25 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      {/* Welcome / landing */}
       <Route path="/welcome" element={<Welcome />} />
-
-      {/* New clean auth routes */}
       <Route path="/login/user" element={<UserLogin />} />
       <Route path="/signup/user" element={<UserSignup />} />
       <Route path="/login/gym-owner" element={<GymOwnerLoginNew />} />
       <Route path="/signup/gym-owner" element={<GymOwnerSignup />} />
-
-      {/* Legacy gym owner auth routes (keep for backward compat) */}
       <Route path="/gym-owner/login" element={<GymOwnerLoginNew />} />
       <Route path="/gym-owner/register" element={<GymOwnerSignup />} />
-
-      {/* Policy pages (public) */}
       <Route path="/terms" element={<PolicyPages />} />
       <Route path="/privacy" element={<PolicyPages />} />
       <Route path="/policy" element={<PolicyPages />} />
-
-      {/* Public auth routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Onboarding (protected but no shell) */}
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/welcome" replace />} />}>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/gym-owner/onboarding" element={<GymOwnerOnboarding />} />
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
-
-        {/* Main app with shell */}
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
           <Route path="/user-dashboard" element={<Home />} />
