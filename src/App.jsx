@@ -50,7 +50,8 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import Support from '@/pages/Support';
 
 const isCapacitorBuild = import.meta.env.MODE === 'capacitor';
-const Router = isCapacitorBuild || Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
+const isCapacitorWebView = typeof window !== 'undefined' && window.location.protocol === 'https:' && window.location.hostname === 'localhost';
+const Router = isCapacitorBuild || isCapacitorWebView || Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
