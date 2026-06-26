@@ -1,31 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { base44 } from '@/api/base44Client';
 import { Dumbbell, Building2, Zap, ChevronRight, Loader2 } from 'lucide-react';
 
+const isCapacitorNativeShell = () => {
+  if (Capacitor.isNativePlatform()) return true;
+  if (import.meta.env.MODE === 'capacitor') return true;
+  if (typeof window === 'undefined') return false;
+  return window.location.hostname === 'localhost' && !window.location.port;
+};
+
 export default function Welcome() {
   const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(() => !isCapacitorNativeShell());
 
   useEffect(() => {
+    if (isCapacitorNativeShell()) {
+      setChecking(false);
+      return;
+    }
+
+    let active = true;
+
     base44.auth.isAuthenticated().then(async (authed) => {
+      if (!active) return;
+
       if (authed) {
         try {
           const user = await base44.auth.me();
           const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+          if (!active) return;
+
           if (owners.length > 0) {
             navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
           } else {
             const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
+            if (!active) return;
             navigate(profiles.length > 0 ? '/user-dashboard' : '/onboarding', { replace: true });
           }
         } catch {
-          setChecking(false);
+          if (active) setChecking(false);
         }
       } else {
         setChecking(false);
       }
+    }).catch(() => {
+      if (active) setChecking(false);
     });
+
+    return () => {
+      active = false;
+    };
   }, [navigate]);
 
   if (checking) {
@@ -45,7 +71,6 @@ export default function Welcome() {
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-sm relative z-10">
-        {/* Logo */}
         <div className="text-center mb-10">
           <div className="w-20 h-20 rounded-3xl bg-accent/15 border border-accent/30 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-accent/10">
             <Zap size={36} className="text-accent" />
@@ -56,7 +81,6 @@ export default function Welcome() {
           <p className="text-muted-foreground text-sm mt-2 font-medium">India's #1 AI Fitness App</p>
         </div>
 
-        {/* Tagline */}
         <div className="text-center mb-8">
           <h2 className="font-heading font-bold text-2xl leading-tight">
             Transform Your <span className="text-accent">Body & Mind</span>
@@ -66,9 +90,7 @@ export default function Welcome() {
           </p>
         </div>
 
-        {/* TWO BIG CTA BUTTONS */}
         <div className="space-y-4 mb-6">
-          {/* User */}
           <button
             onClick={() => navigate('/login/user')}
             className="w-full h-16 bg-accent text-accent-foreground rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 shadow-lg shadow-accent/25 active:scale-[0.98] transition-all hover:bg-accent/90"
@@ -83,7 +105,6 @@ export default function Welcome() {
             <ChevronRight size={20} />
           </button>
 
-          {/* Gym Owner */}
           <button
             onClick={() => navigate('/login/gym-owner')}
             className="w-full min-h-[64px] bg-card border-2 border-accent/40 rounded-2xl font-heading font-bold flex items-center px-5 gap-4 active:scale-[0.98] transition-all hover:border-accent hover:bg-accent/5"
@@ -99,7 +120,6 @@ export default function Welcome() {
           </button>
         </div>
 
-        {/* Legal */}
         <p className="text-center text-[10px] text-muted-foreground leading-relaxed px-4">
           By continuing, you agree to our{' '}
           <button onClick={() => navigate('/terms')} className="underline">Terms</button>
