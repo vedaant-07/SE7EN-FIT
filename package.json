@@ -1,5 +1,5 @@
 {
-  "name": "base44-app",
+  "name": "se7enfit-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,8 +17,6 @@
     "cap:build:android": "npm run build:capacitor && cap sync android && cd android && ./gradlew :app:assembleDebug --no-daemon"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.34",
-    "@base44/vite-plugin": "^1.0.23",
     "@capacitor/android": "^7.4.4",
     "@capacitor/core": "^7.4.4",
     "@hello-pangea/dnd": "^17.0.0",
