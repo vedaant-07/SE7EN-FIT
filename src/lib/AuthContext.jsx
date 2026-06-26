@@ -1,9 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
+const isNativeCapacitor = Capacitor.isNativePlatform();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -19,6 +21,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAppState = async () => {
+    if (isNativeCapacitor) {
+      setAppPublicSettings({ id: appParams.appId || 'se7en-fit-native', public_settings: {} });
+      setIsAuthenticated(false);
+      setAuthChecked(true);
+      setAuthError(null);
+      setIsLoadingPublicSettings(false);
+      setIsLoadingAuth(false);
+      return;
+    }
+
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
@@ -90,6 +102,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkUserAuth = async () => {
+    if (isNativeCapacitor) {
+      setIsLoadingAuth(false);
+      setIsAuthenticated(false);
+      setAuthChecked(true);
+      return;
+    }
+
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
@@ -118,6 +137,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
     
+    if (isNativeCapacitor) {
+      return;
+    }
+
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
@@ -128,6 +151,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
+    if (isNativeCapacitor) {
+      window.location.hash = '#/welcome';
+      return;
+    }
+
     // Use the SDK's redirectToLogin method
     base44.auth.redirectToLogin(window.location.href);
   };
