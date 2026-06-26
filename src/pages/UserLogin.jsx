@@ -20,22 +20,22 @@ export default function UserLogin() {
     setLoading(true);
     try {
       await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = '/user-dashboard';
+      navigate('/user-dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password');
       setLoading(false);
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider('google', '/user-dashboard');
+  const handleGoogle = async () => {
+    await base44.auth.loginWithProvider('google', '/user-dashboard');
+    navigate('/user-dashboard', { replace: true });
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col px-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header */}
       <div className="flex items-center gap-3 pt-14 mb-8">
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
           <ChevronLeft size={18} />
@@ -52,38 +52,24 @@ export default function UserLogin() {
           <p className="text-muted-foreground text-sm mt-1.5">Log in to your fitness account</p>
         </div>
 
-        <Button
-          variant="outline"
-          className="w-full h-12 text-sm font-medium mb-6 rounded-xl"
-          onClick={handleGoogle}
-        >
+        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle}>
           <GoogleIcon className="w-5 h-5 mr-2" />
           Continue with Google
         </Button>
 
         <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-3 text-muted-foreground">or</span>
-          </div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+          <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="email" type="email" autoComplete="email" autoFocus placeholder="you@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-12 rounded-xl" required />
+              <Input id="email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
           <div className="space-y-2">
@@ -93,9 +79,7 @@ export default function UserLogin() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 h-12 rounded-xl" required />
+              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
           <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
@@ -103,10 +87,7 @@ export default function UserLogin() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Don't have an account?{' '}
-          <Link to="/signup/user" className="text-accent font-medium hover:underline">Sign up</Link>
-        </p>
+        <p className="text-center text-sm text-muted-foreground mt-6">Don't have an account? <Link to="/signup/user" className="text-accent font-medium hover:underline">Sign up</Link></p>
       </div>
     </div>
   );
