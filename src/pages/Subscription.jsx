@@ -3,117 +3,27 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Crown, Check, Zap, Star, Sparkles, ChevronRight, Shield, Lock, Gift, AlertCircle } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { Crown, Check, ChevronRight, Shield, AlertCircle } from 'lucide-react';
 import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
 import { useNavigate } from 'react-router-dom';
 
-// ⚠️ Replace with your live Razorpay key before production launch
-// Get your key from: https://dashboard.razorpay.com/app/keys
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
-
-function loadRazorpay() {
-  return new Promise((resolve) => {
-    if (window.Razorpay) { resolve(true); return; }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
-
 export default function Subscription() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [coupon, setCoupon] = useState('');
-  const [referral, setReferral] = useState('');
-  const [processingPlan, setProcessingPlan] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const u = await base44.auth.me();
-    setUser(u);
     const subs = await base44.entities.Subscription.filter({ user_id: u.id, status: 'active' });
     setCurrent(subs[0] || null);
     setLoading(false);
   };
 
-  const handleSubscribe = async (plan) => {
+  const openCheckout = (plan) => {
     if (plan.key === PLANS.FREE_TRIAL || plan.key === PLANS.FREE) return;
-    setProcessingPlan(plan.key);
-
-    const loaded = await loadRazorpay();
-    if (!loaded) {
-      toast({ title: 'Payment gateway failed to load', description: 'Check your internet connection.', variant: 'destructive' });
-      setProcessingPlan(null);
-      return;
-    }
-
-    const options = {
-      key: RAZORPAY_KEY_ID,
-      amount: plan.price * 100, // paise
-      currency: 'INR',
-      name: 'SE7ENFIT',
-      description: `${plan.label} Plan`,
-      image: 'https://via.placeholder.com/150?text=SE7ENFIT',
-      prefill: {
-        name: user?.full_name || '',
-        email: user?.email || '',
-      },
-      theme: { color: '#4ade80' },
-      handler: async (response) => {
-        // Payment successful — record subscription
-        const today = new Date();
-        const endDate = new Date(today);
-        if (plan.billing === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
-        else if (plan.billing === 'quarterly') endDate.setMonth(endDate.getMonth() + 3);
-        else if (plan.billing === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
-
-        await base44.entities.Payment.create({
-          user_id: user.id,
-          plan: plan.key,
-          amount: plan.price,
-          currency: 'INR',
-          status: 'success',
-          stripe_session_id: response.razorpay_payment_id,
-          paid_at: new Date().toISOString(),
-        });
-
-        // Deactivate old subscription
-        if (current) {
-          await base44.entities.Subscription.update(current.id, { status: 'expired' });
-        }
-
-        // Create new subscription
-        const newSub = await base44.entities.Subscription.create({
-          user_id: user.id,
-          plan: plan.key,
-          status: 'active',
-          start_date: today.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0],
-          payment_id: response.razorpay_payment_id,
-        });
-
-        setCurrent(newSub);
-        toast({ title: `🎉 ${plan.label} Activated!`, description: `Your plan is active until ${endDate.toDateString()}` });
-        setProcessingPlan(null);
-      },
-      modal: {
-        ondismiss: () => setProcessingPlan(null),
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', () => {
-      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
-      setProcessingPlan(null);
-    });
-    rzp.open();
+    navigate(`/subscription/checkout/${plan.key}`);
   };
 
   if (loading) return <LoadingScreen />;
@@ -126,8 +36,6 @@ export default function Subscription() {
     <>
       <TopBar title="Subscription" showBack />
       <div className="px-4 py-4 space-y-4 pb-10 max-w-lg mx-auto">
-
-        {/* Hero */}
         <div className="text-center py-2">
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-yellow-400/20 to-accent/10 border border-yellow-400/30 flex items-center justify-center mx-auto mb-3">
             <Crown size={28} className="text-yellow-400" />
@@ -138,7 +46,6 @@ export default function Subscription() {
           </p>
         </div>
 
-        {/* Active subscription card */}
         {current && isActive && (
           <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center"><Check size={18} className="text-accent" /></div>
@@ -151,7 +58,6 @@ export default function Subscription() {
           </div>
         )}
 
-        {/* Expired notice */}
         {current && !isActive && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-center gap-3">
             <AlertCircle size={18} className="text-destructive flex-shrink-0" />
@@ -162,7 +68,6 @@ export default function Subscription() {
           </div>
         )}
 
-        {/* Plans */}
         <div className="space-y-3">
           {PLAN_CONFIG.map(plan => {
             const isCurrentPlan = activePlan === plan.key;
@@ -210,16 +115,13 @@ export default function Subscription() {
 
                 {!isCurrentPlan && plan.key !== PLANS.FREE && plan.key !== PLANS.FREE_TRIAL && (
                   <Button
-                    onClick={() => handleSubscribe(plan)}
-                    disabled={processingPlan === plan.key}
+                    onClick={() => openCheckout(plan)}
                     className={`w-full h-11 rounded-xl font-semibold text-sm transition-all ${
                       isPopular ? 'bg-accent text-accent-foreground hover:bg-accent/90 shadow-md shadow-accent/20' :
                       'bg-foreground text-background hover:bg-foreground/90'
                     }`}
                   >
-                    {processingPlan === plan.key ? 'Processing...' : (
-                      <>{isPopular ? '⚡ ' : ''}Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} /></>
-                    )}
+                    {isPopular ? '⚡ ' : ''}Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} />
                   </Button>
                 )}
 
@@ -233,22 +135,6 @@ export default function Subscription() {
           })}
         </div>
 
-        {/* Coupon & referral */}
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-          <p className="font-heading font-semibold text-sm flex items-center gap-2"><Gift size={15} className="text-accent" /> Have a code?</p>
-          <div className="flex gap-2">
-            <input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-              placeholder="COUPON CODE" className="flex-1 h-10 px-3 rounded-xl border border-input bg-muted/40 text-sm uppercase font-mono focus:outline-none focus:ring-1 focus:ring-ring" />
-            <button className="px-3 h-10 rounded-xl bg-accent text-accent-foreground text-xs font-bold">Apply</button>
-          </div>
-          <div className="flex gap-2">
-            <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())}
-              placeholder="REFERRAL CODE" className="flex-1 h-10 px-3 rounded-xl border border-input bg-muted/40 text-sm uppercase font-mono focus:outline-none focus:ring-1 focus:ring-ring" />
-            <button className="px-3 h-10 rounded-xl bg-muted border border-border text-xs font-medium">Apply</button>
-          </div>
-        </div>
-
-        {/* Policy */}
         <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
           <p className="font-heading font-semibold text-xs flex items-center gap-1.5"><Shield size={12} className="text-muted-foreground" /> Subscription Policy</p>
           {[
