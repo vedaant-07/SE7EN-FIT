@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus, Bot, RefreshCw } from 'lucide-react';
+import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -78,8 +78,6 @@ export default function Challenges() {
   const [activeTab, setActiveTab] = useState('all');
   const [joiningId, setJoiningId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
-  const [aiRecs, setAiRecs] = useState(null);
-  const [loadingAiRecs, setLoadingAiRecs] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -96,7 +94,6 @@ export default function Challenges() {
     const p = profiles[0] || null;
     setProfile(p);
 
-    // Load gym challenges if user is linked to a gym
     if (p?.primary_gym_id) {
       try {
         const gc = await base44.entities.Challenge.filter({ gym_id: p.primary_gym_id });
@@ -108,7 +105,6 @@ export default function Challenges() {
 
   const isPremium = subscription && ['premium_monthly', 'premium_quarterly', 'premium_annual'].includes(subscription.plan);
 
-  // Build merged challenge list: gym challenges first (as real DB entries), then builtins
   const gymChallengesMapped = gymChallenges.map(gc => ({
     id: gc.id,
     title: gc.name,
@@ -177,7 +173,6 @@ export default function Challenges() {
       ));
 
       if (completed) {
-        // Award coins
         const wallets = await base44.entities.RewardWallet.filter({ user_id: user.id });
         if (wallets[0]) {
           await base44.entities.RewardWallet.update(wallets[0].id, {
@@ -203,24 +198,6 @@ export default function Challenges() {
     setLoggingId(null);
   };
 
-  const handleAiRecommend = async () => {
-    setLoadingAiRecs(true);
-    try {
-      const stats = {
-        joined: participants.length,
-        completed: participants.filter(p => p.completed).length,
-        coinsEarned: participants.reduce((s, p) => s + (p.coins_earned || 0), 0),
-      };
-      const res = await base44.functions.invoke('geminiService', { action: 'recommendChallenges', profile, stats });
-      if (res.data?.locked) { navigate('/subscription'); return; }
-      if (res.data?.error) throw new Error(res.data.error);
-      setAiRecs(res.data?.recommendedChallenges || []);
-    } catch (e) {
-      toast({ title: 'AI unavailable', description: e.message, variant: 'destructive' });
-    }
-    setLoadingAiRecs(false);
-  };
-
   const getParticipant = (challengeId) => participants.find(p => p.challenge_id === challengeId);
   const getProgress = (challenge) => {
     const p = getParticipant(challenge.id);
@@ -235,7 +212,6 @@ export default function Challenges() {
       <TopBar title="Challenges" showBack />
       <div className="px-4 py-4 pb-24 space-y-4 max-w-lg mx-auto">
 
-        {/* Header stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold text-accent">{joinedIds.length}</p>
@@ -251,52 +227,15 @@ export default function Challenges() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2">
           {['all', 'joined'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-10 rounded-xl text-sm font-semibold transition-all ${activeTab === tab ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}>
+              className={`flex-1 h-10 rounded-xl text-sm font-semibold transition-all ${activeTab === tab ? 'bg-white text-black hover:bg-white/90' : 'bg-muted text-muted-foreground'}`}>
               {tab === 'all' ? `All Challenges (${allChallenges.length})` : `My Challenges (${joinedIds.length})`}
             </button>
           ))}
         </div>
 
-        {/* AI Recommendations */}
-        {activeTab === 'all' && (
-          <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Bot size={15} className="text-accent" />
-                <p className="text-sm font-semibold">AI Challenge Picks</p>
-              </div>
-              <button onClick={handleAiRecommend} disabled={loadingAiRecs}
-                className="text-sm text-accent font-medium flex items-center gap-1 disabled:opacity-50">
-                {loadingAiRecs ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                {aiRecs ? 'Refresh' : 'Get Picks'}
-              </button>
-            </div>
-            {!aiRecs && !loadingAiRecs && (
-              <p className="text-xs text-muted-foreground">Tap "Get Picks" for personalized challenge recommendations based on your goal.</p>
-            )}
-            {loadingAiRecs && <p className="text-xs text-muted-foreground">Analyzing your profile…</p>}
-            {aiRecs && (
-              <div className="space-y-2 mt-2">
-                {aiRecs.map((rec, i) => (
-                  <div key={i} className="bg-card/60 rounded-xl p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold">{rec.challengeName}</p>
-                      <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full whitespace-nowrap">{rec.difficulty}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{rec.reason}</p>
-                    <p className="text-xs text-accent mt-0.5">🎯 {rec.expectedBenefit}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Gym challenges banner */}
         {gymChallengesMapped.length > 0 && activeTab === 'all' && (
           <div className="bg-accent/8 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
             <Trophy size={13} className="text-accent flex-shrink-0" />
@@ -309,7 +248,7 @@ export default function Challenges() {
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-heading font-semibold">No challenges joined yet</p>
             <p className="text-xs text-muted-foreground mt-1">Browse challenges and join to start earning!</p>
-            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90 text-base font-semibold">Browse Challenges</Button>
+            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-zinc-200 text-black hover:bg-zinc-100 text-base font-semibold">Browse Challenges</Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -337,8 +276,8 @@ export default function Challenges() {
                   )}
                   {locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <div className="w-7 h-7 rounded-full bg-yellow-400 border border-yellow-400 flex items-center justify-center">
-                        <Crown size={13} className="text-white" />
+                      <div className="w-7 h-7 rounded-full bg-[#2A220F] border border-[#3B3014] flex items-center justify-center">
+                        <Crown size={13} className="text-[#FBBF24]" />
                       </div>
                     </div>
                   )}
@@ -391,7 +330,7 @@ export default function Challenges() {
                     <Button
                       onClick={() => handleLogProgress(challenge)}
                       disabled={loggingId === challenge.id || alreadyLoggedToday}
-                      className="w-full h-11 rounded-xl text-sm font-semibold bg-white text-black hover:bg-white/90 border border-white"
+                      className="w-full h-11 rounded-xl text-sm font-semibold bg-zinc-200 text-black hover:bg-zinc-100 border border-zinc-200"
                     >
                       {loggingId === challenge.id ? 'Logging...' :
                        alreadyLoggedToday ? <><Check size={13} className="mr-1" /> Logged Today ✓</> :
@@ -405,10 +344,7 @@ export default function Challenges() {
                     <Button
                       onClick={() => handleJoin(challenge)}
                       disabled={joiningId === challenge.id}
-                      className={`w-full h-11 rounded-xl text-sm font-semibold transition-all ${
-                        locked ? 'bg-yellow-400 text-white border border-yellow-400 hover:bg-yellow-400/90' :
-                        'bg-white text-black hover:bg-white/90 border border-white'
-                      }`}
+                      className="w-full h-11 rounded-xl text-sm font-semibold transition-all bg-zinc-200 text-black hover:bg-zinc-100 border border-zinc-200"
                     >
                       {locked ? <><Crown size={13} className="mr-1" /> Unlock Premium</> :
                        joiningId === challenge.id ? 'Joining...' :
