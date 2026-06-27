@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
@@ -10,7 +10,6 @@ import { useToast } from '@/components/ui/use-toast';
 export default function FoodScan() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const fileRef = useRef();
   const [stage, setStage] = useState('upload');
   const [imageFile, setImageFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
@@ -29,8 +28,15 @@ export default function FoodScan() {
   });
 
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please choose a food photo image.', variant: 'destructive' });
+      return;
+    }
+
     setImageFile(file);
     setImageUrl(URL.createObjectURL(file));
     setStage('scanning');
@@ -79,7 +85,8 @@ export default function FoodScan() {
         toast({ title: 'No food detected', description: 'Upload a clearer photo of your meal.', variant: 'destructive' });
       }
     } catch (e) {
-      toast({ title: 'Error', description: 'AI scan failed. Try again.', variant: 'destructive' });
+      console.error('[FoodScan] scan failed:', e);
+      toast({ title: 'Food scan is not connected', description: 'Camera/gallery opened successfully, but the Gemini scan backend failed. Check the geminiService function.', variant: 'destructive' });
       setStage('upload');
     }
   };
@@ -180,8 +187,8 @@ export default function FoodScan() {
               <p className="text-xs text-muted-foreground mb-2 font-medium">Meal Type</p>
               <div className="flex gap-2 flex-wrap">
                 {['breakfast', 'lunch', 'dinner', 'snack'].map(mt => (
-                  <button key={mt} onClick={() => setMealType(mt)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-all ${mealType === mt ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  <button key={mt} type="button" onClick={() => setMealType(mt)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-all ${mealType === mt ? 'bg-white text-black' : 'bg-muted text-muted-foreground'}`}>
                     {mt}
                   </button>
                 ))}
@@ -189,21 +196,22 @@ export default function FoodScan() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => fileRef.current?.click()}
-                className="bg-accent text-accent-foreground rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-accent/20">
-                <Camera size={24} />
+              <label htmlFor="food-camera-input"
+                className="bg-card border border-border rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all cursor-pointer hover:border-white/20">
+                <Camera size={24} className="text-accent" />
                 <span className="font-semibold text-sm">Use Camera</span>
-                <span className="text-[10px] opacity-80">Take photo now</span>
-              </button>
-              <button onClick={() => fileRef.current?.click()}
-                className="bg-card border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all hover:border-accent/40">
+                <span className="text-[10px] text-muted-foreground">Take photo now</span>
+              </label>
+              <label htmlFor="food-gallery-input"
+                className="bg-card border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all cursor-pointer hover:border-white/20">
                 <Upload size={24} className="text-accent" />
                 <span className="font-semibold text-sm">Upload Photo</span>
                 <span className="text-[10px] text-muted-foreground">From gallery</span>
-              </button>
+              </label>
             </div>
 
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+            <input id="food-camera-input" type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFileChange} />
+            <input id="food-gallery-input" type="file" accept="image/*" className="sr-only" onChange={handleFileChange} />
 
             <div>
               <p className="font-heading font-semibold text-xs text-muted-foreground mb-2 uppercase tracking-wider">Works great with</p>
