@@ -370,6 +370,7 @@ const auth = {
       },
     });
 
+    if (session?.requires_otp) return session;
     return storeSession(session);
   },
 
