@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.se7enfit.app',
   appName: 'SE7ENFIT',
   webDir: 'dist',
-  bundledWebRuntime: false,
   server: {
     androidScheme: 'https'
   },
