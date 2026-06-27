@@ -117,7 +117,7 @@ export default function UserLogin() {
           <button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
             <ChevronLeft size={18} />
           </button>
-          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>ENFIT</div>
+          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
         </div>
 
         <div className="flex-1 max-w-sm w-full mx-auto">
@@ -138,7 +138,7 @@ export default function UserLogin() {
             </InputOTP>
           </div>
 
-          <Button onClick={handleVerify} className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading || otpCode.length < 6}>
+          <Button onClick={handleVerify} className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading || otpCode.length < 6}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Login'}
           </Button>
 
@@ -161,7 +161,7 @@ export default function UserLogin() {
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
           <ChevronLeft size={18} />
         </button>
-        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>ENFIT</div>
+        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
       </div>
 
       <div className="flex-1 max-w-sm w-full mx-auto">
@@ -203,7 +203,7 @@ export default function UserLogin() {
               <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
+          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending code...</> : 'Continue with Email OTP'}
           </Button>
         </form>
