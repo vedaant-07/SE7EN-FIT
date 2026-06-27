@@ -70,13 +70,16 @@ export default function WorkoutPerfTab({ profile }) {
       </div>
 
       {!todayLog && (
-        <Link to="/workout/log">
-          <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center justify-between hover:border-accent/50 active:scale-[0.99] transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center"><Dumbbell size={18} className="text-accent" /></div>
-              <div><p className="font-heading font-semibold text-sm">Log Today's Workout</p><p className="text-[11px] text-muted-foreground">Tap to log your session</p></div>
+        <Link to="/workout/log" className="block">
+          <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center gap-3 hover:border-accent/50 active:scale-[0.99] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
+              <Dumbbell size={18} className="text-accent" />
             </div>
-            <Button size="sm" className="rounded-xl bg-accent text-accent-foreground h-8 text-xs">Log</Button>
+            <div className="flex-1 min-w-0">
+              <p className="font-heading font-semibold text-sm leading-tight truncate">Log Today's Workout</p>
+              <p className="text-[11px] text-muted-foreground leading-tight truncate mt-0.5">Tap to log your session</p>
+            </div>
+            <Button size="sm" className="rounded-xl bg-white text-black hover:bg-white/90 h-8 px-4 text-xs font-bold flex-shrink-0">Log</Button>
           </div>
         </Link>
       )}
