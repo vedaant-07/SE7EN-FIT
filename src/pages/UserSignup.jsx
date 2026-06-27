@@ -120,7 +120,7 @@ export default function UserSignup() {
       <div className="min-h-screen bg-background flex flex-col px-6">
         <div className="flex items-center gap-3 pt-14 mb-8">
           <button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center"><ChevronLeft size={18} /></button>
-          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>ENFIT</div>
+          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
         </div>
         <div className="max-w-sm w-full mx-auto">
           <div className="mb-8">
@@ -135,7 +135,7 @@ export default function UserSignup() {
               <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
             </InputOTP>
           </div>
-          <Button className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground" onClick={handleVerify} disabled={loading || otp.length < 6}>
+          <Button className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" onClick={handleVerify} disabled={loading || otp.length < 6}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Continue'}
           </Button>
           <p className="text-center text-sm text-muted-foreground mt-4">
@@ -154,7 +154,7 @@ export default function UserSignup() {
       <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       <div className="flex items-center gap-3 pt-14 mb-8">
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all"><ChevronLeft size={18} /></button>
-        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>ENFIT</div>
+        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
       </div>
       <div className="flex-1 max-w-sm w-full mx-auto pb-10">
         <div className="mb-8">
@@ -171,7 +171,7 @@ export default function UserSignup() {
           <div className="space-y-2"><Label>Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required /></div></div>
           <div className="space-y-2"><Label>Confirm Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input type="password" autoComplete="new-password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10 h-12 rounded-xl" required /></div></div>
           <div className="space-y-2"><Label className="flex items-center gap-1.5"><Building2 size={13} className="text-accent" />Gym Referral Code <span className="text-muted-foreground font-normal">(optional)</span></Label><div className="relative"><Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="e.g. SE7EN-GYM-001" value={gymCode} onChange={(e) => setGymCode(e.target.value.toUpperCase())} onBlur={() => validateGymCode(gymCode)} className="pl-10 h-12 rounded-xl font-mono tracking-wider" /></div>{gymInfo && <div className="flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-xl p-3"><Building2 size={14} className="text-accent flex-shrink-0" /><p className="text-xs text-accent font-semibold">✓ {gymInfo.gym_name} — {gymInfo.city}</p></div>}{gymCodeError && <p className="text-xs text-muted-foreground">{gymCodeError}</p>}</div>
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : 'Create Account'}</Button>
+          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : 'Create Account'}</Button>
         </form>
         <p className="text-center text-sm text-muted-foreground mt-6">Already have an account? <button onClick={() => navigate('/login/user')} className="text-accent font-medium hover:underline">Log in</button></p>
       </div>
