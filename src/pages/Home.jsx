@@ -384,10 +384,10 @@ function DailyScoreCard({ score, label, onClick }) {
 
 function DailyStatsRows({ calories, calorieTarget, protein, proteinTarget, waterGlasses, waterGoalGlasses, steps, stepGoal, onNavigate }) {
   const rows = [
-    { label: 'Calories', value: `${calories}`, target: `/ ${calorieTarget} kcal`, route: '/nutrition' },
-    { label: 'Protein', value: `${protein}g`, target: `/ ${proteinTarget}g`, route: '/nutrition' },
-    { label: 'Water', value: `${waterGlasses}`, target: `/ ${waterGoalGlasses} glasses`, route: '/tracking/water' },
-    { label: 'Steps', value: steps.toLocaleString(), target: `/ ${stepGoal.toLocaleString()}`, route: '/tracking/steps' },
+    { label: 'Calories', value: `${calories}`, target: `/ ${calorieTarget} kcal`, route: '/nutrition', labelClass: 'bg-yellow-500/15 border-yellow-500/25' },
+    { label: 'Protein', value: `${protein}g`, target: `/ ${proteinTarget}g`, route: '/nutrition', labelClass: 'bg-emerald-500/15 border-emerald-500/25' },
+    { label: 'Water', value: `${waterGlasses}`, target: `/ ${waterGoalGlasses} glasses`, route: '/tracking/water', labelClass: 'bg-blue-500/15 border-blue-500/25' },
+    { label: 'Steps', value: steps.toLocaleString(), target: `/ ${stepGoal.toLocaleString()}`, route: '/tracking/steps', labelClass: 'bg-purple-500/15 border-purple-500/25' },
   ];
 
   return (
@@ -398,7 +398,10 @@ function DailyStatsRows({ calories, calorieTarget, protein, proteinTarget, water
           onClick={() => onNavigate(row.route)}
           className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/35 active:scale-[0.995] transition-all ${index !== rows.length - 1 ? 'border-b border-border/60' : ''}`}
         >
-          <span className="text-sm font-semibold text-foreground">{row.label}</span>
+          <span className="flex items-center gap-2 min-w-0">
+            <span className={`min-w-[92px] rounded-xl border px-3 py-1.5 text-sm font-semibold text-white ${row.labelClass}`}>{row.label}</span>
+            <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
+          </span>
           <span className="flex items-baseline gap-1.5 text-right">
             <span className="font-heading text-base font-black text-white">{row.value}</span>
             <span className="text-[11px] text-muted-foreground">{row.target}</span>
