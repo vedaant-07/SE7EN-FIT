@@ -8,6 +8,28 @@ import { Crown, Check, ChevronRight, Shield, AlertCircle, Gift, WalletCards, Loc
 import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
 import { useToast } from '@/components/ui/use-toast';
 
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
+
+function loadRazorpay() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+function getSubscriptionDates(plan) {
+  const today = new Date();
+  const endDate = new Date(today);
+  if (plan.billing === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
+  else if (plan.billing === 'quarterly') endDate.setMonth(endDate.getMonth() + 3);
+  else if (plan.billing === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
+  return { today, endDate };
+}
+
 export default function Subscription() {
   const { toast } = useToast();
   const [current, setCurrent] = useState(null);
@@ -16,12 +38,15 @@ export default function Subscription() {
   const [coupon, setCoupon] = useState('');
   const [referral, setReferral] = useState('');
   const [appliedCode, setAppliedCode] = useState(null);
+  const [user, setUser] = useState(null);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     const u = await base44.auth.me();
     const subs = await base44.entities.Subscription.filter({ user_id: u.id, status: 'active' });
+    setUser(u);
     setCurrent(subs[0] || null);
     setLoading(false);
   };
@@ -45,12 +70,99 @@ export default function Subscription() {
     toast({ title: `${type === 'coupon' ? 'Coupon' : 'Referral'} code applied`, description: value });
   };
 
-  const continueToPayment = () => {
-    toast({
-      title: 'Razorpay test key required',
-      description: 'Add VITE_RAZORPAY_KEY_ID in Render frontend env. I did not find a key in your connected repos.',
-      variant: 'destructive',
+  const completeSubscription = async (response, plan) => {
+    const { today, endDate } = getSubscriptionDates(plan);
+
+    await base44.entities.Payment.create({
+      user_id: user.id,
+      plan: plan.key,
+      amount: plan.price,
+      currency: 'INR',
+      status: 'success',
+      razorpay_payment_id: response.razorpay_payment_id,
+      applied_code: appliedCode?.value || undefined,
+      applied_code_type: appliedCode?.type || undefined,
+      paid_at: new Date().toISOString(),
     });
+
+    if (current) {
+      await base44.entities.Subscription.update(current.id, { status: 'expired' });
+    }
+
+    const nextSub = await base44.entities.Subscription.create({
+      user_id: user.id,
+      plan: plan.key,
+      status: 'active',
+      start_date: today.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+      payment_id: response.razorpay_payment_id,
+      applied_code: appliedCode?.value || undefined,
+      applied_code_type: appliedCode?.type || undefined,
+    });
+
+    setCurrent(nextSub);
+    setCheckoutPlan(null);
+    toast({ title: `🎉 ${plan.label} Activated`, description: `Active until ${endDate.toDateString()}` });
+  };
+
+  const continueToPayment = async () => {
+    if (!checkoutPlan || processing) return;
+
+    if (!RAZORPAY_KEY_ID) {
+      toast({
+        title: 'Razorpay key missing',
+        description: 'Add VITE_RAZORPAY_KEY_ID in Render frontend environment and redeploy.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setProcessing(true);
+    const loaded = await loadRazorpay();
+    if (!loaded) {
+      toast({ title: 'Payment gateway failed to load', description: 'Check your internet connection.', variant: 'destructive' });
+      setProcessing(false);
+      return;
+    }
+
+    const options = {
+      key: RAZORPAY_KEY_ID,
+      amount: checkoutPlan.price * 100,
+      currency: 'INR',
+      name: 'SE7EN FIT',
+      description: `${checkoutPlan.label} Plan`,
+      image: '/favicon.ico',
+      prefill: {
+        name: user?.full_name || user?.name || '',
+        email: user?.email || '',
+        contact: user?.phone || user?.mobile || '',
+      },
+      notes: {
+        plan: checkoutPlan.key,
+        coupon: appliedCode?.type === 'coupon' ? appliedCode.value : '',
+        referral: appliedCode?.type === 'referral' ? appliedCode.value : '',
+      },
+      theme: { color: '#22c55e' },
+      handler: async (response) => {
+        try {
+          await completeSubscription(response, checkoutPlan);
+        } catch (error) {
+          toast({ title: 'Payment done, activation failed', description: error.message || 'Please contact support.', variant: 'destructive' });
+        } finally {
+          setProcessing(false);
+        }
+      },
+      modal: {
+        ondismiss: () => setProcessing(false),
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.on('payment.failed', () => {
+      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
+      setProcessing(false);
+    });
+    rzp.open();
   };
 
   if (loading) return <LoadingScreen />;
@@ -118,7 +230,7 @@ export default function Subscription() {
 
           <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-2">
             <p className="font-heading font-semibold text-xs flex items-center gap-1.5"><Shield size={12} className="text-muted-foreground" /> Secure checkout</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">Code entry is shown only after a user selects a subscription plan.</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">Payment opens through Razorpay test checkout. Your plan activates after successful payment.</p>
             <p className="text-[11px] text-muted-foreground leading-relaxed flex items-center gap-1.5"><Lock size={12} /> Prices in INR • GST included.</p>
           </div>
 
@@ -128,8 +240,8 @@ export default function Subscription() {
                 <p className="text-[11px] text-muted-foreground">Total</p>
                 <p className="font-heading text-xl font-black">₹{checkoutPlan.price}</p>
               </div>
-              <Button onClick={continueToPayment} className="h-12 rounded-2xl bg-accent px-6 text-accent-foreground font-bold hover:bg-accent/90">
-                Continue <ChevronRight size={15} />
+              <Button onClick={continueToPayment} disabled={processing} className="h-12 rounded-2xl bg-accent px-6 text-accent-foreground font-bold hover:bg-accent/90">
+                {processing ? 'Processing...' : <>Pay Now <ChevronRight size={15} /></>}
               </Button>
             </div>
           </div>
