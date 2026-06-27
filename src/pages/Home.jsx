@@ -4,9 +4,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
-import AIDailyTip from '@/components/se7enfit/AIDailyTip';
-import DailyHabits from '@/components/se7enfit/DailyHabits';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
@@ -234,28 +232,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        <DailyHabits />
-        <AIDailyTip profile={profile} />
-
-        <Link to="/ai-trainer" className="block">
-          <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-5 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
-            <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}><Bot size={19} className="text-white" /></div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1"><p className="font-heading font-semibold text-sm">AI Recommendation</p><span className="text-[9px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Live</span></div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {profile.goal === 'weight_loss'
-                    ? 'Maintain your calorie deficit today. High-protein meals and 30 min cardio can speed up progress.'
-                    : profile.goal === 'muscle_gain'
-                    ? 'Hit your protein target today and keep compound lifts consistent.'
-                    : 'Consistency is your superpower. Every workout compounds your transformation.'}
-                </p>
-              </div>
-              <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
-            </div>
-          </div>
-        </Link>
 
         <div className="grid grid-cols-2 gap-2.5">
           <div className="bg-card border border-border rounded-2xl p-4">
