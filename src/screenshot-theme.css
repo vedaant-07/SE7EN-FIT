@@ -1,0 +1,80 @@
+:root,
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 5%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 141 80% 47%;
+  --primary-foreground: 0 0% 6%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 58%;
+  --accent: 141 80% 47%;
+  --accent-foreground: 0 0% 6%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 141 80% 47%;
+  --sidebar-background: 0 0% 3%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-primary: 141 80% 47%;
+  --sidebar-primary-foreground: 0 0% 6%;
+  --sidebar-accent: 0 0% 9%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-border: 0 0% 14%;
+  --sidebar-ring: 141 80% 47%;
+}
+
+html,
+body,
+#root {
+  background: #000000;
+  color: #FAFAFA;
+}
+
+:where(div[class*="bg-[#77AC6F]"]) {
+  background-color: rgba(25, 214, 92, 0.15) !important;
+  border-color: rgba(25, 214, 92, 0.10) !important;
+  color: #4BE67B !important;
+}
+
+:where(div[class*="bg-[#77AC6F]"]) .text-white {
+  color: currentColor !important;
+}
+
+.space-y-5 > .grid.grid-cols-3.gap-2\.5 > button:nth-child(1) > :where(div[class*="bg-[#77AC6F]"),
+.space-y-5 > div > .grid.grid-cols-3.gap-2\.5 > button:nth-child(2) > :where(div[class*="bg-[#77AC6F]") {
+  background-color: rgba(242, 153, 58, 0.16) !important;
+  border-color: rgba(242, 153, 58, 0.10) !important;
+  color: #F2993A !important;
+}
+
+.space-y-5 > .grid.grid-cols-3.gap-2\.5 > button:nth-child(3) > :where(div[class*="bg-[#77AC6F]"),
+.space-y-5 > div > .grid.grid-cols-3.gap-2\.5 > button:nth-child(3) > :where(div[class*="bg-[#77AC6F]") {
+  background-color: rgba(94, 162, 255, 0.16) !important;
+  border-color: rgba(94, 162, 255, 0.10) !important;
+  color: #5EA2FF !important;
+}
+
+.space-y-5 > .grid.grid-cols-3.gap-2\.5 > button:nth-child(4) > :where(div[class*="bg-[#77AC6F]"),
+.space-y-5 > div > .grid.grid-cols-3.gap-2\.5 > button:nth-child(6) > :where(div[class*="bg-[#77AC6F]") {
+  background-color: rgba(182, 134, 255, 0.16) !important;
+  border-color: rgba(182, 134, 255, 0.10) !important;
+  color: #B686FF !important;
+}
+
+.space-y-5 > .grid.grid-cols-3.gap-2\.5 > button:nth-child(5) > :where(div[class*="bg-[#77AC6F]") {
+  background-color: rgba(124, 131, 255, 0.16) !important;
+  border-color: rgba(124, 131, 255, 0.10) !important;
+  color: #7C83FF !important;
+}
+
+.space-y-5 > div > .grid.grid-cols-3.gap-2\.5 > button:nth-child(5) > :where(div[class*="bg-[#77AC6F]"),
+a[href="/subscription"] :where(div[class*="bg-[#77AC6F]"),
+a[href="/rewards"] :where(div[class*="bg-[#77AC6F]") {
+  background-color: rgba(224, 180, 34, 0.16) !important;
+  border-color: rgba(224, 180, 34, 0.10) !important;
+  color: #E0B422 !important;
+}
