@@ -31,11 +31,8 @@ const TABS = [
 ];
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const fivePerViewStyle = {
-  flex: '0 0 calc(20% - 4.8px)',
-  width: 'calc(20% - 4.8px)',
-  maxWidth: 'calc(20% - 4.8px)',
-};
+const tabBarStyle = { gridAutoColumns: '20%' };
+const tabButtonStyle = { width: 'calc(100% - 6px)' };
 
 export default function Tracking() {
   const [activeTab, setActiveTab] = useState('steps');
@@ -111,7 +108,7 @@ export default function Tracking() {
       <TopBar title="Tracking" showBack />
 
       <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-xl border-b border-border/40">
-        <div ref={tabBarRef} className="flex gap-1.5 px-3 py-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory">
+        <div ref={tabBarRef} style={tabBarStyle} className="grid grid-flow-col px-0 py-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -121,14 +118,14 @@ export default function Tracking() {
                 key={tab.key}
                 id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
-                style={fivePerViewStyle}
-                className={`snap-start flex-shrink-0 min-w-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
+                style={tabButtonStyle}
+                className={`snap-start justify-self-center min-w-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
                   active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted/60 border border-transparent'
                 }`}
               >
-                <div className="relative w-12 h-9 rounded-xl flex items-center justify-center">
+                <div className="relative w-11 h-9 rounded-xl flex items-center justify-center">
                   <Icon size={22} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
-                  {hasData && !active && <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-accent" />}
+                  {hasData && !active && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-accent" />}
                 </div>
                 <span className={`max-w-full overflow-hidden text-ellipsis text-[10px] font-semibold whitespace-nowrap leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
               </button>
