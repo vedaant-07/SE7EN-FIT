@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit.onrender.com/api'
+).replace(/\/+$/, '');
 
 function loadGoogleIdentityScript() {
   return new Promise((resolve, reject) => {
@@ -26,6 +29,39 @@ function loadGoogleIdentityScript() {
   });
 }
 
+function normalizeRole(role) {
+  const value = String(role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
+  if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'super_admin';
+  return 'user';
+}
+
+function cacheSession(session = {}) {
+  const token = session.access_token || session.token;
+  if (!token) throw new Error('No access token returned from server');
+  localStorage.setItem('se7enfit_auth_token', token);
+  localStorage.setItem('se7enfit_auth', 'true');
+
+  const user = session.user ? { ...session.user, role: normalizeRole(session.user.role) } : null;
+  if (user) localStorage.setItem('se7enfit_user', JSON.stringify(user));
+  return user;
+}
+
+async function exchangeGoogleCredential(credential, role) {
+  const response = await fetch(`${API_BASE_URL}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: credential, role }),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error || data?.message || `Google login failed (${response.status})`);
+  }
+
+  return cacheSession(data);
+}
+
 export default function GoogleSignInButton({ role = 'user', onSuccess, onError, disabled }) {
   const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -47,13 +83,12 @@ export default function GoogleSignInButton({ role = 'user', onSuccess, onError, 
           callback: async (response) => {
             try {
               if (!response.credential) throw new Error('Google did not return an ID token');
-              const user = await base44.auth.loginWithGoogleCredential(response.credential, role);
+              const user = await exchangeGoogleCredential(response.credential, role);
               await onSuccess?.(user);
             } catch (error) {
               onError?.(error);
             }
           },
-          use_fedcm_for_prompt: true,
         });
 
         window.google.accounts.id.renderButton(containerRef.current, {
