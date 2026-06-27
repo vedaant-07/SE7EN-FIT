@@ -1,0 +1,140 @@
+:root,
+.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+  --card: 268 35% 8%;
+  --card-foreground: 0 0% 98%;
+  --popover: 268 35% 8%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 267 100% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 268 45% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 268 28% 14%;
+  --muted-foreground: 263 30% 72%;
+  --accent: 267 100% 53%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 268 30% 22%;
+  --input: 268 30% 22%;
+  --ring: 267 100% 53%;
+  --chart-1: 275 100% 14%;
+  --chart-2: 270 100% 24%;
+  --chart-3: 267 100% 38%;
+  --chart-4: 267 100% 53%;
+  --chart-5: 264 72% 72%;
+  --sidebar-background: 272 45% 8%;
+  --sidebar-foreground: 0 0% 96%;
+  --sidebar-primary: 267 100% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 268 35% 14%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-border: 268 28% 20%;
+  --sidebar-ring: 267 100% 53%;
+}
+
+.text-green-400,
+.text-green-500,
+.text-emerald-400,
+.text-emerald-500,
+.text-yellow-400,
+.text-yellow-500,
+.text-orange-400,
+.text-orange-500,
+.text-blue-400,
+.text-blue-500,
+.text-cyan-400,
+.text-cyan-500,
+.text-purple-400,
+.text-purple-500 {
+  color: hsl(var(--accent)) !important;
+}
+
+.bg-green-400,
+.bg-green-500,
+.bg-emerald-400,
+.bg-emerald-500,
+.bg-yellow-400,
+.bg-yellow-500,
+.bg-orange-400,
+.bg-orange-500,
+.bg-blue-400,
+.bg-blue-500,
+.bg-cyan-400,
+.bg-cyan-500,
+.bg-purple-400,
+.bg-purple-500 {
+  background-color: hsl(var(--accent)) !important;
+}
+
+.bg-green-400\/10,
+.bg-green-500\/10,
+.bg-emerald-500\/10,
+.bg-yellow-400\/10,
+.bg-yellow-500\/10,
+.bg-orange-400\/10,
+.bg-orange-500\/10,
+.bg-blue-400\/10,
+.bg-blue-500\/10,
+.bg-cyan-400\/10,
+.bg-cyan-500\/10,
+.bg-purple-400\/10,
+.bg-purple-500\/10 {
+  background-color: hsl(var(--accent) / 0.10) !important;
+}
+
+.bg-green-400\/20,
+.bg-green-500\/20,
+.bg-emerald-500\/20,
+.bg-yellow-400\/20,
+.bg-yellow-500\/20,
+.bg-orange-400\/20,
+.bg-orange-500\/20,
+.bg-blue-400\/20,
+.bg-blue-500\/20,
+.bg-cyan-400\/20,
+.bg-cyan-500\/20,
+.bg-purple-400\/20,
+.bg-purple-500\/20 {
+  background-color: hsl(var(--accent) / 0.20) !important;
+}
+
+.border-green-400,
+.border-green-500,
+.border-emerald-500,
+.border-yellow-400,
+.border-yellow-500,
+.border-orange-400,
+.border-orange-500,
+.border-blue-400,
+.border-blue-500,
+.border-cyan-400,
+.border-cyan-500,
+.border-purple-400,
+.border-purple-500 {
+  border-color: hsl(var(--accent)) !important;
+}
+
+.border-green-500\/20,
+.border-emerald-500\/20,
+.border-yellow-400\/20,
+.border-yellow-500\/20,
+.border-orange-400\/20,
+.border-orange-500\/20,
+.border-blue-500\/20,
+.border-cyan-400\/20,
+.border-purple-500\/20,
+.border-yellow-400\/30,
+.border-yellow-500\/30,
+.border-blue-500\/40,
+.border-purple-500\/40 {
+  border-color: hsl(var(--accent) / 0.28) !important;
+}
+
+.shadow-accent\/20,
+.shadow-green-500\/20,
+.shadow-yellow-500\/20,
+.shadow-purple-500\/20 {
+  box-shadow: 0 16px 40px hsl(var(--accent) / 0.18) !important;
+}
