@@ -52,6 +52,16 @@ function cleanEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function cleanMessage(value, fallback = 'Request failed') {
+  const message = String(value || '').trim();
+  if (!message || message === '{}' || message === '[object Object]') return fallback;
+  return message;
+}
+
+function authErrorMessage(error, fallback) {
+  return cleanMessage(error?.message || error?.error_description || error?.error, fallback);
+}
+
 function publicUser(profile, authUser = {}) {
   const metadata = authUser.user_metadata || {};
   return {
@@ -101,11 +111,12 @@ async function upsertProfile(authUser, overrides = {}) {
 }
 
 function formatSession(session, profile, authUser) {
+  if (!session?.access_token) throw Object.assign(new Error('OTP verified, but login session was not created. Please try login again.'), { status: 400 });
   return {
-    access_token: session?.access_token,
-    token: session?.access_token,
-    refresh_token: session?.refresh_token,
-    expires_at: session?.expires_at,
+    access_token: session.access_token,
+    token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at: session.expires_at,
     user: publicUser(profile, authUser),
   };
 }
@@ -131,12 +142,26 @@ async function requireAuth(req, _res, next) {
   }
 }
 
+async function findAuthUserByEmail(email) {
+  const target = cleanEmail(email);
+  let page = 1;
+  while (page <= 10) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) return null;
+    const found = (data?.users || []).find((user) => cleanEmail(user.email) === target);
+    if (found) return found;
+    if (!data?.users?.length || data.users.length < 1000) return null;
+    page += 1;
+  }
+  return null;
+}
+
 async function sendLoginOtp(email) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { shouldCreateUser: false },
   });
-  if (error) throw Object.assign(new Error(error.message), { status: 400 });
+  if (error) throw Object.assign(new Error(authErrorMessage(error, 'Could not send OTP email. Check Supabase email/SMTP settings.')), { status: 400 });
 }
 
 async function resendOtpForExistingEmail(email) {
@@ -144,7 +169,7 @@ async function resendOtpForExistingEmail(email) {
   if (result.error) {
     result = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
   }
-  if (result.error) throw Object.assign(new Error(result.error.message), { status: 400 });
+  if (result.error) throw Object.assign(new Error(authErrorMessage(result.error, 'Could not send verification code. Check Supabase email/SMTP settings.')), { status: 400 });
 }
 
 function recordToEntity(row) {
@@ -233,6 +258,7 @@ app.post('/api/auth/register', asyncHandler(async (req, res) => {
   const email = cleanEmail(body.email);
   const password = body.password;
   if (!email || !password) throw Object.assign(new Error('Email and password are required'), { status: 400 });
+  if (String(password).length < 6) throw Object.assign(new Error('Password must be at least 6 characters'), { status: 400 });
 
   const metadata = {
     role: normalizeRole(body.role),
@@ -243,10 +269,29 @@ app.post('/api/auth/register', asyncHandler(async (req, res) => {
     mobile: body.mobile || body.phone,
   };
 
+  const existing = await findAuthUserByEmail(email).catch(() => null);
+  if (existing?.email_confirmed_at || existing?.confirmed_at) {
+    throw Object.assign(new Error('Account already exists. Please log in instead.'), { status: 409 });
+  }
+
+  if (existing?.id) {
+    await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+      password,
+      user_metadata: { ...(existing.user_metadata || {}), ...metadata },
+    });
+    await upsertProfile({ ...existing, email, user_metadata: { ...(existing.user_metadata || {}), ...metadata } }, { ...metadata, email });
+    await resendOtpForExistingEmail(email);
+    return res.status(200).json({ requires_otp: true, purpose: 'register', email, message: 'Verification code sent to your email.' });
+  }
+
   const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
-  if (error) throw Object.assign(new Error(error.message), { status: 400 });
+  if (error) {
+    const message = authErrorMessage(error, 'Could not create account. Please try again.');
+    throw Object.assign(new Error(message), { status: 400 });
+  }
+
   if (data.user) await upsertProfile(data.user, { ...metadata, email });
-  return res.status(201).json({ requires_otp: true, purpose: 'register', email });
+  return res.status(201).json({ requires_otp: true, purpose: 'register', email, message: 'Verification code sent to your email.' });
 }));
 
 app.post('/api/auth/login', asyncHandler(async (req, res) => {
@@ -256,7 +301,14 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   if (!email || !password) throw Object.assign(new Error('Email and password are required'), { status: 400 });
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw Object.assign(new Error(error.message), { status: 401 });
+  if (error) {
+    const message = authErrorMessage(error, 'Invalid email or password');
+    if (/email not confirmed/i.test(message)) {
+      await resendOtpForExistingEmail(email);
+      return res.json({ requires_otp: true, purpose: 'login', email, role: requestedRole, message: 'Email is not verified. Verification code sent again.' });
+    }
+    throw Object.assign(new Error(message), { status: 401 });
+  }
 
   const profile = await upsertProfile(data.user);
   const actualRole = normalizeRole(profile.role || data.user?.user_metadata?.role);
@@ -266,7 +318,7 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   }
 
   await sendLoginOtp(email);
-  return res.json({ requires_otp: true, purpose: 'login', email, role: actualRole });
+  return res.json({ requires_otp: true, purpose: 'login', email, role: actualRole, message: 'Login verification code sent to your email.' });
 }));
 
 app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
@@ -276,7 +328,7 @@ app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
 
   let result = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
   if (result.error) result = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-  if (result.error) throw Object.assign(new Error(result.error.message), { status: 400 });
+  if (result.error) throw Object.assign(new Error(authErrorMessage(result.error, 'Invalid or expired verification code')), { status: 400 });
 
   const profile = await upsertProfile(result.data.user);
   return res.json(formatSession(result.data.session, profile, result.data.user));
@@ -286,7 +338,7 @@ app.post('/api/auth/resend-otp', asyncHandler(async (req, res) => {
   const email = cleanEmail(req.body?.email);
   if (!email) throw Object.assign(new Error('Email is required'), { status: 400 });
   await resendOtpForExistingEmail(email);
-  return res.json({ success: true });
+  return res.json({ success: true, message: 'Verification code sent.' });
 }));
 
 app.post('/api/auth/google', asyncHandler(async (req, res) => {
@@ -294,7 +346,7 @@ app.post('/api/auth/google', asyncHandler(async (req, res) => {
   if (!idToken) throw Object.assign(new Error('Google ID token is required'), { status: 400 });
 
   const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
-  if (error) throw Object.assign(new Error(error.message), { status: 401 });
+  if (error) throw Object.assign(new Error(authErrorMessage(error, 'Google login failed')), { status: 401 });
 
   const profile = await upsertProfile(data.user, { role: req.body?.role || data.user?.user_metadata?.role });
   return res.json(formatSession(data.session, profile, data.user));
@@ -398,8 +450,9 @@ app.delete('/api/entities/:entity/:id', requireAuth, asyncHandler(async (req, re
 
 app.use((error, _req, res, _next) => {
   const status = error.status || 500;
+  const message = cleanMessage(error.message, 'Internal server error');
   if (status >= 500) console.error(error);
-  res.status(status).json({ error: error.message || 'Internal server error' });
+  res.status(status).json({ error: message });
 });
 
 app.listen(PORT, () => {
