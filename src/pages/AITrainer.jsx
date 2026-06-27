@@ -8,6 +8,8 @@ import ReactMarkdown from 'react-markdown';
 import { GOALS_LABELS } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
 
+const CHAT_CONVERSATION_ID = 'ai_trainer_default';
+
 const SUGGESTED_PROMPTS = [
   { icon: '💪', label: 'Create workout plan', prompt: 'Create a personalized gym-based workout plan for me based on my profile and available equipment' },
   { icon: '🥗', label: 'What to eat today', prompt: 'What should I eat today based on my diet preference and fitness goal? Give me Indian meal options.' },
@@ -27,6 +29,18 @@ function safeText(value) {
     return value.reply || value.text || value.response || value.message || value.error || '';
   }
   return '';
+}
+
+function normalizeChatRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter(row => ['user', 'assistant'].includes(row.role) && safeText(row.content).trim())
+    .sort((a, b) => String(a.created_date || a.created_at || '').localeCompare(String(b.created_date || b.created_at || '')))
+    .map(row => ({
+      id: row.id,
+      role: row.role,
+      content: safeText(row.content),
+    }));
 }
 
 function getLocalCoachReply(question, context) {
@@ -63,24 +77,45 @@ export default function AITrainer() {
   const [gymOwner, setGymOwner] = useState(null);
   const [todayTracking, setTodayTracking] = useState({});
   const [usageCount, setUsageCount] = useState(0);
+  const [currentUser, setCurrentUser] = useState(null);
   const chatEnd = useRef(null);
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
+  const saveChatMessage = async (role, content, userOverride = null) => {
+    const user = userOverride || currentUser || await base44.auth.me().catch(() => null);
+    const text = safeText(content).trim();
+    if (!user?.id || !text) return null;
+
+    return base44.entities.AIChatMessage.create({
+      user_id: user.id,
+      conversation_id: CHAT_CONVERSATION_ID,
+      role,
+      content: text,
+      source: 'ai_trainer',
+    }).catch(error => {
+      console.warn('[AITrainer] chat history save failed:', error);
+      return null;
+    });
+  };
+
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
+      setCurrentUser(user);
       const today = new Date().toISOString().slice(0, 10);
-      const [profiles, subs, usageLogs] = await Promise.all([
+      const [profiles, subs, usageLogs, chatRows] = await Promise.all([
         base44.entities.UserProfile.filter({ user_id: user.id }).catch(() => []),
         base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }).catch(() => []),
         base44.entities.AIUsageLog.filter({ user_id: user.id, feature: 'ai_trainer', date: today }).catch(() => []),
+        base44.entities.AIChatMessage.filter({ user_id: user.id, conversation_id: CHAT_CONVERSATION_ID }, 'created_date', 100).catch(() => []),
       ]);
       const p = Array.isArray(profiles) ? profiles[0] || null : null;
       setProfile(p);
       setSubscription(Array.isArray(subs) ? subs[0] || null : null);
       setUsageCount(Array.isArray(usageLogs) ? usageLogs.filter(l => l.success).length : 0);
+      setMessages(normalizeChatRows(chatRows));
 
       if (p?.primary_gym_id) {
         const [eq] = await Promise.all([
@@ -146,6 +181,7 @@ export default function AITrainer() {
     setInput('');
     setLoading(true);
     setUsageCount(c => c + 1);
+    saveChatMessage('user', text);
 
     const context = buildContext();
 
@@ -179,9 +215,11 @@ export default function AITrainer() {
         reply = getLocalCoachReply(text, context);
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: safeText(reply) || 'I could not generate a response. Please try again.' }]);
+      const assistantContent = safeText(reply) || 'I could not generate a response. Please try again.';
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
+      saveChatMessage('assistant', assistantContent);
 
-      const user = await base44.auth.me().catch(() => null);
+      const user = currentUser || await base44.auth.me().catch(() => null);
       if (user?.id) {
         await base44.entities.AIUsageLog.create({
           user_id: user.id,
@@ -192,7 +230,9 @@ export default function AITrainer() {
       }
     } catch (error) {
       console.error('[AITrainer] send failed:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ AI Trainer is temporarily unavailable. Please try again.' }]);
+      const errorMessage = '⚠️ AI Trainer is temporarily unavailable. Please try again.';
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
+      saveChatMessage('assistant', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -234,7 +274,7 @@ export default function AITrainer() {
                 </div>
                 <h2 className="font-heading font-bold text-lg">SE7ENFIT AI Coach</h2>
                 <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
-                  Personalized coaching for your profile, diet and gym.
+                  Personalized coaching for your profile, diet and gym. Chat history is saved automatically.
                 </p>
                 {profile && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-3 py-1.5">
@@ -261,10 +301,16 @@ export default function AITrainer() {
             </div>
           )}
 
+          {messages.length > 0 && (
+            <div className="flex justify-center">
+              <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-3 py-1">Chat history saved</span>
+            </div>
+          )}
+
           {messages.map((msg, i) => {
             const content = safeText(msg.content) || 'Message unavailable.';
             return (
-              <div key={`${msg.role}-${i}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
+              <div key={`${msg.id || msg.role}-${i}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
                 {msg.role === 'assistant' && (
                   <div className="w-7 h-7 rounded-xl bg-accent/15 flex items-center justify-center flex-shrink-0 mt-1">
                     <Bot size={13} className="text-accent" />
