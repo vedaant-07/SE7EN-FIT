@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dumbbell, Mail, Lock, Loader2, ChevronLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import GoogleIcon from '@/components/GoogleIcon';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 function getErrorMessage(error, fallback = 'Something went wrong') {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
@@ -30,10 +30,24 @@ export default function UserLogin() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const goToDashboard = async () => {
+  const goToDashboard = useCallback(async () => {
     await checkUserAuth().catch(() => null);
     navigate('/user-dashboard', { replace: true });
-  };
+  }, [checkUserAuth, navigate]);
+
+  const handleGoogleSuccess = useCallback(async (user) => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      if (user?.role !== 'user') throw new Error('This Google account is not registered as a user');
+      await goToDashboard();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Google login failed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [goToDashboard]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -79,23 +93,6 @@ export default function UserLogin() {
       setSuccess('New verification code sent.');
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to resend code'));
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      const user = await base44.auth.loginWithProvider('google', 'user');
-      if (user.role !== 'user') {
-        throw new Error('This Google account is not registered as a user');
-      }
-      await goToDashboard();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Google login failed'));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -161,10 +158,9 @@ export default function UserLogin() {
           <p className="text-muted-foreground text-sm mt-1.5">Enter password, then verify email OTP</p>
         </div>
 
-        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GoogleIcon className="w-5 h-5 mr-2" />}
-          Continue with Google
-        </Button>
+        <div className="mb-6">
+          <GoogleSignInButton role="user" disabled={loading} onSuccess={handleGoogleSuccess} onError={(err) => setError(getErrorMessage(err, 'Google login failed'))} />
+        </div>
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
