@@ -31,6 +31,7 @@ const TABS = [
 ];
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
+const fourPerViewStyle = { flex: '0 0 calc((100% - 18px) / 4)' };
 
 export default function Tracking() {
   const [activeTab, setActiveTab] = useState('steps');
@@ -106,7 +107,7 @@ export default function Tracking() {
       <TopBar title="Tracking" showBack />
 
       <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-xl border-b border-border/40">
-        <div ref={tabBarRef} className="flex gap-1.5 px-3 py-2.5 overflow-x-auto no-scrollbar">
+        <div ref={tabBarRef} className="flex gap-1.5 px-3 py-2.5 overflow-x-auto no-scrollbar snap-x snap-mandatory">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -116,15 +117,16 @@ export default function Tracking() {
                 key={tab.key}
                 id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
-                className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all active:scale-95 ${
-                  active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted border border-transparent'
+                style={fourPerViewStyle}
+                className={`snap-start flex-shrink-0 flex flex-col items-center gap-1.5 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
+                  active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted/60 border border-transparent'
                 }`}
               >
-                <div className="relative">
-                  <Icon size={18} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
-                  {hasData && !active && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-accent" />}
+                <div className="relative w-[58px] h-[42px] rounded-xl flex items-center justify-center">
+                  <Icon size={24} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
+                  {hasData && !active && <span className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-accent" />}
                 </div>
-                <span className={`text-[10px] font-medium whitespace-nowrap ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
+                <span className={`text-[10px] font-semibold whitespace-nowrap leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
               </button>
             );
           })}
