@@ -259,7 +259,7 @@ export default function Profile() {
           })}
         </div>
 
-        <Button variant="outline" onClick={() => setShowLogout(true)} className="w-full h-11 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/5 gap-2">
+        <Button onClick={() => setShowLogout(true)} className="w-full h-11 rounded-xl bg-destructive text-white hover:bg-destructive/90 border border-destructive gap-2 font-semibold">
           <LogOut size={15} /> Log Out
         </Button>
 
