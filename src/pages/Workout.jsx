@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
-import EmptyState from '@/components/se7enfit/EmptyState';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Dumbbell, Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, Brain, RefreshCw } from 'lucide-react';
+import { Plus, Calendar, Library, ChevronRight, Flame, Clock, Zap, Brain } from 'lucide-react';
 import { getToday, GOALS_LABELS } from '@/lib/fitnessUtils';
 import AIWorkoutGenerator from '@/components/se7enfit/AIWorkoutGenerator';
 import { getNextWorkoutSuggestion } from '@/lib/workoutMemory';
@@ -21,7 +20,6 @@ const PLAN_TEMPLATES = [
 
 export default function Workout() {
   const navigate = useNavigate();
-  const [plans, setPlans] = useState([]);
   const [todayLogs, setTodayLogs] = useState([]);
   const [profile, setProfile] = useState(null);
   const [gymEquipment, setGymEquipment] = useState([]);
@@ -34,13 +32,11 @@ export default function Workout() {
 
   const loadData = async () => {
     const user = await base44.auth.me();
-    const [p, logs, profiles, subs] = await Promise.all([
-      base44.entities.WorkoutPlan.filter({ user_id: user.id }),
+    const [logs, profiles, subs] = await Promise.all([
       base44.entities.WorkoutLog.filter({ user_id: user.id, date: getToday() }),
       base44.entities.UserProfile.filter({ user_id: user.id }),
       base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
     ]);
-    setPlans(p);
     setTodayLogs(logs);
     setSubscription(subs[0] || null);
     const prof = profiles[0] || null;
@@ -55,7 +51,6 @@ export default function Workout() {
         setGymOwner(gymData[0] || null);
       } catch { /* gym not found, continue */ }
     }
-    // Load workout memory suggestion
     try {
       const suggestion = await getNextWorkoutSuggestion(user.id);
       setNextWorkout(suggestion);
@@ -75,6 +70,28 @@ export default function Workout() {
       <TopBar title="Workout" showBack />
       <div className="px-4 py-4 space-y-5 pb-6">
 
+        {/* Next Recommended Workout */}
+        {nextWorkout && (
+          <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/25 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Brain size={15} className="text-accent" />
+              <p className="text-xs font-semibold text-accent uppercase tracking-wide">Next Recommended Workout</p>
+            </div>
+            <p className="font-heading font-bold text-sm">{nextWorkout.label}</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{nextWorkout.reason}</p>
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => navigate('/workout/log')}
+                className="flex-1 bg-white text-black rounded-xl py-2 text-xs font-semibold active:scale-95 transition-all hover:bg-white/90">
+                Start Recommended
+              </button>
+              <button onClick={() => navigate('/ai-trainer')}
+                className="flex items-center gap-1 px-3 py-2 border border-border rounded-xl text-xs font-medium text-muted-foreground active:scale-95 transition-all hover:bg-muted/40">
+                <Zap size={11} className="text-muted-foreground" /> Ask AI
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Today's Status */}
         <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full -translate-y-6 translate-x-6 pointer-events-none" />
@@ -88,7 +105,7 @@ export default function Workout() {
               </p>
               {goalLabel && <p className="text-xs text-muted-foreground mt-0.5">Goal: {goalLabel}</p>}
             </div>
-            <Button onClick={() => navigate('/workout/log')} className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 h-10 px-4 gap-1.5 shrink-0">
+            <Button onClick={() => navigate('/workout/log')} className="rounded-xl bg-white text-black hover:bg-white/90 h-10 px-4 gap-1.5 shrink-0">
               <Plus size={15} /> Log
             </Button>
           </div>
@@ -124,28 +141,6 @@ export default function Workout() {
           </Link>
         </div>
 
-        {/* Next Recommended Workout */}
-        {nextWorkout && (
-          <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/25 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Brain size={15} className="text-accent" />
-              <p className="text-xs font-semibold text-accent uppercase tracking-wide">Next Recommended Workout</p>
-            </div>
-            <p className="font-heading font-bold text-sm">{nextWorkout.label}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{nextWorkout.reason}</p>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => navigate('/workout/log')}
-                className="flex-1 bg-accent text-accent-foreground rounded-xl py-2 text-xs font-semibold active:scale-95 transition-all">
-                Start Recommended
-              </button>
-              <button onClick={() => navigate('/ai-trainer')}
-                className="flex items-center gap-1 px-3 py-2 border border-border rounded-xl text-xs font-medium text-muted-foreground active:scale-95 transition-all">
-                <Zap size={11} className="text-accent" /> Ask AI
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* AI Workout Generator */}
         <AIWorkoutGenerator
           profile={profile}
@@ -153,50 +148,6 @@ export default function Workout() {
           gymName={gymOwner?.gym_name || null}
           subscription={subscription}
         />
-
-        {/* My Plans */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-heading font-semibold text-sm">My Workout Plans</h3>
-            <Link to="/ai-trainer" className="text-xs text-accent font-medium flex items-center gap-1">
-              <Zap size={11} /> AI Generate
-            </Link>
-          </div>
-
-          {plans.length === 0 ? (
-            <EmptyState
-              icon={Dumbbell}
-              title="No workout plans yet"
-              description="Ask the AI Trainer to create a personalized workout plan based on your goals."
-              actionLabel="Create with AI"
-              onAction={() => navigate('/ai-trainer')}
-              compact
-            />
-          ) : (
-            <div className="space-y-2.5">
-              {plans.map(plan => (
-                <div key={plan.id} className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 transition-all active:scale-[0.99]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                      <Dumbbell size={18} className="text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-heading font-semibold text-sm truncate">{plan.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {plan.days_per_week} days/week • {plan.level}
-                        {plan.is_ai_generated && <span className="ml-1 text-accent">• AI</span>}
-                      </p>
-                    </div>
-                    {plan.is_active && (
-                      <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">Active</span>
-                    )}
-                    <ChevronRight size={15} className="text-muted-foreground" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Explore Templates */}
         <div>
