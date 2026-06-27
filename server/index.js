@@ -23,6 +23,8 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 const app = express();
 const allowedOrigins = FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
+const SHARED_READ_ENTITIES = new Set(['GymOwner', 'Challenge', 'Reward', 'Announcement', 'GymAnnouncement', 'GymEquipment']);
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 app.use(cors({
   origin(origin, callback) {
@@ -37,12 +39,6 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   next();
 });
-
-const SHARED_READ_ENTITIES = new Set([
-  'GymOwner', 'Challenge', 'Reward', 'Announcement', 'GymAnnouncement', 'GymEquipment',
-]);
-
-const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 function normalizeRole(role) {
   const value = String(role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -71,16 +67,27 @@ function publicUser(profile, authUser = {}) {
   };
 }
 
+async function getProfile(userId) {
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw Object.assign(new Error(error.message), { status: 500 });
+  return data;
+}
+
 async function upsertProfile(authUser, overrides = {}) {
   const metadata = authUser.user_metadata || {};
+  const existing = await getProfile(authUser.id).catch(() => null);
   const row = {
     user_id: authUser.id,
     email: cleanEmail(authUser.email || overrides.email),
-    role: normalizeRole(overrides.role || metadata.role),
-    full_name: overrides.full_name || overrides.name || overrides.owner_name || metadata.full_name || metadata.name || metadata.owner_name || null,
-    phone: overrides.phone || overrides.mobile || metadata.phone || metadata.mobile || null,
-    avatar_url: overrides.avatar_url || metadata.avatar_url || metadata.picture || null,
-    metadata: { ...metadata, ...overrides },
+    role: normalizeRole(overrides.role || existing?.role || metadata.role),
+    full_name: overrides.full_name || overrides.name || overrides.owner_name || existing?.full_name || metadata.full_name || metadata.name || metadata.owner_name || null,
+    phone: overrides.phone || overrides.mobile || existing?.phone || metadata.phone || metadata.mobile || null,
+    avatar_url: overrides.avatar_url || existing?.avatar_url || metadata.avatar_url || metadata.picture || null,
+    metadata: { ...(existing?.metadata || {}), ...metadata, ...overrides },
     updated_at: new Date().toISOString(),
   };
 
@@ -89,17 +96,6 @@ async function upsertProfile(authUser, overrides = {}) {
     .upsert(row, { onConflict: 'user_id' })
     .select('*')
     .single();
-
-  if (error) throw Object.assign(new Error(error.message), { status: 500 });
-  return data;
-}
-
-async function getProfile(userId) {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   return data;
 }
@@ -135,13 +131,24 @@ async function requireAuth(req, _res, next) {
   }
 }
 
+async function sendLoginOtp(email) {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+  if (error) throw Object.assign(new Error(error.message), { status: 400 });
+}
+
+async function resendOtpForExistingEmail(email) {
+  let result = await supabase.auth.resend({ type: 'signup', email });
+  if (result.error) {
+    result = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  }
+  if (result.error) throw Object.assign(new Error(result.error.message), { status: 400 });
+}
+
 function recordToEntity(row) {
-  return {
-    ...(row.data || {}),
-    id: row.id,
-    created_date: row.created_at,
-    updated_date: row.updated_at,
-  };
+  return { ...(row.data || {}), id: row.id, created_date: row.created_at, updated_date: row.updated_at };
 }
 
 function canReadEntity(row, user) {
@@ -174,10 +181,7 @@ function sortEntities(rows, sortBy = '-created_date') {
 }
 
 async function listEntityRows(entityType) {
-  const { data, error } = await supabaseAdmin
-    .from('entity_records')
-    .select('*')
-    .eq('entity_type', entityType);
+  const { data, error } = await supabaseAdmin.from('entity_records').select('*').eq('entity_type', entityType);
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   return data || [];
 }
@@ -196,7 +200,6 @@ async function upsertGymOwnerForUser(user, payload = {}) {
     owner_name: payload.owner_name || user.full_name || existing?.owner_name || 'Gym Owner',
     email: payload.email || user.email || existing?.email,
   };
-
   delete nowData.id;
   delete nowData.created_date;
   delete nowData.updated_date;
@@ -221,6 +224,7 @@ async function upsertGymOwnerForUser(user, payload = {}) {
   return recordToEntity(data);
 }
 
+app.get('/', (_req, res) => res.json({ ok: true, service: 'se7enfit-api', health: '/health' }));
 app.get('/health', (_req, res) => res.json({ ok: true, service: 'se7enfit-api' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'se7enfit-api' }));
 
@@ -239,33 +243,30 @@ app.post('/api/auth/register', asyncHandler(async (req, res) => {
     mobile: body.mobile || body.phone,
   };
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: metadata },
-  });
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
   if (error) throw Object.assign(new Error(error.message), { status: 400 });
-
-  let profile = null;
-  if (data.user) profile = await upsertProfile(data.user, { ...metadata, email });
-
-  if (!data.session) {
-    return res.status(201).json({ requires_otp: true, user: data.user ? publicUser(profile, data.user) : null });
-  }
-
-  return res.status(201).json(formatSession(data.session, profile, data.user));
+  if (data.user) await upsertProfile(data.user, { ...metadata, email });
+  return res.status(201).json({ requires_otp: true, purpose: 'register', email });
 }));
 
 app.post('/api/auth/login', asyncHandler(async (req, res) => {
   const email = cleanEmail(req.body?.email);
   const password = req.body?.password;
+  const requestedRole = normalizeRole(req.body?.role || 'user');
   if (!email || !password) throw Object.assign(new Error('Email and password are required'), { status: 400 });
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw Object.assign(new Error(error.message), { status: 401 });
 
-  const profile = await upsertProfile(data.user, { role: req.body?.role || data.user?.user_metadata?.role });
-  return res.json(formatSession(data.session, profile, data.user));
+  const profile = await upsertProfile(data.user);
+  const actualRole = normalizeRole(profile.role || data.user?.user_metadata?.role);
+  if (requestedRole !== actualRole) {
+    const message = actualRole === 'gym_owner' ? 'Use the gym owner login for this account.' : 'Use the user login for this account.';
+    throw Object.assign(new Error(message), { status: 403 });
+  }
+
+  await sendLoginOtp(email);
+  return res.json({ requires_otp: true, purpose: 'login', email, role: actualRole });
 }));
 
 app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
@@ -284,8 +285,7 @@ app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
 app.post('/api/auth/resend-otp', asyncHandler(async (req, res) => {
   const email = cleanEmail(req.body?.email);
   if (!email) throw Object.assign(new Error('Email is required'), { status: 400 });
-  const { error } = await supabase.auth.resend({ type: 'signup', email });
-  if (error) throw Object.assign(new Error(error.message), { status: 400 });
+  await resendOtpForExistingEmail(email);
   return res.json({ success: true });
 }));
 
@@ -300,17 +300,11 @@ app.post('/api/auth/google', asyncHandler(async (req, res) => {
   return res.json(formatSession(data.session, profile, data.user));
 }));
 
-app.get('/api/auth/me', requireAuth, asyncHandler(async (req, res) => {
-  return res.json({ user: req.user });
-}));
+app.get('/api/auth/me', requireAuth, asyncHandler(async (req, res) => res.json({ user: req.user })));
 
-app.get('/api/gym-owners/me', requireAuth, asyncHandler(async (req, res) => {
-  return res.json(await findGymOwnerForUser(req.user.id));
-}));
+app.get('/api/gym-owners/me', requireAuth, asyncHandler(async (req, res) => res.json(await findGymOwnerForUser(req.user.id))));
 
-app.put('/api/gym-owners/me', requireAuth, asyncHandler(async (req, res) => {
-  return res.json(await upsertGymOwnerForUser(req.user, req.body || {}));
-}));
+app.put('/api/gym-owners/me', requireAuth, asyncHandler(async (req, res) => res.json(await upsertGymOwnerForUser(req.user, req.body || {}))));
 
 app.post('/api/gym-owners/onboarding', requireAuth, asyncHandler(async (req, res) => {
   const payload = { ...(req.body || {}), onboarding_complete: true };
