@@ -19,21 +19,38 @@ export default function Notifications() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    const user = await base44.auth.me();
-    const notifs = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 50);
-    setNotifications(notifs);
-    setLoading(false);
+    try {
+      const user = await base44.auth.me();
+      const notifs = await base44.entities.Notification.filter({ user_id: user.id }, '-created_date', 50);
+      const rows = Array.isArray(notifs) ? notifs : [];
+      setNotifications(rows);
+      setLoading(false);
+
+      const unread = rows.filter(n => !n.is_read);
+      if (unread.length) {
+        await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { is_read: true }).catch(() => null)));
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      }
+
+      window.dispatchEvent(new Event('se7enfit:notifications-read'));
+    } catch {
+      setNotifications([]);
+      setLoading(false);
+      window.dispatchEvent(new Event('se7enfit:notifications-read'));
+    }
   };
 
   const markRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     await base44.entities.Notification.update(id, { is_read: true });
+    window.dispatchEvent(new Event('se7enfit:notifications-read'));
   };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.is_read);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { is_read: true })));
+    window.dispatchEvent(new Event('se7enfit:notifications-read'));
   };
 
   if (loading) return <LoadingScreen />;
