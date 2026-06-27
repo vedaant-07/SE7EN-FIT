@@ -41,7 +41,6 @@ import GymOwnerLogin from '@/pages/GymOwnerLogin';
 import GymOwnerRegister from '@/pages/GymOwnerRegister';
 import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
-import GymOwnerLoginNew from '@/pages/GymOwnerLoginNew';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
 import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
 import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
@@ -77,9 +76,9 @@ const AuthenticatedApp = () => {
       <Route path="/welcome" element={<Welcome />} />
       <Route path="/login/user" element={<UserLogin />} />
       <Route path="/signup/user" element={<UserSignup />} />
-      <Route path="/login/gym-owner" element={<GymOwnerLoginNew />} />
+      <Route path="/login/gym-owner" element={<GymOwnerLogin />} />
       <Route path="/signup/gym-owner" element={<GymOwnerSignup />} />
-      <Route path="/gym-owner/login" element={<GymOwnerLoginNew />} />
+      <Route path="/gym-owner/login" element={<GymOwnerLogin />} />
       <Route path="/gym-owner/register" element={<GymOwnerSignup />} />
       <Route path="/terms" element={<PolicyPages />} />
       <Route path="/privacy" element={<PolicyPages />} />
