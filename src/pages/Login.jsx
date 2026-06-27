@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2, ChevronLeft } from "lucide-react";
+import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 
@@ -20,8 +20,8 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = "/user-dashboard";
+      await base44.auth.loginViaEmailPassword(email, password, 'user');
+      navigate('/user-dashboard', { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -29,8 +29,17 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", "/user-dashboard");
+  const handleGoogle = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      await base44.auth.loginWithProvider("google", "user");
+      navigate('/user-dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message || "Google login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,6 +61,7 @@ export default function Login() {
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6"
         onClick={handleGoogle}
+        disabled={loading}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         Continue with Google
