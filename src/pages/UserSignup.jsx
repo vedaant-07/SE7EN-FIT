@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +9,19 @@ import { Dumbbell, Mail, Lock, Loader2, ChevronLeft, Hash, Building2 } from 'luc
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import GoogleIcon from '@/components/GoogleIcon';
 
+function getErrorMessage(error, fallback = 'Something went wrong') {
+  const message = typeof error?.message === 'string' ? error.message.trim() : '';
+  const bodyError = typeof error?.body?.error === 'string' ? error.body.error.trim() : '';
+  const bodyMessage = typeof error?.body?.message === 'string' ? error.body.message.trim() : '';
+  if (message && message !== '{}' && message !== '[object Object]') return message;
+  if (bodyError && bodyError !== '{}') return bodyError;
+  if (bodyMessage && bodyMessage !== '{}') return bodyMessage;
+  return fallback;
+}
+
 export default function UserSignup() {
   const navigate = useNavigate();
+  const { checkUserAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -17,14 +29,24 @@ export default function UserSignup() {
   const [otp, setOtp] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [gymInfo, setGymInfo] = useState(null);
   const [gymCodeError, setGymCodeError] = useState('');
 
+  const goToOnboarding = async () => {
+    await checkUserAuth().catch(() => null);
+    navigate('/onboarding', { replace: true });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+
     if (password !== confirm) { setError('Passwords do not match'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+
     setLoading(true);
     try {
       const result = await base44.auth.register({
@@ -34,18 +56,22 @@ export default function UserSignup() {
         referral_code: gymCode.trim() || undefined,
       });
 
-      if (result?.requires_otp) {
-        setShowOtp(true);
-        return;
-      }
-
       if (gymCode.trim()) {
         localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
       }
-      navigate('/onboarding', { replace: true });
+
+      if (result?.requires_otp) {
+        setShowOtp(true);
+        setSuccess(result.message || 'Verification code sent to your email.');
+        return;
+      }
+
+      await goToOnboarding();
     } catch (err) {
-      setError(err.message || 'Registration failed');
-    } finally { setLoading(false); }
+      setError(getErrorMessage(err, 'Registration failed. Please check your email/password and try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const validateGymCode = async (code) => {
@@ -58,39 +84,53 @@ export default function UserSignup() {
         setGymCodeError('');
       } else {
         setGymInfo(null);
-        setGymCodeError('Referral code will be checked by the backend during signup.');
+        setGymCodeError('Referral code will be checked after signup.');
       }
     } catch {
       setGymInfo(null);
-      setGymCodeError('Referral code will be checked by the backend during signup.');
+      setGymCodeError('Referral code will be checked after signup.');
     }
   };
 
   const handleVerify = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       await base44.auth.verifyOtp({ email, otpCode: otp });
       if (gymCode.trim()) {
         localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
       }
-      navigate('/onboarding', { replace: true });
+      await goToOnboarding();
     } catch (err) {
-      setError(err.message || 'Invalid code');
+      setError(getErrorMessage(err, 'Invalid verification code'));
     } finally { setLoading(false); }
+  };
+
+  const handleResend = async () => {
+    setError('');
+    setSuccess('');
+    try {
+      await base44.auth.resendOtp(email);
+      setSuccess('New verification code sent.');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to resend code'));
+    }
   };
 
   const handleGoogle = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const user = await base44.auth.loginWithProvider('google', 'user');
       if (user.role !== 'user') {
         throw new Error('This Google account is not registered as a user');
       }
+      await checkUserAuth().catch(() => null);
       navigate('/user-dashboard', { replace: true });
     } catch (err) {
-      setError(err.message || 'Google login failed');
+      setError(getErrorMessage(err, 'Google login failed'));
     } finally {
       setLoading(false);
     }
@@ -109,6 +149,7 @@ export default function UserSignup() {
             <h1 className="font-heading font-bold text-2xl">Verify Email</h1>
             <p className="text-muted-foreground text-sm mt-1">Code sent to {email}</p>
           </div>
+          {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
           {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
           <div className="flex justify-center mb-6">
             <InputOTP maxLength={6} value={otp} onChange={setOtp} autoFocus autoComplete="one-time-code">
@@ -120,7 +161,7 @@ export default function UserSignup() {
           </Button>
           <p className="text-center text-sm text-muted-foreground mt-4">
             Didn't get code?{' '}
-            <button onClick={() => base44.auth.resendOtp(email)} className="text-accent font-medium">Resend</button>
+            <button onClick={handleResend} className="text-accent font-medium">Resend</button>
           </p>
         </div>
       </div>
@@ -148,7 +189,7 @@ export default function UserSignup() {
         </div>
 
         <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle} disabled={loading}>
-          <GoogleIcon className="w-5 h-5 mr-2" />
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GoogleIcon className="w-5 h-5 mr-2" />}
           Continue with Google
         </Button>
 
@@ -159,6 +200,7 @@ export default function UserSignup() {
           </div>
         </div>
 
+        {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
         {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
