@@ -255,7 +255,7 @@ export default function Challenges() {
         <div className="flex gap-2">
           {['all', 'joined'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${activeTab === tab ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}>
+              className={`flex-1 h-10 rounded-xl text-sm font-semibold transition-all ${activeTab === tab ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}>
               {tab === 'all' ? `All Challenges (${allChallenges.length})` : `My Challenges (${joinedIds.length})`}
             </button>
           ))}
@@ -270,8 +270,8 @@ export default function Challenges() {
                 <p className="text-sm font-semibold">AI Challenge Picks</p>
               </div>
               <button onClick={handleAiRecommend} disabled={loadingAiRecs}
-                className="text-xs text-accent font-medium flex items-center gap-1 disabled:opacity-50">
-                {loadingAiRecs ? <RefreshCw size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                className="text-sm text-accent font-medium flex items-center gap-1 disabled:opacity-50">
+                {loadingAiRecs ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                 {aiRecs ? 'Refresh' : 'Get Picks'}
               </button>
             </div>
@@ -284,11 +284,11 @@ export default function Challenges() {
                 {aiRecs.map((rec, i) => (
                   <div key={i} className="bg-card/60 rounded-xl p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold">{rec.challengeName}</p>
-                      <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full whitespace-nowrap">{rec.difficulty}</span>
+                      <p className="text-sm font-semibold">{rec.challengeName}</p>
+                      <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full whitespace-nowrap">{rec.difficulty}</span>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{rec.reason}</p>
-                    <p className="text-[11px] text-accent mt-0.5">🎯 {rec.expectedBenefit}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rec.reason}</p>
+                    <p className="text-xs text-accent mt-0.5">🎯 {rec.expectedBenefit}</p>
                   </div>
                 ))}
               </div>
@@ -300,7 +300,7 @@ export default function Challenges() {
         {gymChallengesMapped.length > 0 && activeTab === 'all' && (
           <div className="bg-accent/8 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
             <Trophy size={13} className="text-accent flex-shrink-0" />
-            <p className="text-xs text-accent font-medium">{gymChallengesMapped.length} challenge{gymChallengesMapped.length > 1 ? 's' : ''} from your gym</p>
+            <p className="text-sm text-accent font-medium">{gymChallengesMapped.length} challenge{gymChallengesMapped.length > 1 ? 's' : ''} from your gym</p>
           </div>
         )}
 
@@ -309,7 +309,7 @@ export default function Challenges() {
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-heading font-semibold">No challenges joined yet</p>
             <p className="text-xs text-muted-foreground mt-1">Browse challenges and join to start earning!</p>
-            <Button onClick={() => setActiveTab('all')} className="mt-4 h-10 rounded-xl bg-accent text-white text-sm">Browse Challenges</Button>
+            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90 text-base font-semibold">Browse Challenges</Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -332,7 +332,7 @@ export default function Challenges() {
 
                   {challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <span className="text-[9px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">GYM</span>
+                      <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">GYM</span>
                     </div>
                   )}
                   {locked && !challenge.isGymChallenge && (
@@ -344,7 +344,7 @@ export default function Challenges() {
                   )}
                   {joined && !locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <span className="text-[9px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">
                         {isCompleted ? '✓ DONE' : 'JOINED'}
                       </span>
                     </div>
@@ -361,23 +361,23 @@ export default function Challenges() {
                   </div>
 
                   <div className="flex items-center gap-3 mb-3 flex-wrap">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
                       {challenge.difficulty}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock size={10} /> {challenge.days} days
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Users size={10} /> {challenge.participants.toLocaleString()}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px] text-yellow-400 font-semibold">
+                    <span className="flex items-center gap-1 text-[11px] text-yellow-400 font-semibold">
                       🪙 {challenge.coins} coins
                     </span>
                   </div>
 
                   {joined && (
                     <div className="mb-3">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                         <span>Progress — Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
@@ -391,28 +391,28 @@ export default function Challenges() {
                     <Button
                       onClick={() => handleLogProgress(challenge)}
                       disabled={loggingId === challenge.id || alreadyLoggedToday}
-                      className="w-full h-10 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90"
+                      className="w-full h-11 rounded-xl text-sm font-semibold bg-white text-black hover:bg-white/90 border border-white"
                     >
                       {loggingId === challenge.id ? 'Logging...' :
-                       alreadyLoggedToday ? <><Check size={12} className="mr-1" /> Logged Today ✓</> :
-                       <><Plus size={12} className="mr-1" /> Log Today's Progress</>}
+                       alreadyLoggedToday ? <><Check size={13} className="mr-1" /> Logged Today ✓</> :
+                       <><Plus size={13} className="mr-1" /> Log Today's Progress</>}
                     </Button>
                   ) : joined && isCompleted ? (
-                    <div className="w-full h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-semibold text-emerald-400">
-                      <Check size={13} className="mr-1.5" /> Challenge Completed! 🏆
+                    <div className="w-full h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-semibold text-emerald-400">
+                      <Check size={14} className="mr-1.5" /> Challenge Completed! 🏆
                     </div>
                   ) : (
                     <Button
                       onClick={() => handleJoin(challenge)}
                       disabled={joiningId === challenge.id}
-                      className={`w-full h-10 rounded-xl text-xs font-semibold transition-all ${
+                      className={`w-full h-11 rounded-xl text-sm font-semibold transition-all ${
                         locked ? 'bg-yellow-400 text-white border border-yellow-400 hover:bg-yellow-400/90' :
-                        'bg-accent text-white hover:bg-accent/90'
+                        'bg-white text-black hover:bg-white/90 border border-white'
                       }`}
                     >
-                      {locked ? <><Crown size={12} className="mr-1" /> Unlock Premium</> :
+                      {locked ? <><Crown size={13} className="mr-1" /> Unlock Premium</> :
                        joiningId === challenge.id ? 'Joining...' :
-                       <>Join Challenge <ChevronRight size={13} /></>}
+                       <>Join Challenge <ChevronRight size={14} /></>}
                     </Button>
                   )}
                 </div>
