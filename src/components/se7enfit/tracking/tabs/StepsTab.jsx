@@ -135,8 +135,8 @@ export default function StepsTab({ profile }) {
             onClick={() => setShowLive(p => !p)}
             className={`h-9 shrink-0 rounded-xl border px-4 text-xs font-bold transition-all active:scale-95 ${
               showLive
-                ? 'border-accent/40 bg-accent/10 text-accent'
-                : 'border-accent bg-accent text-accent-foreground shadow-[0_0_18px_rgba(25,214,92,0.25)] hover:bg-accent/90'
+                ? 'border-white/20 bg-white/10 text-white hover:bg-white/15'
+                : 'border-white/20 bg-white text-black shadow-[0_0_18px_rgba(255,255,255,0.12)] hover:bg-white/90'
             }`}
           >
             {showLive ? 'Hide' : 'Track'}
@@ -187,7 +187,7 @@ export default function StepsTab({ profile }) {
         <Input type="number" placeholder="Enter steps" value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addSteps()}
           className="h-11 rounded-xl bg-card border-border flex-1" />
-        <Button onClick={addSteps} className="h-11 rounded-xl bg-accent text-accent-foreground px-4">
+        <Button onClick={addSteps} className="h-11 rounded-xl border border-white/20 bg-white text-black hover:bg-white/90 px-4">
           <Plus size={15} /> Add
         </Button>
       </div>
