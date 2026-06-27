@@ -21,8 +21,9 @@ export const AuthProvider = ({ children }) => {
   const completeStartup = async () => {
     const authed = await base44.auth.isAuthenticated();
     const currentUser = authed ? await base44.auth.me() : null;
+
     setUser(currentUser);
-    setIsAuthenticated(Boolean(authed));
+    setIsAuthenticated(Boolean(authed && currentUser));
     setAuthChecked(true);
     setAuthError(null);
     setAppPublicSettings({ id: 'se7enfit-local', public_settings: {} });
@@ -35,7 +36,10 @@ export const AuthProvider = ({ children }) => {
       await completeStartup();
     } catch (error) {
       console.error('App startup failed:', error);
-      setAuthError({ type: 'unknown', message: error.message || 'Failed to load app' });
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthError(null);
+      setAppPublicSettings({ id: 'se7enfit-local', public_settings: {} });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
@@ -47,14 +51,17 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const authed = await base44.auth.isAuthenticated();
       const currentUser = authed ? await base44.auth.me() : null;
+
       setUser(currentUser);
-      setIsAuthenticated(Boolean(authed));
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
+      setIsAuthenticated(Boolean(authed && currentUser));
+      setAuthError(null);
     } catch (error) {
       console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
+      setUser(null);
       setIsAuthenticated(false);
+      setAuthError(null);
+    } finally {
+      setIsLoadingAuth(false);
       setAuthChecked(true);
     }
   };
