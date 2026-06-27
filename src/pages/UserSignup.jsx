@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -33,6 +33,13 @@ export default function UserSignup() {
   const [loading, setLoading] = useState(false);
   const [gymInfo, setGymInfo] = useState(null);
   const [gymCodeError, setGymCodeError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (!showOtp || resendCooldown <= 0) return undefined;
+    const timer = window.setInterval(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [showOtp, resendCooldown]);
 
   const goToOnboarding = async () => {
     await checkUserAuth().catch(() => null);
@@ -65,6 +72,7 @@ export default function UserSignup() {
       if (gymCode.trim()) localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
       if (result?.requires_otp) {
         setShowOtp(true);
+        setResendCooldown(60);
         setSuccess(result.message || 'Verification code sent to your email.');
         return;
       }
@@ -100,9 +108,11 @@ export default function UserSignup() {
   };
 
   const handleResend = async () => {
-    setError(''); setSuccess('');
-    try { await base44.auth.resendOtp(email); setSuccess('New verification code sent.'); }
+    if (resendCooldown > 0 || loading) return;
+    setError(''); setSuccess(''); setLoading(true);
+    try { await base44.auth.resendOtp(email); setResendCooldown(60); setSuccess('New verification code sent.'); }
     catch (err) { setError(getErrorMessage(err, 'Failed to resend code')); }
+    finally { setLoading(false); }
   };
 
   if (showOtp) {
@@ -128,7 +138,12 @@ export default function UserSignup() {
           <Button className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground" onClick={handleVerify} disabled={loading || otp.length < 6}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Continue'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground mt-4">Didn't get code? <button onClick={handleResend} className="text-accent font-medium">Resend</button></p>
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            Didn't get code?{' '}
+            <button onClick={handleResend} disabled={resendCooldown > 0 || loading} className="text-accent font-medium disabled:text-muted-foreground disabled:cursor-not-allowed">
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
+            </button>
+          </p>
         </div>
       </div>
     );
