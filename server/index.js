@@ -8,6 +8,11 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '*';
+const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
+const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
+const MAILJET_FROM_EMAIL = process.env.MAILJET_FROM_EMAIL;
+const MAILJET_FROM_NAME = process.env.MAILJET_FROM_NAME || 'SE7EN FIT';
+const OTP_TTL_MS = 10 * 60 * 1000;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing SUPABASE_URL, SUPABASE_ANON_KEY, or SUPABASE_SERVICE_ROLE_KEY');
@@ -24,6 +29,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 const app = express();
 const allowedOrigins = FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
 const SHARED_READ_ENTITIES = new Set(['GymOwner', 'Challenge', 'Reward', 'Announcement', 'GymAnnouncement', 'GymEquipment']);
+const pendingOtpChallenges = new Map();
 const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 app.use(cors({
@@ -121,6 +127,83 @@ function formatSession(session, profile, authUser) {
   };
 }
 
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function mailjetErrorText(data) {
+  const messages = data?.Messages;
+  const firstError = Array.isArray(messages?.[0]?.Errors) ? messages[0].Errors[0] : null;
+  return firstError?.ErrorMessage || firstError?.ErrorIdentifier || data?.ErrorMessage || data?.message;
+}
+
+async function sendMailjetOtp(email, otp, purpose = 'login') {
+  if (!MAILJET_API_KEY || !MAILJET_SECRET_KEY || !MAILJET_FROM_EMAIL) {
+    throw Object.assign(new Error('Mailjet is not configured. Add MAILJET_API_KEY, MAILJET_SECRET_KEY, and MAILJET_FROM_EMAIL on Render.'), { status: 500 });
+  }
+
+  const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
+  const subject = purpose === 'register' ? 'Verify your SE7EN FIT account' : 'Your SE7EN FIT login code';
+  const response = await fetch('https://api.mailjet.com/v3.1/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      Messages: [{
+        From: { Email: MAILJET_FROM_EMAIL, Name: MAILJET_FROM_NAME },
+        To: [{ Email: email }],
+        Subject: subject,
+        TextPart: `Your SE7EN FIT verification code is ${otp}. It expires in 10 minutes.`,
+        HTMLPart: `<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>SE7EN FIT verification code</h2><p>Use this code to continue:</p><div style="font-size:32px;font-weight:700;letter-spacing:8px">${otp}</div><p>This code expires in 10 minutes.</p></div>`,
+      }],
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw Object.assign(new Error(cleanMessage(mailjetErrorText(data), 'Could not send verification code from Mailjet. Check sender verification and Mailjet keys.')), { status: 400 });
+  }
+}
+
+async function createOtpChallenge({ email, session, profile, authUser, purpose = 'login', role }) {
+  const clean = cleanEmail(email);
+  const otp = generateOtp();
+  await sendMailjetOtp(clean, otp, purpose);
+  pendingOtpChallenges.set(clean, {
+    otp,
+    session,
+    profile,
+    authUser,
+    purpose,
+    role: normalizeRole(role || profile?.role || authUser?.user_metadata?.role),
+    expiresAt: Date.now() + OTP_TTL_MS,
+  });
+  return {
+    requires_otp: true,
+    purpose,
+    email: clean,
+    role: normalizeRole(role || profile?.role || authUser?.user_metadata?.role),
+    message: 'Verification code sent to your email.',
+  };
+}
+
+function consumeOtpChallenge(email, token) {
+  const clean = cleanEmail(email);
+  const challenge = pendingOtpChallenges.get(clean);
+  if (!challenge) throw Object.assign(new Error('No pending verification code. Please start login or signup again.'), { status: 400 });
+  if (Date.now() > challenge.expiresAt) {
+    pendingOtpChallenges.delete(clean);
+    throw Object.assign(new Error('Verification code expired. Please resend code.'), { status: 400 });
+  }
+  if (String(token || '').trim() !== challenge.otp) {
+    throw Object.assign(new Error('Invalid verification code'), { status: 400 });
+  }
+  pendingOtpChallenges.delete(clean);
+  return challenge;
+}
+
 async function requireAuth(req, _res, next) {
   try {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -154,22 +237,6 @@ async function findAuthUserByEmail(email) {
     page += 1;
   }
   return null;
-}
-
-async function sendLoginOtp(email) {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: false },
-  });
-  if (error) throw Object.assign(new Error(authErrorMessage(error, 'Could not send OTP email. Check Supabase email/SMTP settings.')), { status: 400 });
-}
-
-async function resendOtpForExistingEmail(email) {
-  let result = await supabase.auth.resend({ type: 'signup', email });
-  if (result.error) {
-    result = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-  }
-  if (result.error) throw Object.assign(new Error(authErrorMessage(result.error, 'Could not send verification code. Check Supabase email/SMTP settings.')), { status: 400 });
 }
 
 function recordToEntity(row) {
@@ -275,23 +342,34 @@ app.post('/api/auth/register', asyncHandler(async (req, res) => {
   }
 
   if (existing?.id) {
-    await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+    const { data: updated, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
       password,
+      email_confirm: true,
       user_metadata: { ...(existing.user_metadata || {}), ...metadata },
     });
-    await upsertProfile({ ...existing, email, user_metadata: { ...(existing.user_metadata || {}), ...metadata } }, { ...metadata, email });
-    await resendOtpForExistingEmail(email);
-    return res.status(200).json({ requires_otp: true, purpose: 'register', email, message: 'Verification code sent to your email.' });
+    if (updateError) throw Object.assign(new Error(authErrorMessage(updateError, 'Could not update account. Please try again.')), { status: 400 });
+
+    const login = await supabase.auth.signInWithPassword({ email, password });
+    if (login.error) throw Object.assign(new Error(authErrorMessage(login.error, 'Could not create login session. Please try again.')), { status: 400 });
+    const profile = await upsertProfile(login.data.user || updated.user, { ...metadata, email });
+    return res.status(200).json(await createOtpChallenge({ email, session: login.data.session, profile, authUser: login.data.user || updated.user, purpose: 'register', role: profile.role }));
   }
 
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
-  if (error) {
-    const message = authErrorMessage(error, 'Could not create account. Please try again.');
+  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: metadata,
+  });
+  if (createError) {
+    const message = authErrorMessage(createError, 'Could not create account. Please try again.');
     throw Object.assign(new Error(message), { status: 400 });
   }
 
-  if (data.user) await upsertProfile(data.user, { ...metadata, email });
-  return res.status(201).json({ requires_otp: true, purpose: 'register', email, message: 'Verification code sent to your email.' });
+  const login = await supabase.auth.signInWithPassword({ email, password });
+  if (login.error) throw Object.assign(new Error(authErrorMessage(login.error, 'Could not create login session. Please try again.')), { status: 400 });
+  const profile = await upsertProfile(login.data.user || created.user, { ...metadata, email });
+  return res.status(201).json(await createOtpChallenge({ email, session: login.data.session, profile, authUser: login.data.user || created.user, purpose: 'register', role: profile.role }));
 }));
 
 app.post('/api/auth/login', asyncHandler(async (req, res) => {
@@ -300,25 +378,22 @@ app.post('/api/auth/login', asyncHandler(async (req, res) => {
   const requestedRole = normalizeRole(req.body?.role || 'user');
   if (!email || !password) throw Object.assign(new Error('Email and password are required'), { status: 400 });
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    const message = authErrorMessage(error, 'Invalid email or password');
-    if (/email not confirmed/i.test(message)) {
-      await resendOtpForExistingEmail(email);
-      return res.json({ requires_otp: true, purpose: 'login', email, role: requestedRole, message: 'Email is not verified. Verification code sent again.' });
-    }
-    throw Object.assign(new Error(message), { status: 401 });
+  let login = await supabase.auth.signInWithPassword({ email, password });
+  if (login.error && /email not confirmed/i.test(authErrorMessage(login.error, ''))) {
+    const existing = await findAuthUserByEmail(email).catch(() => null);
+    if (existing?.id) await supabaseAdmin.auth.admin.updateUserById(existing.id, { email_confirm: true });
+    login = await supabase.auth.signInWithPassword({ email, password });
   }
+  if (login.error) throw Object.assign(new Error(authErrorMessage(login.error, 'Invalid email or password')), { status: 401 });
 
-  const profile = await upsertProfile(data.user);
-  const actualRole = normalizeRole(profile.role || data.user?.user_metadata?.role);
+  const profile = await upsertProfile(login.data.user);
+  const actualRole = normalizeRole(profile.role || login.data.user?.user_metadata?.role);
   if (requestedRole !== actualRole) {
     const message = actualRole === 'gym_owner' ? 'Use the gym owner login for this account.' : 'Use the user login for this account.';
     throw Object.assign(new Error(message), { status: 403 });
   }
 
-  await sendLoginOtp(email);
-  return res.json({ requires_otp: true, purpose: 'login', email, role: actualRole, message: 'Login verification code sent to your email.' });
+  return res.json(await createOtpChallenge({ email, session: login.data.session, profile, authUser: login.data.user, purpose: 'login', role: actualRole }));
 }));
 
 app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
@@ -326,19 +401,17 @@ app.post('/api/auth/verify-otp', asyncHandler(async (req, res) => {
   const token = req.body?.otp_code || req.body?.otpCode;
   if (!email || !token) throw Object.assign(new Error('Email and OTP code are required'), { status: 400 });
 
-  let result = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
-  if (result.error) result = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-  if (result.error) throw Object.assign(new Error(authErrorMessage(result.error, 'Invalid or expired verification code')), { status: 400 });
-
-  const profile = await upsertProfile(result.data.user);
-  return res.json(formatSession(result.data.session, profile, result.data.user));
+  const challenge = consumeOtpChallenge(email, token);
+  const profile = challenge.profile || await upsertProfile(challenge.authUser);
+  return res.json(formatSession(challenge.session, profile, challenge.authUser));
 }));
 
 app.post('/api/auth/resend-otp', asyncHandler(async (req, res) => {
   const email = cleanEmail(req.body?.email);
   if (!email) throw Object.assign(new Error('Email is required'), { status: 400 });
-  await resendOtpForExistingEmail(email);
-  return res.json({ success: true, message: 'Verification code sent.' });
+  const existing = pendingOtpChallenges.get(email);
+  if (!existing) throw Object.assign(new Error('No pending verification code. Please start login or signup again.'), { status: 400 });
+  return res.json(await createOtpChallenge({ email, session: existing.session, profile: existing.profile, authUser: existing.authUser, purpose: existing.purpose, role: existing.role }));
 }));
 
 app.post('/api/auth/google', asyncHandler(async (req, res) => {
