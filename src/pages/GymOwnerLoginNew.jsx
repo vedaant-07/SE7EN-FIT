@@ -18,18 +18,21 @@ export default function GymOwnerLoginNew() {
     setError('');
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
-      const user = await base44.auth.me();
-      const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
-      if (owners.length === 0) {
-        navigate('/signup/gym-owner', { replace: true });
-      } else if (!owners[0].onboarding_complete) {
+      const user = await base44.auth.loginViaEmailPassword(email, password, 'gym_owner');
+
+      if (!['gym_owner', 'super_admin'].includes(user.role)) {
+        throw new Error('This account is not registered as a gym owner');
+      }
+
+      try {
+        const owner = await base44.gymOwner.getMine();
+        navigate(owner?.onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
+      } catch {
         navigate('/gym-owner/onboarding', { replace: true });
-      } else {
-        navigate('/gym-owner/dashboard', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Invalid email or password');
+    } finally {
       setLoading(false);
     }
   };
