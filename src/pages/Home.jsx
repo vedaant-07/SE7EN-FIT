@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
-import ProgressRing from '@/components/se7enfit/ProgressRing';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users } from 'lucide-react';
+import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel } from '@/lib/fitnessUtils';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
 import AIDailyTip from '@/components/se7enfit/AIDailyTip';
 import DailyHabits from '@/components/se7enfit/DailyHabits';
 
@@ -14,6 +13,59 @@ const safeArray = (value) => Array.isArray(value) ? value : [];
 const iconTileClass = 'bg-[#77AC6F]/10 border border-[#77AC6F]/20 text-white';
 const fourPerViewStyle = { flex: '0 0 calc((100% - 18px) / 4)' };
 
+const defaultAds = [
+  {
+    id: 'admin-default-offer',
+    source_type: 'admin',
+    source_name: 'SE7EN FIT',
+    title: 'Premium fitness offers',
+    description: 'Admin offers, app promotions, and featured partner deals will appear here.',
+    offer_text: 'Featured Offer',
+    media_type: 'image',
+    cta_label: 'Explore',
+  },
+  {
+    id: 'gym-default-offer',
+    source_type: 'gym_owner',
+    source_name: 'Partner Gyms',
+    title: 'Gym owner ads',
+    description: 'Gym owners can promote plans, trials, and seasonal discounts to their referred users.',
+    offer_text: 'Gym Promotion',
+    media_type: 'image',
+    cta_label: 'View Offer',
+  },
+];
+
+const isVideoAd = (ad) => {
+  const type = String(ad?.media_type || ad?.type || '').toLowerCase();
+  const url = String(ad?.media_url || ad?.video_url || '').toLowerCase();
+  return type === 'video' || /\.(mp4|webm|mov)(\?|$)/.test(url);
+};
+
+const isAdActive = (ad) => {
+  const status = String(ad?.status || 'active').toLowerCase();
+  if (!['active', 'published', 'approved', 'live'].includes(status)) return false;
+
+  const now = Date.now();
+  const start = ad.start_date ? Date.parse(ad.start_date) : null;
+  const end = ad.end_date ? Date.parse(ad.end_date) : null;
+  if (start && start > now) return false;
+  if (end && end < now) return false;
+
+  return true;
+};
+
+const shouldShowAdToUser = (ad, profile) => {
+  const sourceType = String(ad.source_type || ad.created_by_role || ad.owner_type || '').toLowerCase();
+  const scope = String(ad.target_scope || ad.audience || '').toLowerCase();
+
+  if (sourceType === 'admin' || scope === 'all' || scope === 'everyone' || ad.show_to_all) return true;
+
+  const userGymId = profile?.primary_gym_id || profile?.referred_gym_id || profile?.gym_id;
+  const targetGymId = ad.target_gym_id || ad.gym_id || ad.owner_gym_id;
+  return !!userGymId && !!targetGymId && String(userGymId) === String(targetGymId);
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
@@ -21,6 +73,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [todayData, setTodayData] = useState(emptyToday);
   const [gymStatus, setGymStatus] = useState({ gym: null, todayLog: null });
+  const [ads, setAds] = useState([]);
   const today = getToday();
 
   useEffect(() => { loadData(); }, []);
@@ -71,12 +124,13 @@ export default function Home() {
         }
       }
 
-      const [nutritionRaw, waterRaw, stepsRaw, sleepRaw, workoutRaw] = await Promise.all([
+      const [nutritionRaw, waterRaw, stepsRaw, sleepRaw, workoutRaw, adsRaw] = await Promise.all([
         base44.entities.NutritionLog.filter({ user_id: user.id, date: today }).catch(() => []),
         base44.entities.WaterLog.filter({ user_id: user.id, date: today }).catch(() => []),
         base44.entities.StepLog.filter({ user_id: user.id, date: today }).catch(() => []),
         base44.entities.SleepLog.filter({ user_id: user.id, date: today }).catch(() => []),
         base44.entities.WorkoutLog.filter({ user_id: user.id, date: today }).catch(() => []),
+        base44.entities.Advertisement.list('-created_date', 30).catch(() => []),
       ]);
 
       const nutritionLogs = safeArray(nutritionRaw);
@@ -84,6 +138,7 @@ export default function Home() {
       const stepLogs = safeArray(stepsRaw);
       const sleepLogs = safeArray(sleepRaw);
       const workoutLogs = safeArray(workoutRaw);
+      const visibleAds = safeArray(adsRaw).filter(ad => isAdActive(ad) && shouldShowAdToUser(ad, p));
 
       setTodayData({
         calories: nutritionLogs.reduce((s, n) => s + Number(n.calories || 0), 0),
@@ -93,6 +148,7 @@ export default function Home() {
         sleep: Number(sleepLogs[0]?.hours || 0),
         workoutDone: workoutLogs.some(w => w.completed),
       });
+      setAds(visibleAds.length ? visibleAds : defaultAds);
     } catch (error) {
       console.error('[Home] Dashboard load failed:', error);
       setProfile(null);
@@ -112,83 +168,13 @@ export default function Home() {
   const proteinTarget = calculateProteinTarget(profile.weight_kg || 70, profile.goal);
   const waterGoal = profile.daily_water_goal_ml || 2500;
   const stepGoal = profile.daily_step_goal || 8000;
-
-  const fitnessScore = calculateFitnessScore({
-    workoutDone: todayData.workoutDone,
-    stepsPercent: (todayData.steps / stepGoal) * 100,
-    waterPercent: (todayData.water / waterGoal) * 100,
-    caloriesOnTrack: todayData.calories > 0 && todayData.calories <= calorieTarget * 1.1,
-    sleepHours: todayData.sleep,
-    proteinOnTrack: todayData.protein >= proteinTarget * 0.8,
-  });
-
-  const scoreLabel = fitnessScore >= 80 ? 'Excellent' : fitnessScore >= 50 ? 'Good Progress' : 'Let\'s Go';
   const isPremium = subscription && subscription.plan !== 'free';
-
-  const rings = [
-    { label: 'Calories', percent: Math.min((todayData.calories / calorieTarget) * 100, 100), color: 'hsl(var(--accent))', route: '/nutrition' },
-    { label: 'Water', percent: Math.min((todayData.water / waterGoal) * 100, 100), color: 'hsl(var(--accent))', route: '/tracking/water' },
-    { label: 'Steps', percent: Math.min((todayData.steps / stepGoal) * 100, 100), color: 'hsl(var(--accent))', route: '/tracking/steps' },
-  ];
 
   return (
     <>
       <TopBar />
       <div className="px-4 pt-3 pb-6 space-y-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{getGreeting()}</p>
-            <h1 className="text-2xl font-heading font-bold mt-0.5 leading-tight">{profile.full_name || 'Champ'}</h1>
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="text-xs bg-accent/15 text-accent px-2.5 py-0.5 rounded-full font-medium">{GOALS_LABELS[profile.goal] || 'Fitness'}</span>
-              {isPremium && (
-                <span className="text-xs bg-yellow-500/15 text-yellow-400 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
-                  <Crown size={9} /> Premium
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center ${iconTileClass}`}>
-              <Flame size={16} className="text-white" />
-              <p className="text-xs font-bold font-heading text-white">{profile.streak_days || 0}</p>
-              <p className="text-[8px] text-white/70">STREAK</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -translate-y-8 translate-x-8 pointer-events-none" />
-          <div className="flex items-center gap-5">
-            <ProgressRing percent={fitnessScore} size={88} strokeWidth={7}>
-              <div className="text-center">
-                <p className="text-2xl font-bold font-heading leading-none">{fitnessScore}</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Score</p>
-              </div>
-            </ProgressRing>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-accent uppercase tracking-widest font-extrabold mb-1">Today's Fitness</p>
-              <p className="font-heading font-bold text-xl text-white">{scoreLabel}</p>
-              <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {todayData.workoutDone && <Badge label="Workout" />}
-                {todayData.steps >= stepGoal && <Badge label="Steps" />}
-                {todayData.water >= waterGoal && <Badge label="Hydrated" />}
-                {todayData.sleep >= 7 && <Badge label="Sleep" />}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-4 pt-4 border-t border-border/50">
-            {rings.map(r => (
-              <button key={r.label} onClick={() => navigate(r.route)} className="flex-1 flex flex-col items-center gap-2 active:scale-95 transition-all">
-                <ProgressRing percent={r.percent} size={44} strokeWidth={4} color={r.color}>
-                  <span className="text-[11px] font-bold">{Math.round(r.percent)}%</span>
-                </ProgressRing>
-                <span className="text-xs font-bold text-white">{r.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <AdBanners ads={ads} />
 
         <div className="grid grid-cols-3 gap-2.5">
           <MetricCard icon={<Flame size={20} />} label="Calories" value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`} percent={(todayData.calories / calorieTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
@@ -318,8 +304,68 @@ export default function Home() {
   );
 }
 
+function AdBanners({ ads }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 px-0.5">
+        <h3 className="font-heading font-semibold text-sm">Offers & Advertisements</h3>
+        <span className="text-[10px] text-muted-foreground">Sponsored</span>
+      </div>
+      <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-3 px-1 snap-x snap-mandatory">
+          {safeArray(ads).map(ad => <AdCard key={ad.id || ad.title} ad={ad} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdCard({ ad }) {
+  const mediaUrl = ad.media_url || ad.image_url || ad.video_url || '';
+  const clickable = !!ad.cta_url;
+  const handleClick = () => {
+    if (!clickable) return;
+    window.open(ad.cta_url, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className="snap-start flex-shrink-0 w-[88%] max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card text-left active:scale-[0.99] transition-all"
+    >
+      <div className="relative min-h-[150px] bg-gradient-to-br from-accent/25 via-emerald-500/10 to-yellow-500/10">
+        {mediaUrl && isVideoAd(ad) && (
+          <video src={mediaUrl} className="absolute inset-0 h-full w-full object-cover" muted loop playsInline autoPlay />
+        )}
+        {mediaUrl && !isVideoAd(ad) && (
+          <img src={mediaUrl} alt={ad.title || 'Advertisement'} className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
+        <div className="relative z-10 flex min-h-[150px] flex-col justify-between p-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+              <Megaphone size={11} /> {ad.offer_text || ad.source_name || 'Offer'}
+            </span>
+            <span className="rounded-full bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase text-white/80">
+              {String(ad.source_type || 'admin').replace('_', ' ')}
+            </span>
+          </div>
+          <div>
+            <p className="font-heading text-xl font-black leading-tight text-white">{ad.title || 'Special offer'}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/75">{ad.description || ad.subtitle || 'Tap to view this offer.'}</p>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-black">
+              {ad.cta_label || 'View Offer'} <ChevronRight size={13} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function MetricCard({ icon, label, value, sub, percent, onClick, barColor }) {
-  const pct = Math.min(Math.max(percent || 0), 100);
+  const pct = Math.min(Math.max(percent || 0, 0), 100);
   return (
     <button onClick={onClick} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-[0.97] transition-all w-full">
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}>
@@ -335,8 +381,4 @@ function MetricCard({ icon, label, value, sub, percent, onClick, barColor }) {
       </div>
     </button>
   );
-}
-
-function Badge({ label }) {
-  return <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-medium">{label}</span>;
 }
