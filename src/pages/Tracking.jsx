@@ -31,7 +31,7 @@ const TABS = [
 ];
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const fourPerViewStyle = { flex: '0 0 calc((100% - 18px) / 4)' };
+const fivePerViewStyle = { flex: '0 0 calc((100% - 24px) / 5)' };
 
 export default function Tracking() {
   const [activeTab, setActiveTab] = useState('steps');
@@ -117,14 +117,14 @@ export default function Tracking() {
                 key={tab.key}
                 id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
-                style={fourPerViewStyle}
-                className={`snap-start flex-shrink-0 flex flex-col items-center gap-1.5 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
+                style={fivePerViewStyle}
+                className={`snap-start flex-shrink-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
                   active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted/60 border border-transparent'
                 }`}
               >
-                <div className="relative w-[58px] h-[42px] rounded-xl flex items-center justify-center">
-                  <Icon size={24} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
-                  {hasData && !active && <span className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-accent" />}
+                <div className="relative w-12 h-9 rounded-xl flex items-center justify-center">
+                  <Icon size={22} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
+                  {hasData && !active && <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-accent" />}
                 </div>
                 <span className={`text-[10px] font-semibold whitespace-nowrap leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
               </button>
