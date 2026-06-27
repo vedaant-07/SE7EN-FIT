@@ -212,12 +212,12 @@ export default function Home() {
           <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
             <div className="flex gap-1.5 px-1 snap-x snap-mandatory">
               {[
-                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', tileClass: 'bg-emerald-500/10 border-emerald-500/25', iconClass: 'text-emerald-400' },
-                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', tileClass: 'bg-amber-500/10 border-amber-500/25', iconClass: 'text-amber-400' },
-                { icon: Droplets, label: 'Add Water', route: '/tracking', tileClass: 'bg-blue-500/10 border-blue-500/25', iconClass: 'text-blue-400' },
-                { icon: Camera, label: 'Food Scan', route: '/food-scan', tileClass: 'bg-emerald-500/10 border-emerald-500/25', iconClass: 'text-emerald-400' },
-                { icon: Building2, label: 'My Gym', route: '/my-gym', tileClass: 'bg-yellow-500/10 border-yellow-500/25', iconClass: 'text-yellow-400' },
-                { icon: Scale, label: 'Progress', route: '/progress', tileClass: 'bg-purple-500/10 border-purple-500/25', iconClass: 'text-purple-400' },
+                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', tileClass: 'bg-[#0F2A1A] border-[#153822]', iconClass: 'text-[#22C55E]' },
+                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', tileClass: 'bg-[#2B1E13] border-[#3A2919]', iconClass: 'text-[#FB923C]' },
+                { icon: Droplets, label: 'Add Water', route: '/tracking', tileClass: 'bg-[#111D2B] border-[#1A2B45]', iconClass: 'text-[#60A5FA]' },
+                { icon: Camera, label: 'Food Scan', route: '/food-scan', tileClass: 'bg-[#0F2A1A] border-[#153822]', iconClass: 'text-[#4ADE80]' },
+                { icon: Building2, label: 'My Gym', route: '/my-gym', tileClass: 'bg-[#2A220F] border-[#3B3014]', iconClass: 'text-[#FBBF24]' },
+                { icon: Scale, label: 'Progress', route: '/progress', tileClass: 'bg-[#22182C] border-[#332140]', iconClass: 'text-[#C084FC]' },
               ].map(({ icon: Icon, label, route, tileClass, iconClass }) => (
                 <button
                   key={route}
