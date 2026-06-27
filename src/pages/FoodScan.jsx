@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Upload, Zap, Check, Plus, Minus, Loader2, ChevronRight, Crown, Lock } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
+import { getNativeFoodPhoto, isNativeApp, nativeTap } from '@/lib/nativeBridge';
 
 export default function FoodScan() {
   const navigate = useNavigate();
@@ -27,9 +28,7 @@ export default function FoodScan() {
     reader.onerror = reject;
   });
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  const scanSelectedImage = async ({ file, imageUrl: previewUrl, base64: nativeBase64, mimeType: nativeMimeType }) => {
     if (!file) return;
 
     if (!file.type?.startsWith('image/')) {
@@ -38,12 +37,12 @@ export default function FoodScan() {
     }
 
     setImageFile(file);
-    setImageUrl(URL.createObjectURL(file));
+    setImageUrl(previewUrl || URL.createObjectURL(file));
     setStage('scanning');
 
     try {
-      const base64 = await toBase64(file);
-      const mimeType = file.type || 'image/jpeg';
+      const base64 = nativeBase64 || await toBase64(file);
+      const mimeType = nativeMimeType || file.type || 'image/jpeg';
 
       const result = await base44.functions.invoke('geminiService', {
         action: 'analyzeFoodImage',
@@ -89,6 +88,31 @@ export default function FoodScan() {
       toast({ title: 'Food scan is not connected', description: 'Camera/gallery opened successfully, but the Gemini scan backend failed. Check the geminiService function.', variant: 'destructive' });
       setStage('upload');
     }
+  };
+
+  const handlePickPhoto = async (source) => {
+    await nativeTap();
+
+    if (isNativeApp()) {
+      try {
+        const nativePhoto = await getNativeFoodPhoto(source);
+        if (nativePhoto) await scanSelectedImage(nativePhoto);
+      } catch (error) {
+        const msg = String(error?.message || '').toLowerCase();
+        if (msg.includes('cancel')) return;
+        toast({ title: 'Permission needed', description: 'Allow camera/photos permission and try again.', variant: 'destructive' });
+      }
+      return;
+    }
+
+    document.getElementById(source === 'camera' ? 'food-camera-input' : 'food-gallery-input')?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await scanSelectedImage({ file });
   };
 
   const adjustQty = (id, delta) =>
@@ -156,20 +180,17 @@ export default function FoodScan() {
     <>
       <TopBar title="Food Scan" showBack />
       <div className="px-4 py-4 pb-24 space-y-4 max-w-lg mx-auto">
-
-        {/* Locked state */}
         {locked && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-5 text-center">
             <Lock size={28} className="text-yellow-400 mx-auto mb-3" />
             <h3 className="font-heading font-bold text-base mb-1">Food Scan Locked</h3>
             <p className="text-xs text-muted-foreground mb-4">Upgrade to unlock AI Food Scanning with calorie & macro detection.</p>
-            <a href="/subscription" className="inline-flex items-center gap-2 bg-yellow-500 text-black font-semibold text-sm px-5 py-2.5 rounded-xl">
+            <a href="/subscription" className="inline-flex items-center gap-2 bg-white text-black font-semibold text-sm px-5 py-2.5 rounded-xl">
               <Crown size={14} /> Upgrade Plan
             </a>
           </div>
         )}
 
-        {/* Upload stage */}
         {stage === 'upload' && !locked && (
           <>
             <div className="text-center py-2">
@@ -182,7 +203,6 @@ export default function FoodScan() {
               </p>
             </div>
 
-            {/* Meal type selector */}
             <div>
               <p className="text-xs text-muted-foreground mb-2 font-medium">Meal Type</p>
               <div className="flex gap-2 flex-wrap">
@@ -196,18 +216,18 @@ export default function FoodScan() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <label htmlFor="food-camera-input"
+              <button type="button" onClick={() => handlePickPhoto('camera')}
                 className="bg-card border border-border rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all cursor-pointer hover:border-white/20">
                 <Camera size={24} className="text-accent" />
                 <span className="font-semibold text-sm">Use Camera</span>
                 <span className="text-[10px] text-muted-foreground">Take photo now</span>
-              </label>
-              <label htmlFor="food-gallery-input"
+              </button>
+              <button type="button" onClick={() => handlePickPhoto('gallery')}
                 className="bg-card border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.98] transition-all cursor-pointer hover:border-white/20">
                 <Upload size={24} className="text-accent" />
                 <span className="font-semibold text-sm">Upload Photo</span>
                 <span className="text-[10px] text-muted-foreground">From gallery</span>
-              </label>
+              </button>
             </div>
 
             <input id="food-camera-input" type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFileChange} />
@@ -228,7 +248,6 @@ export default function FoodScan() {
           </>
         )}
 
-        {/* Scanning stage */}
         {stage === 'scanning' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
             {imageUrl && (
@@ -257,7 +276,6 @@ export default function FoodScan() {
           </div>
         )}
 
-        {/* Results stage */}
         {stage === 'results' && (
           <>
             {imageUrl && (
@@ -327,14 +345,13 @@ export default function FoodScan() {
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => { setStage('upload'); setImageUrl(null); setItems([]); }} className="flex-1 h-12 rounded-xl">Rescan</Button>
-              <Button onClick={handleSave} className="flex-1 h-12 rounded-xl bg-accent text-accent-foreground font-semibold" disabled={loading || items.length === 0}>
+              <Button onClick={handleSave} className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-white/90 font-semibold" disabled={loading || items.length === 0}>
                 {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : <><Check size={16} className="mr-1" /> Save to Diary</>}
               </Button>
             </div>
           </>
         )}
 
-        {/* Saved stage */}
         {stage === 'saved' && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] gap-5 text-center">
             <div className="w-20 h-20 rounded-full bg-accent/15 border-2 border-accent flex items-center justify-center">
@@ -358,7 +375,7 @@ export default function FoodScan() {
             </div>
             <div className="flex gap-3 w-full">
               <Button variant="outline" onClick={() => { setStage('upload'); setImageUrl(null); setItems([]); }} className="flex-1 h-12 rounded-xl">Scan More</Button>
-              <Button onClick={() => navigate('/nutrition')} className="flex-1 h-12 rounded-xl bg-accent text-accent-foreground">View Diary <ChevronRight size={16} /></Button>
+              <Button onClick={() => navigate('/nutrition')} className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-white/90">View Diary <ChevronRight size={16} /></Button>
             </div>
           </div>
         )}
