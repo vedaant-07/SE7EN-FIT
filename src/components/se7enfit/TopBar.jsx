@@ -1,4 +1,4 @@
-import '@/theme-purple.css';
+import '@/screenshot-colors.css';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, User, ChevronLeft } from 'lucide-react';
