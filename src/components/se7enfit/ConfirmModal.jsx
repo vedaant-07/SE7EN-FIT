@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 export default function ConfirmModal({ open, title, description, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, destructive }) {
   if (!open) return null;
 
+  const handleConfirm = async () => {
+    await onConfirm?.();
+    if (String(confirmLabel).toLowerCase().includes('log out')) {
+      window.location.replace('/welcome');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-5">
       <div className="w-full max-w-sm bg-card border border-border rounded-3xl p-5 shadow-2xl">
@@ -15,7 +22,7 @@ export default function ConfirmModal({ open, title, description, confirmLabel = 
             {cancelLabel}
           </Button>
           <Button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className={`flex-1 rounded-2xl h-12 font-semibold ${destructive ? 'bg-red-500 text-white hover:bg-red-500/90 border border-red-400/40' : 'bg-accent text-accent-foreground hover:bg-accent/90'}`}
           >
             {confirmLabel}
