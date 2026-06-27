@@ -11,6 +11,21 @@ const isCapacitorNativeShell = () => {
   return window.location.hostname === 'localhost' && !window.location.port;
 };
 
+const routeForRole = async (user) => {
+  if (['gym_owner', 'super_admin'].includes(user?.role)) {
+    try {
+      const owner = await base44.gymOwner.getMine();
+      return owner?.onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding';
+    } catch {
+      return '/gym-owner/onboarding';
+    }
+  }
+
+  if (user?.role === 'nagarsevak') return '/admin';
+
+  return '/user-dashboard';
+};
+
 export default function Welcome() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(() => !isCapacitorNativeShell());
@@ -29,16 +44,9 @@ export default function Welcome() {
       if (authed) {
         try {
           const user = await base44.auth.me();
-          const owners = await base44.entities.GymOwner.filter({ user_id: user.id });
+          const route = await routeForRole(user);
           if (!active) return;
-
-          if (owners.length > 0) {
-            navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
-          } else {
-            const profiles = await base44.entities.UserProfile.filter({ user_id: user.id });
-            if (!active) return;
-            navigate(profiles.length > 0 ? '/user-dashboard' : '/onboarding', { replace: true });
-          }
+          navigate(route, { replace: true });
         } catch {
           if (active) setChecking(false);
         }
