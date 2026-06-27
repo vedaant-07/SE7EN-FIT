@@ -39,7 +39,7 @@ import FoodScan from '@/pages/FoodScan';
 import Challenges from '@/pages/Challenges';
 import Rewards from '@/pages/Rewards';
 import PolicyPages from '@/pages/PolicyPages';
-import GymOwnerLogin from '@/pages/GymOwnerLogin';
+import GymOwnerLogin from '@/pages/GymOwnerLoginSafe';
 import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
