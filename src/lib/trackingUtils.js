@@ -72,8 +72,13 @@ Goal: ${goal} ${unit}
 User's fitness goal: ${profileGoal || 'general fitness'}
 Be encouraging, specific, and actionable. No markdown formatting.`;
 
-  const res = await base44.integrations.Core.InvokeLLM({ prompt });
-  return res;
+  try {
+    const res = await base44.integrations.Core.InvokeLLM({ prompt });
+    if (typeof res === 'string') return res;
+    return res?.text || res?.response || 'Keep logging your progress consistently to unlock better insights.';
+  } catch {
+    return 'Keep logging your progress consistently to unlock better insights.';
+  }
 }
 
 /** Build fitness score contribution from all tracking data */
