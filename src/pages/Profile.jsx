@@ -80,7 +80,7 @@ export default function Profile() {
   return (
     <>
       <TopBar title="Profile" showBack />
-      <div className="px-4 py-4 space-y-5 pb-6">
+      <div className="px-4 py-4 space-y-4 pb-6">
 
         {/* Profile Header */}
         <div className="bg-card border border-border rounded-3xl p-5">
@@ -242,25 +242,25 @@ export default function Profile() {
         )}
 
         {/* Menu */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {MENU_ITEMS.map(item => {
             const Icon = item.icon;
             return (
               <Link key={item.path} to={item.path} className="block">
-                <div className="flex items-center gap-4 bg-card border border-border rounded-2xl px-4 py-5 hover:border-accent/30 active:scale-[0.99] transition-all">
-                  <div className={`w-10 h-10 rounded-xl bg-muted flex items-center justify-center ${item.color}`}>
-                    <Icon size={17} />
+                <div className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-3 hover:border-accent/30 active:scale-[0.99] transition-all">
+                  <div className={`w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 ${item.color}`}>
+                    <Icon size={15} />
                   </div>
-                  <span className="text-[15px] font-medium flex-1">{item.label}</span>
-                  <ChevronRight size={16} className="text-muted-foreground" />
+                  <span className="text-sm font-medium flex-1 leading-tight">{item.label}</span>
+                  <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
                 </div>
               </Link>
             );
           })}
         </div>
 
-        <Button onClick={() => setShowLogout(true)} className="w-full h-11 rounded-xl bg-destructive text-white hover:bg-destructive/90 border border-destructive gap-2 font-semibold">
-          <LogOut size={15} /> Log Out
+        <Button onClick={() => setShowLogout(true)} className="w-full h-10 rounded-xl bg-destructive text-white hover:bg-destructive/90 border border-destructive gap-2 font-semibold text-sm">
+          <LogOut size={14} /> Log Out
         </Button>
 
         <ConfirmModal
