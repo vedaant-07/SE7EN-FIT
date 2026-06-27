@@ -242,17 +242,17 @@ export default function Profile() {
         )}
 
         {/* Menu */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {MENU_ITEMS.map(item => {
             const Icon = item.icon;
             return (
-              <Link key={item.path} to={item.path}>
-                <div className="flex items-center gap-3 bg-card border border-border rounded-xl p-4 hover:border-accent/30 active:scale-[0.99] transition-all">
-                  <div className={`w-8 h-8 rounded-lg bg-muted flex items-center justify-center ${item.color}`}>
-                    <Icon size={15} />
+              <Link key={item.path} to={item.path} className="block">
+                <div className="flex items-center gap-4 bg-card border border-border rounded-2xl px-4 py-5 hover:border-accent/30 active:scale-[0.99] transition-all">
+                  <div className={`w-10 h-10 rounded-xl bg-muted flex items-center justify-center ${item.color}`}>
+                    <Icon size={17} />
                   </div>
-                  <span className="text-sm font-medium flex-1">{item.label}</span>
-                  <ChevronRight size={14} className="text-muted-foreground" />
+                  <span className="text-[15px] font-medium flex-1">{item.label}</span>
+                  <ChevronRight size={16} className="text-muted-foreground" />
                 </div>
               </Link>
             );
