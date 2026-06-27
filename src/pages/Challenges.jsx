@@ -255,7 +255,7 @@ export default function Challenges() {
         <div className="flex gap-2">
           {['all', 'joined'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${activeTab === tab ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+              className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${activeTab === tab ? 'bg-accent text-white' : 'bg-muted text-muted-foreground'}`}>
               {tab === 'all' ? `All Challenges (${allChallenges.length})` : `My Challenges (${joinedIds.length})`}
             </button>
           ))}
@@ -309,7 +309,7 @@ export default function Challenges() {
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-heading font-semibold">No challenges joined yet</p>
             <p className="text-xs text-muted-foreground mt-1">Browse challenges and join to start earning!</p>
-            <Button onClick={() => setActiveTab('all')} className="mt-4 h-10 rounded-xl bg-accent text-accent-foreground text-sm">Browse Challenges</Button>
+            <Button onClick={() => setActiveTab('all')} className="mt-4 h-10 rounded-xl bg-accent text-white text-sm">Browse Challenges</Button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -337,8 +337,8 @@ export default function Challenges() {
                   )}
                   {locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <div className="w-7 h-7 rounded-full bg-yellow-400/15 border border-yellow-400/30 flex items-center justify-center">
-                        <Crown size={13} className="text-yellow-400" />
+                      <div className="w-7 h-7 rounded-full bg-yellow-400 border border-yellow-400 flex items-center justify-center">
+                        <Crown size={13} className="text-white" />
                       </div>
                     </div>
                   )}
@@ -391,7 +391,7 @@ export default function Challenges() {
                     <Button
                       onClick={() => handleLogProgress(challenge)}
                       disabled={loggingId === challenge.id || alreadyLoggedToday}
-                      className="w-full h-10 rounded-xl text-xs font-semibold bg-accent text-accent-foreground hover:bg-accent/90"
+                      className="w-full h-10 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90"
                     >
                       {loggingId === challenge.id ? 'Logging...' :
                        alreadyLoggedToday ? <><Check size={12} className="mr-1" /> Logged Today ✓</> :
@@ -406,10 +406,9 @@ export default function Challenges() {
                       onClick={() => handleJoin(challenge)}
                       disabled={joiningId === challenge.id}
                       className={`w-full h-10 rounded-xl text-xs font-semibold transition-all ${
-                        locked ? 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/20' :
-                        'bg-accent text-accent-foreground hover:bg-accent/90'
+                        locked ? 'bg-yellow-400 text-white border border-yellow-400 hover:bg-yellow-400/90' :
+                        'bg-accent text-white hover:bg-accent/90'
                       }`}
-                      variant={locked ? 'outline' : 'default'}
                     >
                       {locked ? <><Crown size={12} className="mr-1" /> Unlock Premium</> :
                        joiningId === challenge.id ? 'Joining...' :
