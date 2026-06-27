@@ -120,7 +120,9 @@ export default function Tracking() {
                 onClick={() => handleTabChange(tab.key)}
                 style={tabButtonStyle}
                 className={`snap-start justify-self-center min-w-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
-                  active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted/60 border border-transparent'
+                  active
+                    ? 'bg-white/[0.025] border border-white/10 shadow-[0_0_16px_rgba(255,255,255,0.10)]'
+                    : 'hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
                 <div className="relative w-11 h-9 rounded-xl flex items-center justify-center">
