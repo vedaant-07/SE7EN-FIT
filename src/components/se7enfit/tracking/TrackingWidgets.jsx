@@ -1,6 +1,6 @@
 import React from 'react';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
-import { Bot, Trophy, Flame, Pencil, Trash2 } from 'lucide-react';
+import { Trophy, Flame, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function TodayProgressCard({ icon, label, value, unit, goalValue, goalUnit, percent, color, children }) {
@@ -21,27 +21,8 @@ export function TodayProgressCard({ icon, label, value, unit, goalValue, goalUni
   );
 }
 
-export function AIInsightCard({ insight, loading }) {
-  return (
-    <div className="bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20 rounded-2xl p-4">
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
-          <Bot size={15} className="text-accent" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-accent uppercase tracking-wider mb-1">AI Insight</p>
-          {loading ? (
-            <div className="space-y-1.5">
-              <div className="h-2.5 bg-muted animate-pulse rounded w-4/5" />
-              <div className="h-2.5 bg-muted animate-pulse rounded w-3/5" />
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground leading-relaxed">{insight}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+export function AIInsightCard() {
+  return null;
 }
 
 export function StreakCard({ streak, label, emoji }) {
