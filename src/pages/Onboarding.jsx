@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ChevronRight, ChevronLeft, Target, Dumbbell, Apple, Heart } from 'lucide-react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const STEPS = [
@@ -53,8 +53,7 @@ export default function Onboarding() {
     medical_notes: '',
     transformation_duration_weeks: 12,
     daily_step_goal: 8000, daily_water_goal_ml: 2500,
-    sleep_goal_hours: 7, motivation_level: 'high',
-    budget_preference: 'free'
+    sleep_goal_hours: 7, motivation_level: 'high'
   });
 
   const update = (field, value) => setData(prev => ({ ...prev, [field]: value }));
@@ -63,7 +62,6 @@ export default function Onboarding() {
     setSaving(true);
     const user = await base44.auth.me();
     const code = 'SE7' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    // Check if user signed up with a gym referral code
     const pendingGymId = localStorage.getItem('pending_gym_id');
     const pendingGymCode = localStorage.getItem('pending_gym_code');
     await base44.entities.UserProfile.create({
@@ -250,33 +248,6 @@ export default function Onboarding() {
                     <span className="text-sm font-medium capitalize">{m.replace('_', ' ')}</span>
                   </OptionButton>
                 ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm mb-3 block">Budget Preference</Label>
-              <div className="space-y-3">
-                <OptionButton selected={data.budget_preference === 'free'} onClick={() => update('budget_preference', 'free')}>
-                  <p className="font-medium text-sm">Free Plan</p>
-                  <p className="text-xs text-muted-foreground">Basic tracking features</p>
-                </OptionButton>
-                <OptionButton selected={data.budget_preference === 'ai_trainer'} onClick={() => update('budget_preference', 'ai_trainer')}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-sm">AI Trainer</p>
-                      <p className="text-xs text-muted-foreground">AI-powered coaching</p>
-                    </div>
-                    <span className="text-accent font-bold text-sm">₹199/mo</span>
-                  </div>
-                </OptionButton>
-                <OptionButton selected={data.budget_preference === 'premium'} onClick={() => update('budget_preference', 'premium')}>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-sm">Premium Transformation</p>
-                      <p className="text-xs text-muted-foreground">Complete personal training</p>
-                    </div>
-                    <span className="text-accent font-bold text-sm">₹999+</span>
-                  </div>
-                </OptionButton>
               </div>
             </div>
           </div>
