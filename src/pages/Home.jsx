@@ -226,21 +226,21 @@ export default function Home() {
           <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
             <div className="flex gap-1.5 px-1 snap-x snap-mandatory">
               {[
-                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log' },
-                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log' },
-                { icon: Droplets, label: 'Add Water', route: '/tracking' },
-                { icon: Camera, label: 'Food Scan', route: '/food-scan' },
-                { icon: Building2, label: 'My Gym', route: '/my-gym' },
-                { icon: Scale, label: 'Progress', route: '/progress' },
-              ].map(({ icon: Icon, label, route }) => (
+                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', tileClass: 'bg-emerald-500/10 border-emerald-500/25', iconClass: 'text-emerald-400' },
+                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', tileClass: 'bg-amber-500/10 border-amber-500/25', iconClass: 'text-amber-400' },
+                { icon: Droplets, label: 'Add Water', route: '/tracking', tileClass: 'bg-blue-500/10 border-blue-500/25', iconClass: 'text-blue-400' },
+                { icon: Camera, label: 'Food Scan', route: '/food-scan', tileClass: 'bg-emerald-500/10 border-emerald-500/25', iconClass: 'text-emerald-400' },
+                { icon: Building2, label: 'My Gym', route: '/my-gym', tileClass: 'bg-yellow-500/10 border-yellow-500/25', iconClass: 'text-yellow-400' },
+                { icon: Scale, label: 'Progress', route: '/progress', tileClass: 'bg-purple-500/10 border-purple-500/25', iconClass: 'text-purple-400' },
+              ].map(({ icon: Icon, label, route, tileClass, iconClass }) => (
                 <button
                   key={route}
                   onClick={() => navigate(route)}
                   style={fourPerViewStyle}
                   className="snap-start flex flex-col items-center gap-1.5 rounded-2xl py-2 hover:bg-card/60 active:scale-95 transition-all"
                 >
-                  <div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center ${iconTileClass}`}>
-                    <Icon size={28} className="text-white" />
+                  <div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center border ${tileClass}`}>
+                    <Icon size={28} className={iconClass} />
                   </div>
                   <span className="text-[10px] font-semibold text-center leading-tight whitespace-nowrap">{label}</span>
                 </button>
@@ -319,7 +319,7 @@ export default function Home() {
 }
 
 function MetricCard({ icon, label, value, sub, percent, onClick, barColor }) {
-  const pct = Math.min(Math.max(percent || 0, 0), 100);
+  const pct = Math.min(Math.max(percent || 0), 100);
   return (
     <button onClick={onClick} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-[0.97] transition-all w-full">
       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}>
