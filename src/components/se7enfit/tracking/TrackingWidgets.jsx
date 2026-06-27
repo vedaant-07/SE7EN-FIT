@@ -96,24 +96,5 @@ export function HistoryItem({ title, subtitle, value, unit, onEdit, onDelete }) 
 }
 
 export function DeviceSyncBanner() {
-  const devices = [
-    { name: 'Google Fit', icon: '💚', status: 'soon' },
-    { name: 'Apple Health', icon: '🍎', status: 'soon' },
-    { name: 'Health Connect', icon: '🔗', status: 'soon' },
-    { name: 'Smart Watch', icon: '⌚', status: 'soon' },
-    { name: 'Wearables', icon: '📡', status: 'soon' },
-  ];
-  return (
-    <div className="bg-card border border-dashed border-border rounded-2xl p-4">
-      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">📲 Device Sync — Coming Soon</p>
-      <div className="flex flex-wrap gap-2">
-        {devices.map(d => (
-          <div key={d.name} className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
-            <span className="text-sm">{d.icon}</span>
-            <span className="text-[11px] text-muted-foreground font-medium">{d.name}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return null;
 }
