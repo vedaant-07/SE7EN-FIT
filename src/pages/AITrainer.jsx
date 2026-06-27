@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Bot, Sparkles, RefreshCw, ThumbsUp, Bookmark, Crown, Zap, Lock, ChevronRight } from 'lucide-react';
+import { Send, Bot, Sparkles, RefreshCw, ThumbsUp, Bookmark, Crown, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { GOALS_LABELS } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
@@ -19,6 +19,39 @@ const SUGGESTED_PROMPTS = [
   { icon: '🧘', label: 'Injury-safe workout', prompt: 'I have knee pain, how should I adjust my workout to stay safe?' },
 ];
 
+function safeText(value) {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (typeof value === 'object') {
+    return value.reply || value.text || value.response || value.message || value.error || '';
+  }
+  return '';
+}
+
+function getLocalCoachReply(question, context) {
+  const goal = context?.profile?.goal || 'fitness';
+  const diet = context?.profile?.dietPreference || 'your diet preference';
+  const level = context?.profile?.fitnessLevel || 'beginner';
+  const steps = context?.tracking?.todaySteps || 0;
+  const water = context?.tracking?.todayWaterMl || 0;
+  const lower = String(question || '').toLowerCase();
+
+  if (lower.includes('eat') || lower.includes('meal') || lower.includes('protein')) {
+    return `Here is a simple SE7EN FIT meal direction for your ${goal} goal and ${diet} diet:\n\n**Today focus:** high protein, controlled calories, and enough water.\n\n**Meal ideas:**\n- Breakfast: eggs/paneer/tofu bhurji with roti or oats\n- Lunch: dal/chicken/paneer bowl with rice or roti and salad\n- Snack: curd, sprouts, fruit, or protein shake\n- Dinner: light protein + vegetables + small carb portion\n\nYou have logged **${water} ml water** today, so keep sipping water through the day.`;
+  }
+
+  if (lower.includes('fat loss') || lower.includes('weight loss')) {
+    return `For fat loss this week, keep the plan simple:\n\n**Training:** 4 strength sessions + 2 light cardio walks.\n**Nutrition:** eat protein in every meal and avoid liquid calories.\n**Daily target:** 8,000–10,000 steps. You have logged **${steps} steps** today.\n**Rule:** do not crash diet. Stay consistent for 7 days.`;
+  }
+
+  if (lower.includes('workout') || lower.includes('gym') || lower.includes('machine')) {
+    return `Here is a ${level} friendly workout plan:\n\n**Warm-up:** 5–8 min treadmill/cycle\n**Main workout:**\n1. Chest press — 3 sets x 10–12\n2. Lat pulldown — 3 sets x 10–12\n3. Leg press — 3 sets x 12\n4. Shoulder press — 3 sets x 10\n5. Cable row — 3 sets x 12\n6. Plank — 3 rounds\n\nKeep 60–90 sec rest and use a weight you can control safely.`;
+  }
+
+  return `Here is my SE7EN FIT coach advice:\n\nYour current goal is **${goal}**. Keep today focused on three basics: complete your workout, hit your protein, and stay active.\n\nBased on your tracking, you have **${steps} steps** and **${water} ml water** logged today. Improve one small thing today instead of trying to fix everything at once.`;
+}
+
 export default function AITrainer() {
   const { toast } = useToast();
   const [messages, setMessages] = useState([]);
@@ -33,42 +66,51 @@ export default function AITrainer() {
   const chatEnd = useRef(null);
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
   const loadData = async () => {
-    const user = await base44.auth.me();
-    const today = new Date().toISOString().slice(0, 10);
-    const [profiles, subs, usageLogs] = await Promise.all([
-      base44.entities.UserProfile.filter({ user_id: user.id }),
-      base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
-      base44.entities.AIUsageLog.filter({ user_id: user.id, feature: 'ai_trainer', date: today }),
-    ]);
-    const p = profiles[0] || null;
-    setProfile(p);
-    setSubscription(subs[0] || null);
-    setUsageCount(usageLogs.filter(l => l.success).length);
-
-    if (p?.primary_gym_id) {
-      const [eq, gym] = await Promise.all([
-        base44.entities.GymEquipment.filter({ gym_id: p.primary_gym_id }),
-        base44.entities.GymOwner.filter({ user_id: p.primary_gym_id }),
+    try {
+      const user = await base44.auth.me();
+      const today = new Date().toISOString().slice(0, 10);
+      const [profiles, subs, usageLogs] = await Promise.all([
+        base44.entities.UserProfile.filter({ user_id: user.id }).catch(() => []),
+        base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }).catch(() => []),
+        base44.entities.AIUsageLog.filter({ user_id: user.id, feature: 'ai_trainer', date: today }).catch(() => []),
       ]);
-      setGymEquipment(eq.filter(e => e.available));
-      setGymOwner(eq.length > 0 ? { gym_id: p.primary_gym_id } : null);
-    }
+      const p = Array.isArray(profiles) ? profiles[0] || null : null;
+      setProfile(p);
+      setSubscription(Array.isArray(subs) ? subs[0] || null : null);
+      setUsageCount(Array.isArray(usageLogs) ? usageLogs.filter(l => l.success).length : 0);
 
-    // Load today's tracking
-    const [waterLogs, stepLogs, nutritionLogs] = await Promise.all([
-      base44.entities.WaterLog.filter({ user_id: user.id, date: today }),
-      base44.entities.StepLog.filter({ user_id: user.id, date: today }),
-      base44.entities.NutritionLog.filter({ user_id: user.id, date: today }),
-    ]).catch(() => [[], [], []]);
-    setTodayTracking({
-      todayWaterMl: waterLogs.reduce((s, l) => s + (l.amount_ml || 0), 0),
-      todaySteps: stepLogs[0]?.steps || 0,
-      todayCalories: nutritionLogs.reduce((s, l) => s + (l.calories || 0), 0),
-      todayProtein: nutritionLogs.reduce((s, l) => s + (l.protein_g || 0), 0),
-    });
+      if (p?.primary_gym_id) {
+        const [eq] = await Promise.all([
+          base44.entities.GymEquipment.filter({ gym_id: p.primary_gym_id }).catch(() => []),
+        ]);
+        const availableEquipment = Array.isArray(eq) ? eq.filter(e => e.available !== false) : [];
+        setGymEquipment(availableEquipment);
+        setGymOwner(availableEquipment.length > 0 ? { gym_id: p.primary_gym_id } : null);
+      }
+
+      const [waterLogs, stepLogs, nutritionLogs] = await Promise.all([
+        base44.entities.WaterLog.filter({ user_id: user.id, date: today }).catch(() => []),
+        base44.entities.StepLog.filter({ user_id: user.id, date: today }).catch(() => []),
+        base44.entities.NutritionLog.filter({ user_id: user.id, date: today }).catch(() => []),
+      ]);
+
+      const water = Array.isArray(waterLogs) ? waterLogs : [];
+      const steps = Array.isArray(stepLogs) ? stepLogs : [];
+      const nutrition = Array.isArray(nutritionLogs) ? nutritionLogs : [];
+
+      setTodayTracking({
+        todayWaterMl: water.reduce((s, l) => s + Number(l.amount_ml || 0), 0),
+        todaySteps: steps.reduce((s, l) => s + Number(l.steps || 0), 0),
+        todayCalories: nutrition.reduce((s, l) => s + Number(l.calories || 0), 0),
+        todayProtein: nutrition.reduce((s, l) => s + Number(l.protein_g || 0), 0),
+      });
+    } catch (error) {
+      console.error('[AITrainer] load failed:', error);
+      toast({ title: 'AI profile context could not load', description: 'You can still ask your AI trainer.', variant: 'destructive' });
+    }
   };
 
   const plan = subscription?.plan || 'free';
@@ -95,8 +137,9 @@ export default function AITrainer() {
     gym: gymOwner ? { gym_id: gymOwner.gym_id, equipmentCount: gymEquipment.length } : null,
   });
 
-  const sendMessage = async (text) => {
-    if (!text.trim() || loading || !canSend) return;
+  const sendMessage = async (rawText) => {
+    const text = safeText(rawText).trim();
+    if (!text || loading || !canSend) return;
 
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
@@ -104,24 +147,55 @@ export default function AITrainer() {
     setLoading(true);
     setUsageCount(c => c + 1);
 
-    try {
-      const result = await base44.functions.invoke('geminiService', {
-        action: 'askAiTrainer',
-        message: text,
-        context: buildContext(),
-      });
+    const context = buildContext();
 
-      if (result.data?.locked) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `🔒 **Feature Locked**\n\n${result.data.message}\n\n[Upgrade your plan →](/subscription)` }]);
-      } else if (result.data?.error) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${result.data.error}` }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: result.data.reply }]);
+    try {
+      let reply = '';
+
+      if (base44.functions?.invoke) {
+        const result = await base44.functions.invoke('geminiService', {
+          action: 'askAiTrainer',
+          message: text,
+          context,
+        });
+
+        if (result?.data?.locked) {
+          reply = `🔒 **Feature Locked**\n\n${safeText(result.data.message)}\n\nUpgrade your plan from the Subscription page.`;
+        } else if (result?.data?.error) {
+          reply = `⚠️ ${safeText(result.data.error)}`;
+        } else {
+          reply = safeText(result?.data?.reply || result?.data || result?.reply || result?.text || result?.response);
+        }
       }
-    } catch (e) {
+
+      if (!reply) {
+        const llm = await base44.integrations.Core.InvokeLLM({
+          prompt: `${text}\n\nContext: ${JSON.stringify(context)}`,
+        }).catch(() => null);
+        reply = safeText(llm?.text || llm?.response || llm);
+      }
+
+      if (!reply || reply.includes('AI backend is not connected')) {
+        reply = getLocalCoachReply(text, context);
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: safeText(reply) || 'I could not generate a response. Please try again.' }]);
+
+      const user = await base44.auth.me().catch(() => null);
+      if (user?.id) {
+        await base44.entities.AIUsageLog.create({
+          user_id: user.id,
+          feature: 'ai_trainer',
+          date: new Date().toISOString().slice(0, 10),
+          success: true,
+        }).catch(() => null);
+      }
+    } catch (error) {
+      console.error('[AITrainer] send failed:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ AI Trainer is temporarily unavailable. Please try again.' }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -129,8 +203,6 @@ export default function AITrainer() {
       <TopBar title="AI Trainer" showBack />
       <div className="flex flex-col" style={{ height: 'calc(100dvh - 120px)' }}>
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-
-          {/* Usage / Premium Banner */}
           {!isPremium && (
             <div className="bg-gradient-to-r from-yellow-500/10 to-amber-400/5 border border-yellow-500/20 rounded-2xl p-3 flex items-center gap-3">
               <Crown size={16} className="text-yellow-400 flex-shrink-0" />
@@ -147,7 +219,6 @@ export default function AITrainer() {
             </div>
           )}
 
-          {/* Gym equipment context chip */}
           {gymEquipment.length > 0 && (
             <div className="bg-accent/5 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
               <Sparkles size={12} className="text-accent flex-shrink-0" />
@@ -155,7 +226,6 @@ export default function AITrainer() {
             </div>
           )}
 
-          {/* Empty state with prompts */}
           {messages.length === 0 && (
             <div className="py-4">
               <div className="text-center mb-6">
@@ -164,7 +234,7 @@ export default function AITrainer() {
                 </div>
                 <h2 className="font-heading font-bold text-lg">SE7ENFIT AI Coach</h2>
                 <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
-                  Powered by Google Gemini. Personalized for your profile, diet & gym.
+                  Personalized coaching for your profile, diet and gym.
                 </p>
                 {profile && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-3 py-1.5">
@@ -180,7 +250,7 @@ export default function AITrainer() {
                   <button
                     key={i}
                     onClick={() => canSend && sendMessage(p.prompt)}
-                    disabled={!canSend}
+                    disabled={!canSend || loading}
                     className="text-left p-3 rounded-2xl border border-border bg-card hover:border-accent/30 active:scale-[0.97] transition-all disabled:opacity-40"
                   >
                     <span className="text-base">{p.icon}</span>
@@ -191,36 +261,38 @@ export default function AITrainer() {
             </div>
           )}
 
-          {/* Messages */}
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
-              {msg.role === 'assistant' && (
-                <div className="w-7 h-7 rounded-xl bg-accent/15 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Bot size={13} className="text-accent" />
-                </div>
-              )}
-              <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${
-                msg.role === 'user'
-                  ? 'bg-accent text-accent-foreground rounded-br-sm'
-                  : 'bg-card border border-border rounded-bl-sm'
-              }`}>
-                {msg.role === 'assistant' ? (
-                  <>
-                    <ReactMarkdown className="text-sm prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:my-1 [&_li]:my-0.5">
-                      {msg.content}
-                    </ReactMarkdown>
-                    <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
-                      <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><ThumbsUp size={12} className="text-muted-foreground" /></button>
-                      <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><Bookmark size={12} className="text-muted-foreground" /></button>
-                      <button onClick={() => i > 0 && sendMessage(messages[i - 1]?.content)} className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><RefreshCw size={12} className="text-muted-foreground" /></button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm">{msg.content}</p>
+          {messages.map((msg, i) => {
+            const content = safeText(msg.content) || 'Message unavailable.';
+            return (
+              <div key={`${msg.role}-${i}`} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-xl bg-accent/15 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot size={13} className="text-accent" />
+                  </div>
                 )}
+                <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${
+                  msg.role === 'user'
+                    ? 'bg-accent text-accent-foreground rounded-br-sm'
+                    : 'bg-card border border-border rounded-bl-sm'
+                }`}>
+                  {msg.role === 'assistant' ? (
+                    <>
+                      <ReactMarkdown className="text-sm prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:my-1 [&_li]:my-0.5">
+                        {content}
+                      </ReactMarkdown>
+                      <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
+                        <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><ThumbsUp size={12} className="text-muted-foreground" /></button>
+                        <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><Bookmark size={12} className="text-muted-foreground" /></button>
+                        <button onClick={() => i > 0 && sendMessage(safeText(messages[i - 1]?.content))} className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><RefreshCw size={12} className="text-muted-foreground" /></button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm">{content}</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex justify-start gap-2">
@@ -232,7 +304,7 @@ export default function AITrainer() {
                   {[0, 150, 300].map(d => (
                     <div key={d} className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                   ))}
-                  <span className="text-xs text-muted-foreground ml-2">Gemini is thinking...</span>
+                  <span className="text-xs text-muted-foreground ml-2">AI coach is thinking...</span>
                 </div>
               </div>
             </div>
@@ -240,7 +312,6 @@ export default function AITrainer() {
           <div ref={chatEnd} />
         </div>
 
-        {/* Input */}
         <div className="border-t border-border px-4 py-3 bg-background/95 backdrop-blur-xl">
           {!canSend ? (
             <div className="text-center py-2">
