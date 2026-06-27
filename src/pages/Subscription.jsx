@@ -171,7 +171,7 @@ export default function Subscription() {
     return (
       <>
         <TopBar title="Checkout" showBack backTo="/subscription" rightElement={null} />
-        <div className="max-w-lg mx-auto px-4 py-4 pb-28 space-y-4">
+        <div className="max-w-lg mx-auto px-4 py-4 pb-32 space-y-4">
           <button onClick={() => setCheckoutPlan(null)} className="text-xs text-muted-foreground hover:text-foreground">← Back to plans</button>
 
           <div className="rounded-3xl border border-accent/35 bg-gradient-to-b from-accent/10 to-card p-5">
@@ -234,11 +234,11 @@ export default function Subscription() {
             <p className="text-[11px] text-muted-foreground leading-relaxed flex items-center gap-1.5"><Lock size={12} /> Prices in INR • GST included.</p>
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-2xl px-4 py-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
-            <div className="max-w-lg mx-auto flex items-center gap-3">
+          <div className="rounded-3xl border border-accent/30 bg-card p-4 shadow-lg shadow-accent/5">
+            <div className="flex items-center gap-3">
               <div className="flex-1">
-                <p className="text-[11px] text-muted-foreground">Total</p>
-                <p className="font-heading text-xl font-black">₹{checkoutPlan.price}</p>
+                <p className="text-[11px] text-muted-foreground">Total payable</p>
+                <p className="font-heading text-2xl font-black">₹{checkoutPlan.price}</p>
               </div>
               <Button onClick={continueToPayment} disabled={processing} className="h-12 rounded-2xl bg-accent px-6 text-accent-foreground font-bold hover:bg-accent/90">
                 {processing ? 'Processing...' : <>Pay Now <ChevronRight size={15} /></>}
