@@ -3,7 +3,6 @@ import { App as CapacitorApp } from '@capacitor/app';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Keyboard } from '@capacitor/keyboard';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
@@ -32,40 +31,10 @@ export async function initNativeApp() {
       else CapacitorApp.exitApp();
     });
   } catch {}
-
-  await setupPushNotifications();
 }
 
 export async function setupPushNotifications() {
-  if (!isNativeApp()) return null;
-
-  try {
-    const permission = await PushNotifications.requestPermissions();
-    if (permission.receive !== 'granted') return null;
-
-    await PushNotifications.register();
-
-    PushNotifications.addListener('registration', token => {
-      window.dispatchEvent(new CustomEvent('se7enfit:native-push-token', { detail: token.value }));
-      localStorage.setItem('se7enfit_push_token', token.value);
-    });
-
-    PushNotifications.addListener('registrationError', error => {
-      console.warn('[Native] Push registration failed', error);
-    });
-
-    PushNotifications.addListener('pushNotificationReceived', notification => {
-      window.dispatchEvent(new CustomEvent('se7enfit:native-push-received', { detail: notification }));
-    });
-
-    PushNotifications.addListener('pushNotificationActionPerformed', action => {
-      window.dispatchEvent(new CustomEvent('se7enfit:native-push-action', { detail: action }));
-    });
-  } catch (error) {
-    console.warn('[Native] Push notifications unavailable', error);
-  }
-
-  return localStorage.getItem('se7enfit_push_token');
+  return null;
 }
 
 export async function nativeTap() {
