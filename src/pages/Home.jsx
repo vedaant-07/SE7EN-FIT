@@ -11,7 +11,7 @@ import DailyHabits from '@/components/se7enfit/DailyHabits';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const iconTileClass = 'bg-[#00A550] border border-[#4ee69b]/40 text-white shadow-[0_0_18px_rgba(0,165,80,0.32),inset_0_1px_0_rgba(255,255,255,0.16)]';
+const iconTileClass = 'bg-[rgba(0,165,80,0.10)] border border-[#00A550]/20 text-white';
 
 export default function Home() {
   const navigate = useNavigate();
