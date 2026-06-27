@@ -19,17 +19,32 @@ export default function UserLogin() {
     setError('');
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
+      const user = await base44.auth.loginViaEmailPassword(email, password, 'user');
+      if (user.role !== 'user') {
+        throw new Error('This account is not registered as a user');
+      }
       navigate('/user-dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password');
+    } finally {
       setLoading(false);
     }
   };
 
   const handleGoogle = async () => {
-    await base44.auth.loginWithProvider('google', '/user-dashboard');
-    navigate('/user-dashboard', { replace: true });
+    setError('');
+    setLoading(true);
+    try {
+      const user = await base44.auth.loginWithProvider('google', 'user');
+      if (user.role !== 'user') {
+        throw new Error('This Google account is not registered as a user');
+      }
+      navigate('/user-dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,7 +67,7 @@ export default function UserLogin() {
           <p className="text-muted-foreground text-sm mt-1.5">Log in to your fitness account</p>
         </div>
 
-        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle}>
+        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle} disabled={loading}>
           <GoogleIcon className="w-5 h-5 mr-2" />
           Continue with Google
         </Button>
