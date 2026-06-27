@@ -267,7 +267,7 @@ export default function Home() {
           <Link to="/subscription" className="block">
             <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-5 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}><Crown size={19} className="text-white" /></div>
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-[#2A220F] border border-[#3B3014]"><Crown size={19} className="text-[#FBBF24]" /></div>
                 <div className="flex-1"><p className="font-heading font-bold text-sm">Unlock Premium AI Trainer</p><p className="text-xs text-muted-foreground mt-0.5">Personalized plans, advanced analytics & more</p></div>
                 <ChevronRight size={16} className="text-muted-foreground" />
               </div>
@@ -283,7 +283,7 @@ export default function Home() {
           ].map(({ label, icon: Icon, route }) => (
             <Link key={route} to={route}>
               <div className="bg-card border border-border rounded-2xl p-3.5 text-center hover:border-accent/30 active:scale-[0.97] transition-all">
-                <div className={`w-9 h-9 mx-auto rounded-xl flex items-center justify-center ${iconTileClass}`}><Icon size={18} className="text-white" /></div>
+                <div className="w-9 h-9 mx-auto rounded-xl flex items-center justify-center bg-[#2A220F] border border-[#3B3014]"><Icon size={18} className="text-[#FBBF24]" /></div>
                 <p className="text-[10px] font-medium mt-1.5">{label}</p>
               </div>
             </Link>
@@ -358,19 +358,19 @@ function AdCard({ ad }) {
 function DailyScoreCard({ score, label, onClick }) {
   const pct = Math.min(Math.max(score || 0, 0), 100);
   return (
-    <button onClick={onClick} className="w-full bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-5 py-4 hover:border-accent/40 active:scale-[0.98] transition-all">
+    <button onClick={onClick} className="w-full bg-card border border-border rounded-3xl px-5 py-4 hover:border-white/20 active:scale-[0.98] transition-all">
       <div className="flex items-center gap-3 text-left">
-        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}>
-          <Trophy size={18} className="text-white" />
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-muted/50 border border-border">
+          <Trophy size={18} className="text-[#FBBF24]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-3">
             <p className="font-heading font-bold text-sm">Daily Score</p>
-            <span className="text-xs bg-accent/20 text-accent px-2.5 py-1 rounded-full font-black">{pct}/100</span>
+            <span className="text-xs bg-muted text-foreground border border-border px-2.5 py-1 rounded-full font-black">{pct}/100</span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{label} • Tap to view today’s tracking</p>
           <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${pct}%` }} />
+            <div className="h-full rounded-full bg-white/40 transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
