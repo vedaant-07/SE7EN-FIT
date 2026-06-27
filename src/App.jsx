@@ -40,7 +40,6 @@ import Challenges from '@/pages/Challenges';
 import Rewards from '@/pages/Rewards';
 import PolicyPages from '@/pages/PolicyPages';
 import GymOwnerLogin from '@/pages/GymOwnerLogin';
-import RegisterLegacy from '@/pages/Register';
 import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
@@ -86,7 +85,7 @@ const AuthenticatedApp = () => {
       <Route path="/privacy" element={<PolicyPages />} />
       <Route path="/policy" element={<PolicyPages />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<RegisterLegacy />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
