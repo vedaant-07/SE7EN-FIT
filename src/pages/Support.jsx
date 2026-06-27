@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TopBar from '@/components/se7enfit/TopBar';
 import { Link } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import { MessageSquare, Mail, FileText, Shield, Heart, CreditCard, ChevronRight, Info, AlertCircle, Smartphone } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const SUPPORT_EMAIL = 'se7enfits.07@gmail.com';
 
@@ -12,18 +14,72 @@ const FAQ = [
   { q: 'How do Food Scans work?', a: 'Take a photo of your meal and our AI estimates the calories and macros. Results are approximate — always verify with labels.' },
   { q: 'Will Health Connect / Apple Health sync work?', a: 'Health sync requires the SE7ENFIT native mobile app. The web app supports full manual tracking. Mobile app is coming soon.' },
   { q: 'How do I join a gym on the app?', a: 'Go to My Gym, enter the referral code your gym owner shared, and submit a join request. The owner approves it.' },
-  { q: 'I was charged but my plan did not activate.', a: `Contact us immediately at ${SUPPORT_EMAIL} with your payment ID. We will resolve within 24 hours.` },
+  { q: 'I was charged but my plan did not activate.', a: 'Send a support request from this page with your payment ID. Admin will review it and reply manually by email.' },
   { q: 'How do I delete my account?', a: `Email ${SUPPORT_EMAIL} with subject "Delete Account". We will process within 7 business days and remove all your data.` },
 ];
 
 export default function Support() {
+  const { toast } = useToast();
   const [openFaq, setOpenFaq] = useState(null);
-  const [form, setForm] = useState({ subject: '', message: '' });
+  const [form, setForm] = useState({ email: '', subject: '', message: '' });
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const handleSend = () => {
-    if (!form.subject.trim() || !form.message.trim()) return;
-    setSent(true);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        if (!mounted) return;
+        setUser(currentUser);
+        setForm(prev => ({
+          ...prev,
+          email: prev.email || currentUser?.email || '',
+        }));
+      } catch {
+        if (mounted) setUser(null);
+      }
+    };
+
+    loadUser();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleSend = async () => {
+    const email = form.email.trim().toLowerCase();
+    const subject = form.subject.trim();
+    const message = form.message.trim();
+
+    if (!email || !subject || !message || sending) return;
+
+    setSending(true);
+    try {
+      await base44.entities.SupportTicket.create({
+        user_id: user?.id || null,
+        user_name: user?.full_name || user?.name || user?.email?.split('@')?.[0] || 'SE7EN FIT User',
+        user_email: user?.email || email,
+        contact_email: email,
+        subject,
+        message,
+        status: 'open',
+        priority: 'normal',
+        source: 'help_support_page',
+      });
+
+      setSent(true);
+      setForm(prev => ({ ...prev, subject: '', message: '' }));
+      toast({ title: 'Support request sent', description: 'Admin can now see this request in the admin panel.' });
+    } catch (error) {
+      toast({
+        title: 'Could not send request',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -37,7 +93,7 @@ export default function Support() {
             <MessageSquare size={24} className="text-accent" />
           </div>
           <h2 className="font-heading font-bold text-xl">How can we help?</h2>
-          <p className="text-xs text-muted-foreground mt-1.5">Get help anytime — we typically respond within 24 hours</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Send your request to the admin panel. Admin will reply manually by email.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-flex items-center gap-1.5 mt-3 text-accent text-sm font-semibold hover:underline">
             <Mail size={14} /> {SUPPORT_EMAIL}
@@ -73,8 +129,8 @@ export default function Support() {
             <h3 className="font-heading font-semibold text-sm">About SE7ENFIT</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-            SE7ENFIT is a premium AI fitness coaching platform built for the Indian market. 
-            We combine AI-powered workout plans, nutrition tracking, food scanning, and gym management 
+            SE7ENFIT is a premium AI fitness coaching platform built for the Indian market.
+            We combine AI-powered workout plans, nutrition tracking, food scanning, and gym management
             into one powerful app — designed for serious fitness enthusiasts and gym businesses alike.
           </p>
           <div className="space-y-1.5">
@@ -100,8 +156,8 @@ export default function Support() {
             <div>
               <p className="text-sm font-semibold text-amber-400">Health Data Notice</p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Native Android Health Connect and Apple HealthKit sync will be available in the SE7ENFIT mobile app. 
-                The current web app supports full <strong>manual tracking</strong> for steps, water, sleep, weight, and workouts. 
+                Native Android Health Connect and Apple HealthKit sync will be available in the SE7ENFIT mobile app.
+                The current web app supports full <strong>manual tracking</strong> for steps, water, sleep, weight, and workouts.
                 No real health sensor data is read in this version.
               </p>
             </div>
@@ -139,11 +195,27 @@ export default function Support() {
               <div className="w-12 h-12 rounded-2xl bg-accent/20 flex items-center justify-center mx-auto mb-3">
                 <MessageSquare size={20} className="text-accent" />
               </div>
-              <p className="font-semibold text-sm">Message sent!</p>
-              <p className="text-xs text-muted-foreground mt-1">We'll reply to your registered email within 24 hours.</p>
+              <p className="font-semibold text-sm">Request sent to admin!</p>
+              <p className="text-xs text-muted-foreground mt-1">Admin can see your request and email you at {form.email || user?.email || 'your email'}.</p>
+              <button
+                onClick={() => setSent(false)}
+                className="mt-4 h-9 px-4 rounded-xl bg-muted text-xs font-semibold hover:bg-muted/80"
+              >
+                Send another message
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Your Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  placeholder="your@email.com"
+                  className="w-full h-10 px-3 rounded-xl border border-input bg-muted/30 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Subject</label>
                 <input
@@ -165,13 +237,13 @@ export default function Support() {
               </div>
               <button
                 onClick={handleSend}
-                disabled={!form.subject.trim() || !form.message.trim()}
+                disabled={!form.email.trim() || !form.subject.trim() || !form.message.trim() || sending}
                 className="w-full h-11 rounded-xl bg-accent text-accent-foreground text-sm font-semibold disabled:opacity-40 transition-all active:scale-[0.98]"
               >
-                Send Message
+                {sending ? 'Sending...' : 'Send Message'}
               </button>
               <p className="text-[10px] text-muted-foreground text-center">
-                Or email directly: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent">{SUPPORT_EMAIL}</a>
+                Your request is saved in the admin panel. Direct email: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent">{SUPPORT_EMAIL}</a>
               </p>
             </div>
           )}
