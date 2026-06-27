@@ -27,8 +27,22 @@ export default function UserSignup() {
     if (password !== confirm) { setError('Passwords do not match'); return; }
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
-      setShowOtp(true);
+      const result = await base44.auth.register({
+        email,
+        password,
+        role: 'user',
+        referral_code: gymCode.trim() || undefined,
+      });
+
+      if (result?.requires_otp) {
+        setShowOtp(true);
+        return;
+      }
+
+      if (gymCode.trim()) {
+        localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
+      }
+      navigate('/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally { setLoading(false); }
@@ -36,14 +50,19 @@ export default function UserSignup() {
 
   const validateGymCode = async (code) => {
     if (!code.trim()) { setGymInfo(null); setGymCodeError(''); return; }
-    const owners = await base44.entities.GymOwner.list();
-    const matched = owners.find(o => o.referral_code?.toUpperCase() === code.trim().toUpperCase());
-    if (matched) {
-      setGymInfo(matched);
-      setGymCodeError('');
-    } else {
+    try {
+      const owners = await base44.entities.GymOwner.list();
+      const matched = owners.find(o => o.referral_code?.toUpperCase() === code.trim().toUpperCase());
+      if (matched) {
+        setGymInfo(matched);
+        setGymCodeError('');
+      } else {
+        setGymInfo(null);
+        setGymCodeError('Referral code will be checked by the backend during signup.');
+      }
+    } catch {
       setGymInfo(null);
-      setGymCodeError('Invalid gym referral code. Please check with your gym owner.');
+      setGymCodeError('Referral code will be checked by the backend during signup.');
     }
   };
 
@@ -51,46 +70,30 @@ export default function UserSignup() {
     setError('');
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email, otpCode: otp });
-      if (result?.access_token) base44.auth.setToken(result.access_token);
-      // If gym code provided and valid, link gym after verification
-      if (gymInfo) {
-        try {
-          const user = await base44.auth.me();
-          const today = new Date().toISOString().split('T')[0];
-          await Promise.all([
-            base44.entities.UserGymMembership.create({
-              user_id: user.id,
-              gym_id: gymInfo.id,
-              owner_id: gymInfo.user_id,
-              referral_code_used: gymCode.trim().toUpperCase(),
-              status: 'pending',
-              joined_at: today,
-            }),
-            base44.entities.GymLead.create({
-              gym_id: gymInfo.id,
-              owner_id: gymInfo.user_id,
-              name: user.full_name || email.split('@')[0],
-              email: email,
-              source: 'app',
-              status: 'new',
-              referral_code_used: gymCode.trim().toUpperCase(),
-              user_id: user.id,
-            }),
-          ]);
-          // Store gym code to pick up during onboarding
-          localStorage.setItem('pending_gym_id', gymInfo.id);
-          localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
-        } catch {}
+      await base44.auth.verifyOtp({ email, otpCode: otp });
+      if (gymCode.trim()) {
+        localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
       }
-      window.location.href = '/onboarding';
+      navigate('/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid code');
     } finally { setLoading(false); }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider('google', '/user-dashboard');
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const user = await base44.auth.loginWithProvider('google', 'user');
+      if (user.role !== 'user') {
+        throw new Error('This Google account is not registered as a user');
+      }
+      navigate('/user-dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (showOtp) {
@@ -144,7 +147,7 @@ export default function UserSignup() {
           <p className="text-muted-foreground text-sm mt-1.5">Start your fitness journey today</p>
         </div>
 
-        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle}>
+        <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle} disabled={loading}>
           <GoogleIcon className="w-5 h-5 mr-2" />
           Continue with Google
         </Button>
@@ -183,7 +186,6 @@ export default function UserSignup() {
                 value={confirm} onChange={(e) => setConfirm(e.target.value)} className="pl-10 h-12 rounded-xl" required />
             </div>
           </div>
-          {/* Optional Gym Referral Code */}
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <Building2 size={13} className="text-accent" />
@@ -205,7 +207,7 @@ export default function UserSignup() {
                 <p className="text-xs text-accent font-semibold">✓ {gymInfo.gym_name} — {gymInfo.city}</p>
               </div>
             )}
-            {gymCodeError && <p className="text-xs text-destructive">{gymCodeError}</p>}
+            {gymCodeError && <p className="text-xs text-muted-foreground">{gymCodeError}</p>}
           </div>
 
           <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
