@@ -54,7 +54,7 @@ export default function TopBar({ title, showBack, backTo, rightElement }) {
           </button>
         ) : (
           <div className="font-display font-bold text-xl tracking-tight select-none">
-            SE<span className="text-accent">7</span>ENFIT
+            SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span>
           </div>
         )}
 
