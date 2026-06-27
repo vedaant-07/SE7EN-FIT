@@ -9,6 +9,16 @@ import { Dumbbell, Mail, Lock, Loader2, ChevronLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import GoogleIcon from '@/components/GoogleIcon';
 
+function getErrorMessage(error, fallback = 'Something went wrong') {
+  const message = typeof error?.message === 'string' ? error.message.trim() : '';
+  const bodyError = typeof error?.body?.error === 'string' ? error.body.error.trim() : '';
+  const bodyMessage = typeof error?.body?.message === 'string' ? error.body.message.trim() : '';
+  if (message && message !== '{}' && message !== '[object Object]') return message;
+  if (bodyError && bodyError !== '{}') return bodyError;
+  if (bodyMessage && bodyMessage !== '{}') return bodyMessage;
+  return fallback;
+}
+
 export default function UserLogin() {
   const navigate = useNavigate();
   const { checkUserAuth } = useAuth();
@@ -17,27 +27,30 @@ export default function UserLogin() {
   const [otpCode, setOtpCode] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const goToDashboard = async () => {
-    await checkUserAuth();
+    await checkUserAuth().catch(() => null);
     navigate('/user-dashboard', { replace: true });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const result = await base44.auth.loginViaEmailPassword(email, password, 'user');
       if (result?.requires_otp) {
         setShowOtp(true);
+        setSuccess(result.message || 'Login verification code sent to your email.');
         return;
       }
       if (result.role !== 'user') throw new Error('This account is not registered as a user');
       await goToDashboard();
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      setError(getErrorMessage(err, 'Invalid email or password'));
     } finally {
       setLoading(false);
     }
@@ -45,13 +58,14 @@ export default function UserLogin() {
 
   const handleVerify = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
       if (result.user?.role !== 'user') throw new Error('This account is not registered as a user');
       await goToDashboard();
     } catch (err) {
-      setError(err.message || 'Invalid verification code');
+      setError(getErrorMessage(err, 'Invalid verification code'));
     } finally {
       setLoading(false);
     }
@@ -59,15 +73,18 @@ export default function UserLogin() {
 
   const handleResend = async () => {
     setError('');
+    setSuccess('');
     try {
       await base44.auth.resendOtp(email);
+      setSuccess('New verification code sent.');
     } catch (err) {
-      setError(err.message || 'Failed to resend code');
+      setError(getErrorMessage(err, 'Failed to resend code'));
     }
   };
 
   const handleGoogle = async () => {
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const user = await base44.auth.loginWithProvider('google', 'user');
@@ -76,7 +93,7 @@ export default function UserLogin() {
       }
       await goToDashboard();
     } catch (err) {
-      setError(err.message || 'Google login failed');
+      setError(getErrorMessage(err, 'Google login failed'));
     } finally {
       setLoading(false);
     }
@@ -102,6 +119,7 @@ export default function UserLogin() {
             <p className="text-muted-foreground text-sm mt-1.5">Code sent to {email}</p>
           </div>
 
+          {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
           {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
 
           <div className="flex justify-center mb-6">
@@ -153,6 +171,7 @@ export default function UserLogin() {
           <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div>
         </div>
 
+        {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
         {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
