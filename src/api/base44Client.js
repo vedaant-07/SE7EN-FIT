@@ -73,6 +73,16 @@ const clearUser = () => {
   localStorage.removeItem(USER_KEY);
 };
 
+const makeQueryString = (params = {}) => {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    search.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+};
+
 async function apiRequest(path, options = {}) {
   const {
     method = 'GET',
@@ -99,7 +109,9 @@ async function apiRequest(path, options = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error('Network error. Backend is not reachable.');
+    const error = new Error('Network error. Backend is not reachable.');
+    error.isNetworkError = true;
+    throw error;
   }
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
@@ -151,7 +163,7 @@ const setStore = (name, rows) => {
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const matches = (row, query = {}) => Object.entries(query).every(([key, value]) => row?.[key] === value);
 
-const makeEntity = (name, seed = []) => ({
+const makeLocalEntity = (name, seed = []) => ({
   async list(sortBy = '-created_date', limit) {
     const existing = getStore(name);
     const rows = existing.length ? existing : setStore(name, seed.map((item) => ({ ...item })));
@@ -192,6 +204,73 @@ const makeEntity = (name, seed = []) => ({
     return true;
   }
 });
+
+const makeRemoteEntity = (name) => ({
+  async list(sortBy = '-created_date', limit) {
+    const query = makeQueryString({ sortBy, limit });
+    const rows = await apiRequest(`/entities/${encodeURIComponent(name)}${query}`);
+    return Array.isArray(rows) ? rows : [];
+  },
+  async filter(filter = {}, sortBy = '-created_date', limit) {
+    const query = makeQueryString({ filter, sortBy, limit });
+    const rows = await apiRequest(`/entities/${encodeURIComponent(name)}${query}`);
+    return Array.isArray(rows) ? rows : [];
+  },
+  async get(id) {
+    return apiRequest(`/entities/${encodeURIComponent(name)}/${encodeURIComponent(id)}`);
+  },
+  async create(data = {}) {
+    return apiRequest(`/entities/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      body: data,
+    });
+  },
+  async update(id, data = {}) {
+    return apiRequest(`/entities/${encodeURIComponent(name)}/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: data,
+    });
+  },
+  async delete(id) {
+    await apiRequest(`/entities/${encodeURIComponent(name)}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return true;
+  }
+});
+
+const shouldUseLocalEntityFallback = (error) => {
+  if (import.meta.env.VITE_USE_LOCAL_ENTITIES === 'true') return true;
+  if (error?.isNetworkError) return true;
+  if ([404, 501].includes(error?.status)) return true;
+  return false;
+};
+
+const makeEntity = (name, seed = []) => {
+  const local = makeLocalEntity(name, seed);
+  const remote = makeRemoteEntity(name);
+
+  const run = async (method, args) => {
+    try {
+      return await remote[method](...args);
+    } catch (error) {
+      if (shouldUseLocalEntityFallback(error)) {
+        console.warn(`[SE7EN FIT] Falling back to local entity store for ${name}.${method}:`, error.message);
+        return local[method](...args);
+      }
+      throw error;
+    }
+  };
+
+  return {
+    list: (...args) => run('list', args),
+    filter: (...args) => run('filter', args),
+    get: (...args) => run('get', args),
+    create: (...args) => run('create', args),
+    update: (...args) => run('update', args),
+    delete: (...args) => run('delete', args),
+  };
+};
 
 const seed = {
   UserProfile: [],
