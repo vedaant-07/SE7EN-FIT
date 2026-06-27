@@ -31,7 +31,11 @@ const TABS = [
 ];
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const fivePerViewStyle = { flex: '0 0 calc((100% - 24px) / 5)' };
+const fivePerViewStyle = {
+  flex: '0 0 calc(20% - 4.8px)',
+  width: 'calc(20% - 4.8px)',
+  maxWidth: 'calc(20% - 4.8px)',
+};
 
 export default function Tracking() {
   const [activeTab, setActiveTab] = useState('steps');
@@ -118,7 +122,7 @@ export default function Tracking() {
                 id={`tab-${tab.key}`}
                 onClick={() => handleTabChange(tab.key)}
                 style={fivePerViewStyle}
-                className={`snap-start flex-shrink-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
+                className={`snap-start flex-shrink-0 min-w-0 flex flex-col items-center gap-1 px-0 py-1.5 rounded-2xl transition-all active:scale-95 ${
                   active ? 'bg-accent/15 border border-accent/30' : 'hover:bg-muted/60 border border-transparent'
                 }`}
               >
@@ -126,7 +130,7 @@ export default function Tracking() {
                   <Icon size={22} style={{ color: active ? tab.color : undefined }} className={active ? '' : 'text-muted-foreground'} />
                   {hasData && !active && <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-accent" />}
                 </div>
-                <span className={`text-[10px] font-semibold whitespace-nowrap leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
+                <span className={`max-w-full overflow-hidden text-ellipsis text-[10px] font-semibold whitespace-nowrap leading-tight ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.label}</span>
               </button>
             );
           })}
