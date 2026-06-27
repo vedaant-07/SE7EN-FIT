@@ -3,7 +3,6 @@ services:
     name: se7en-fit-web
     runtime: static
     rootDir: .
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     routes:
@@ -21,7 +20,6 @@ services:
     name: se7en-fit-api
     runtime: node
     rootDir: server
-    plan: free
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
