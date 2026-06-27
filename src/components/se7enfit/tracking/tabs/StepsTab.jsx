@@ -133,13 +133,13 @@ export default function StepsTab({ profile }) {
 
           <button
             onClick={() => setShowLive(p => !p)}
-            className={`h-9 shrink-0 rounded-xl border px-3 text-xs font-bold transition-all active:scale-95 ${
+            className={`h-9 shrink-0 rounded-xl border px-4 text-xs font-bold transition-all active:scale-95 ${
               showLive
                 ? 'border-accent/40 bg-accent/10 text-accent'
-                : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                : 'border-accent bg-accent text-accent-foreground shadow-[0_0_18px_rgba(25,214,92,0.25)] hover:bg-accent/90'
             }`}
           >
-            {showLive ? 'Hide' : 'Open'}
+            {showLive ? 'Hide' : 'Track'}
           </button>
         </div>
 
