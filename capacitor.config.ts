@@ -25,13 +25,6 @@ const config: CapacitorConfig = {
       resize: 'body',
       style: 'dark',
       resizeOnFullScreen: true
-    },
-    LocalNotifications: {
-      smallIcon: 'ic_stat_se7enfit',
-      iconColor: '#19D65C'
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert']
     }
   }
 };
