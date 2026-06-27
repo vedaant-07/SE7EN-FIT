@@ -121,3 +121,9 @@ nav.fixed.bottom-0 {
   background-color: #898989 !important;
   color: #ffffff !important;
 }
+
+.px-4.pt-3.pb-6.space-y-5 > div:first-child .snap-x > .flex > button:first-child > div.relative.min-h-\[148px\] {
+  background-image: url('/fitness-ad.svg') !important;
+  background-size: cover !important;
+  background-position: center 28% !important;
+}
