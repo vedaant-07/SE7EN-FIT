@@ -5,12 +5,13 @@ import TopBar from '@/components/se7enfit/TopBar';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getGreeting, getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore, GOALS_LABELS } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut } from 'lucide-react';
+import { Flame, Droplets, Footprints, Moon, Dumbbell, Bot, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users } from 'lucide-react';
 import AIDailyTip from '@/components/se7enfit/AIDailyTip';
 import DailyHabits from '@/components/se7enfit/DailyHabits';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
+const iconTileClass = 'bg-zinc-800/90 border border-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -120,13 +121,13 @@ export default function Home() {
     proteinOnTrack: todayData.protein >= proteinTarget * 0.8,
   });
 
-  const scoreLabel = fitnessScore >= 80 ? 'Excellent 🔥' : fitnessScore >= 50 ? 'Good Progress 💪' : 'Let\'s Go! 🚀';
+  const scoreLabel = fitnessScore >= 80 ? 'Excellent' : fitnessScore >= 50 ? 'Good Progress' : 'Let\'s Go';
   const isPremium = subscription && subscription.plan !== 'free';
 
   const rings = [
     { label: 'Calories', percent: Math.min((todayData.calories / calorieTarget) * 100, 100), color: 'hsl(var(--accent))', route: '/nutrition' },
-    { label: 'Water', percent: Math.min((todayData.water / waterGoal) * 100, 100), color: '#3b82f6', route: '/tracking/water' },
-    { label: 'Steps', percent: Math.min((todayData.steps / stepGoal) * 100, 100), color: '#a855f7', route: '/tracking/steps' },
+    { label: 'Water', percent: Math.min((todayData.water / waterGoal) * 100, 100), color: 'hsl(var(--accent))', route: '/tracking/water' },
+    { label: 'Steps', percent: Math.min((todayData.steps / stepGoal) * 100, 100), color: 'hsl(var(--accent))', route: '/tracking/steps' },
   ];
 
   return (
@@ -135,7 +136,7 @@ export default function Home() {
       <div className="px-4 pt-3 pb-6 space-y-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">{getGreeting()} 👋</p>
+            <p className="text-sm text-muted-foreground">{getGreeting()}</p>
             <h1 className="text-2xl font-heading font-bold mt-0.5 leading-tight">{profile.full_name || 'Champ'}</h1>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="text-xs bg-accent/15 text-accent px-2.5 py-0.5 rounded-full font-medium">{GOALS_LABELS[profile.goal] || 'Fitness'}</span>
@@ -147,9 +148,9 @@ export default function Home() {
             </div>
           </div>
           <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex flex-col items-center justify-center">
-              <Flame size={16} className="text-accent" />
-              <p className="text-xs font-bold font-heading text-accent">{profile.streak_days || 0}</p>
+            <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center ${iconTileClass}`}>
+              <Flame size={16} className="text-white" />
+              <p className="text-xs font-bold font-heading text-white">{profile.streak_days || 0}</p>
               <p className="text-[8px] text-muted-foreground">STREAK</p>
             </div>
           </div>
@@ -168,10 +169,10 @@ export default function Home() {
               <p className="text-sm text-accent uppercase tracking-widest font-extrabold mb-1">Today's Fitness</p>
               <p className="font-heading font-bold text-xl text-white">{scoreLabel}</p>
               <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {todayData.workoutDone && <Badge label="Workout ✓" />}
-                {todayData.steps >= stepGoal && <Badge label="Steps ✓" />}
-                {todayData.water >= waterGoal && <Badge label="Hydrated ✓" />}
-                {todayData.sleep >= 7 && <Badge label="Sleep ✓" />}
+                {todayData.workoutDone && <Badge label="Workout" />}
+                {todayData.steps >= stepGoal && <Badge label="Steps" />}
+                {todayData.water >= waterGoal && <Badge label="Hydrated" />}
+                {todayData.sleep >= 7 && <Badge label="Sleep" />}
               </div>
             </div>
           </div>
@@ -189,12 +190,12 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-3 gap-2.5">
-          <MetricCard icon={<Flame size={20} />} label="Calories" value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`} percent={(todayData.calories / calorieTarget) * 100} onClick={() => navigate('/nutrition')} color="text-orange-400" barColor="bg-orange-400" />
-          <MetricCard icon={<Zap size={20} />} label="Protein" value={`${todayData.protein}g`} sub={`/ ${proteinTarget}g`} percent={(todayData.protein / proteinTarget) * 100} onClick={() => navigate('/nutrition')} color="text-green-400" barColor="bg-green-400" />
-          <MetricCard icon={<Droplets size={20} />} label="Water" value={`${Math.round(todayData.water / 250)}`} sub={`/ ${Math.round(waterGoal / 250)} glasses`} percent={(todayData.water / waterGoal) * 100} onClick={() => navigate('/tracking/water')} color="text-blue-400" barColor="bg-blue-400" />
-          <MetricCard icon={<Footprints size={20} />} label="Steps" value={todayData.steps.toLocaleString()} sub={`/ ${stepGoal.toLocaleString()}`} percent={(todayData.steps / stepGoal) * 100} onClick={() => navigate('/tracking/steps')} color="text-purple-400" barColor="bg-purple-400" />
-          <MetricCard icon={<Moon size={20} />} label="Sleep" value={`${todayData.sleep}h`} sub={`/ ${profile.sleep_goal_hours || 7}h goal`} percent={(todayData.sleep / (profile.sleep_goal_hours || 7)) * 100} onClick={() => navigate('/tracking/sleep')} color="text-indigo-400" barColor="bg-indigo-400" />
-          <MetricCard icon={<Dumbbell size={20} />} label="Workout" value={todayData.workoutDone ? 'Done!' : 'Pending'} sub={todayData.workoutDone ? 'Great job 💪' : 'Tap to start'} percent={todayData.workoutDone ? 100 : 0} onClick={() => navigate('/workout')} color="text-accent" barColor="bg-accent" />
+          <MetricCard icon={<Flame size={20} />} label="Calories" value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`} percent={(todayData.calories / calorieTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
+          <MetricCard icon={<Zap size={20} />} label="Protein" value={`${todayData.protein}g`} sub={`/ ${proteinTarget}g`} percent={(todayData.protein / proteinTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
+          <MetricCard icon={<Droplets size={20} />} label="Water" value={`${Math.round(todayData.water / 250)}`} sub={`/ ${Math.round(waterGoal / 250)} glasses`} percent={(todayData.water / waterGoal) * 100} onClick={() => navigate('/tracking/water')} barColor="bg-accent" />
+          <MetricCard icon={<Footprints size={20} />} label="Steps" value={todayData.steps.toLocaleString()} sub={`/ ${stepGoal.toLocaleString()}`} percent={(todayData.steps / stepGoal) * 100} onClick={() => navigate('/tracking/steps')} barColor="bg-accent" />
+          <MetricCard icon={<Moon size={20} />} label="Sleep" value={`${todayData.sleep}h`} sub={`/ ${profile.sleep_goal_hours || 7}h goal`} percent={(todayData.sleep / (profile.sleep_goal_hours || 7)) * 100} onClick={() => navigate('/tracking/sleep')} barColor="bg-accent" />
+          <MetricCard icon={<Dumbbell size={20} />} label="Workout" value={todayData.workoutDone ? 'Done' : 'Pending'} sub={todayData.workoutDone ? 'Great job' : 'Tap to start'} percent={todayData.workoutDone ? 100 : 0} onClick={() => navigate('/workout')} barColor="bg-accent" />
         </div>
 
         {gymStatus.gym && (
@@ -202,8 +203,8 @@ export default function Home() {
             className={`w-full rounded-2xl p-4 flex items-center gap-3 border transition-all active:scale-[0.98] ${
               gymStatus.todayLog?.status === 'checked_in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-card border-border hover:border-accent/30'
             }`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${gymStatus.todayLog?.status === 'checked_in' ? 'bg-emerald-500/20' : 'bg-accent/10'}`}>
-              {gymStatus.todayLog?.status === 'checked_in' ? <LogOut size={18} className="text-emerald-400" /> : <LogIn size={18} className="text-accent" />}
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}>
+              {gymStatus.todayLog?.status === 'checked_in' ? <LogOut size={18} className="text-white" /> : <LogIn size={18} className="text-white" />}
             </div>
             <div className="flex-1 text-left">
               <p className="text-sm font-semibold">{gymStatus.gym.gym_name || 'My Gym'}</p>
@@ -211,7 +212,7 @@ export default function Home() {
                 {gymStatus.todayLog?.status === 'checked_in'
                   ? `Checked in at ${gymStatus.todayLog.check_in_time} — tap to check out`
                   : gymStatus.todayLog?.status === 'checked_out'
-                  ? `✓ Session done — ${gymStatus.todayLog.duration_minutes || 0} min`
+                  ? `Session done — ${gymStatus.todayLog.duration_minutes || 0} min`
                   : 'Tap to check in to your gym'}
               </p>
             </div>
@@ -223,15 +224,15 @@ export default function Home() {
           <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
           <div className="grid grid-cols-3 gap-2.5">
             {[
-              { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', color: 'text-accent bg-accent/10' },
-              { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', color: 'text-orange-400 bg-orange-400/10' },
-              { icon: Droplets, label: 'Add Water', route: '/tracking', color: 'text-blue-400 bg-blue-400/10' },
-              { icon: Camera, label: 'Food Scan 🤖', route: '/food-scan', color: 'text-green-400 bg-green-400/10' },
-              { icon: Building2, label: 'My Gym', route: '/my-gym', color: 'text-amber-400 bg-amber-400/10' },
-              { icon: Scale, label: 'Progress', route: '/progress', color: 'text-purple-400 bg-purple-400/10' },
-            ].map(({ icon: Icon, label, route, color }) => (
+              { icon: Dumbbell, label: 'Log Workout', route: '/workout/log' },
+              { icon: Utensils, label: 'Log Meal', route: '/nutrition/log' },
+              { icon: Droplets, label: 'Add Water', route: '/tracking' },
+              { icon: Camera, label: 'Food Scan', route: '/food-scan' },
+              { icon: Building2, label: 'My Gym', route: '/my-gym' },
+              { icon: Scale, label: 'Progress', route: '/progress' },
+            ].map(({ icon: Icon, label, route }) => (
               <button key={route} onClick={() => navigate(route)} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${color}`}><Icon size={22} /></div>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}><Icon size={22} className="text-white" /></div>
                 <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
               </button>
             ))}
@@ -244,15 +245,15 @@ export default function Home() {
         <Link to="/ai-trainer" className="block">
           <div className="bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-5 py-5 hover:border-accent/40 transition-all active:scale-[0.98]">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center flex-shrink-0"><Bot size={19} className="text-accent" /></div>
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}><Bot size={19} className="text-white" /></div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1"><p className="font-heading font-semibold text-sm">AI Recommendation</p><span className="text-[9px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Live</span></div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {profile.goal === 'weight_loss'
-                    ? 'Maintain your calorie deficit today. High-protein meals + 30 min cardio = faster results! 🔥'
+                    ? 'Maintain your calorie deficit today. High-protein meals and 30 min cardio can speed up progress.'
                     : profile.goal === 'muscle_gain'
-                    ? 'Hit your protein target today — aim for 2g/kg bodyweight. Don\'t skip compound lifts! 💪'
-                    : 'Consistency is your superpower. Every workout compounds your transformation! 🚀'}
+                    ? 'Hit your protein target today and keep compound lifts consistent.'
+                    : 'Consistency is your superpower. Every workout compounds your transformation.'}
                 </p>
               </div>
               <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
@@ -262,13 +263,13 @@ export default function Home() {
 
         <div className="grid grid-cols-2 gap-2.5">
           <div className="bg-card border border-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2"><Trophy size={14} className="text-yellow-400" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Streak</span></div>
+            <div className="flex items-center gap-2 mb-2"><Trophy size={14} className="text-white" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Streak</span></div>
             <p className="text-2xl font-bold font-heading">{profile.streak_days || 0}</p>
             <p className="text-xs text-muted-foreground">days in a row</p>
           </div>
           <Link to="/progress">
             <div className="bg-card border border-border rounded-2xl p-4 hover:border-accent/30 active:scale-[0.97] transition-all h-full">
-              <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className="text-accent" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Weight</span></div>
+              <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className="text-white" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Weight</span></div>
               <p className="text-2xl font-bold font-heading">{profile.weight_kg}<span className="text-sm font-normal text-muted-foreground"> kg</span></p>
               <p className="text-[11px] text-accent font-medium">Target: {profile.target_weight_kg} kg</p>
             </div>
@@ -279,7 +280,7 @@ export default function Home() {
           <Link to="/subscription" className="block">
             <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-5 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0"><Crown size={19} className="text-yellow-400" /></div>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}><Crown size={19} className="text-white" /></div>
                 <div className="flex-1"><p className="font-heading font-bold text-sm">Unlock Premium AI Trainer</p><p className="text-xs text-muted-foreground mt-0.5">Personalized plans, advanced analytics & more</p></div>
                 <ChevronRight size={16} className="text-muted-foreground" />
               </div>
@@ -289,14 +290,14 @@ export default function Home() {
 
         <div className="grid grid-cols-3 gap-2.5">
           {[
-            { label: 'Community', icon: '👥', route: '/community' },
-            { label: 'Rewards 🪙', icon: '🪙', route: '/rewards' },
-            { label: 'Premium', icon: '⭐', route: '/subscription' },
-          ].map(item => (
-            <Link key={item.route} to={item.route}>
+            { label: 'Community', icon: Users, route: '/community' },
+            { label: 'Rewards', icon: Trophy, route: '/rewards' },
+            { label: 'Premium', icon: Crown, route: '/subscription' },
+          ].map(({ label, icon: Icon, route }) => (
+            <Link key={route} to={route}>
               <div className="bg-card border border-border rounded-2xl p-3.5 text-center hover:border-accent/30 active:scale-[0.97] transition-all">
-                <span className="text-xl">{item.icon}</span>
-                <p className="text-[10px] font-medium mt-1.5">{item.label}</p>
+                <div className={`w-9 h-9 mx-auto rounded-xl flex items-center justify-center ${iconTileClass}`}><Icon size={18} className="text-white" /></div>
+                <p className="text-[10px] font-medium mt-1.5">{label}</p>
               </div>
             </Link>
           ))}
@@ -306,12 +307,12 @@ export default function Home() {
   );
 }
 
-function MetricCard({ icon, label, value, sub, percent, onClick, color, barColor }) {
+function MetricCard({ icon, label, value, sub, percent, onClick, barColor }) {
   const pct = Math.min(Math.max(percent || 0, 0), 100);
   return (
     <button onClick={onClick} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-[0.97] transition-all w-full">
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${color}`} style={{ background: 'color-mix(in srgb, currentColor 15%, transparent)' }}>
-        <span className={color}>{icon}</span>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}>
+        <span className="text-white">{icon}</span>
       </div>
       <div className="text-center w-full px-1">
         <p className="text-sm font-bold font-heading leading-none">{value}</p>
