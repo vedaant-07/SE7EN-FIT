@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Footprints, Plus, MapPin, Flame, Pencil, Check, X, Radio } from 'lucide-react';
+import { Activity, Footprints, Plus, MapPin, Flame, Pencil, Check, X } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { buildWeekData, buildMonthData, calcStreak, getTrackingInsight } from '@/lib/trackingUtils';
 import { TodayProgressCard, AIInsightCard, StreakCard, AchievementBadge, HistoryItem, DeviceSyncBanner } from '../TrackingWidgets';
@@ -49,9 +49,20 @@ export default function StepsTab({ profile }) {
     const existing = logs.find(l => l.date === today);
     const steps = Number(input);
     if (existing) {
-      await base44.entities.StepLog.update(existing.id, { steps: existing.steps + steps, distance_km: (existing.distance_km || 0) + Math.round(steps * 0.0008 * 100) / 100, calories_burned: (existing.calories_burned || 0) + Math.round(steps * 0.04) });
+      await base44.entities.StepLog.update(existing.id, {
+        steps: existing.steps + steps,
+        distance_km: (existing.distance_km || 0) + Math.round(steps * 0.0008 * 100) / 100,
+        calories_burned: (existing.calories_burned || 0) + Math.round(steps * 0.04)
+      });
     } else {
-      await base44.entities.StepLog.create({ user_id: user.id, date: today, steps, distance_km: Math.round(steps * 0.0008 * 100) / 100, calories_burned: Math.round(steps * 0.04), source: 'manual' });
+      await base44.entities.StepLog.create({
+        user_id: user.id,
+        date: today,
+        steps,
+        distance_km: Math.round(steps * 0.0008 * 100) / 100,
+        calories_burned: Math.round(steps * 0.04),
+        source: 'manual'
+      });
     }
     toast({ title: `+${steps.toLocaleString()} steps added 🚶` });
     setInput('');
@@ -91,31 +102,71 @@ export default function StepsTab({ profile }) {
       });
     } else {
       await base44.entities.StepLog.create({
-        user_id: user.id, date: today,
+        user_id: user.id,
+        date: today,
         steps: session.steps,
         distance_km: Math.round(session.distanceKm * 100) / 100,
         calories_burned: session.calories,
-        source: 'step_sensor',
+        source: 'live_tracker',
       });
     }
-    toast({ title: `✅ Live session saved — ${session.steps.toLocaleString()} steps, ${session.distanceKm.toFixed(2)} km` });
+    toast({ title: `Live session saved — ${session.steps.toLocaleString()} steps` });
     setShowLive(false);
     loadData();
   };
 
   return (
     <div className="space-y-4">
-      {/* Live Tracker toggle */}
-      <button onClick={() => setShowLive(p => !p)}
-        className={`w-full h-11 rounded-xl border font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-          showLive ? 'bg-accent/20 border-accent/50 text-accent' : 'bg-card border-border text-foreground hover:border-accent/30'
-        }`}>
-        <Radio size={15} className={showLive ? 'text-accent animate-pulse' : ''} />
-        {showLive ? 'Hide Live Tracker' : '🔴 Start Live Tracking'}
-      </button>
-      {showLive && <LiveTracker activity="walking" weightKg={profile?.weight_kg || 70} onSessionEnd={handleLiveSession} />}
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                <Activity size={16} />
+              </div>
+              <div>
+                <p className="font-heading text-sm font-bold text-foreground">Live Walk Session</p>
+                <p className="text-xs text-muted-foreground">Track a focused walking session with a clean timer.</p>
+              </div>
+            </div>
+          </div>
 
-      {/* Today */}
+          <button
+            onClick={() => setShowLive(p => !p)}
+            className={`h-9 shrink-0 rounded-xl border px-3 text-xs font-bold transition-all active:scale-95 ${
+              showLive
+                ? 'border-accent/40 bg-accent/10 text-accent'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {showLive ? 'Hide' : 'Open'}
+          </button>
+        </div>
+
+        {!showLive && (
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-background/70 px-2 py-3">
+              <p className="text-[10px] text-muted-foreground">Focus</p>
+              <p className="mt-0.5 text-xs font-bold text-foreground">Walking</p>
+            </div>
+            <div className="rounded-xl bg-background/70 px-2 py-3">
+              <p className="text-[10px] text-muted-foreground">Goal</p>
+              <p className="mt-0.5 text-xs font-bold text-foreground">Steps</p>
+            </div>
+            <div className="rounded-xl bg-background/70 px-2 py-3">
+              <p className="text-[10px] text-muted-foreground">Save</p>
+              <p className="mt-0.5 text-xs font-bold text-foreground">Auto</p>
+            </div>
+          </div>
+        )}
+
+        {showLive && (
+          <div className="mt-4">
+            <LiveTracker activity="walking" weightKg={profile?.weight_kg || 70} onSessionEnd={handleLiveSession} />
+          </div>
+        )}
+      </div>
+
       <TodayProgressCard label="Steps Today" value={todaySteps.toLocaleString()} unit="steps" goalValue={goal.toLocaleString()} goalUnit="steps" percent={percent} color="#a855f7">
         <div className="flex gap-3 mt-1.5">
           <span className="text-[11px] text-muted-foreground"><MapPin size={10} className="inline mr-0.5" />{(todayLog?.distance_km || 0).toFixed(2)} km</span>
@@ -123,7 +174,6 @@ export default function StepsTab({ profile }) {
         </div>
       </TodayProgressCard>
 
-      {/* Quick presets */}
       <div className="grid grid-cols-4 gap-2">
         {[1000, 2000, 5000, 10000].map(s => (
           <button key={s} onClick={() => { setInput(String(s)); }}
@@ -133,7 +183,6 @@ export default function StepsTab({ profile }) {
         ))}
       </div>
 
-      {/* Add form */}
       <div className="flex gap-2">
         <Input type="number" placeholder="Enter steps" value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addSteps()}
@@ -143,26 +192,21 @@ export default function StepsTab({ profile }) {
         </Button>
       </div>
 
-      {/* AI Insight */}
       <AIInsightCard insight={insight} loading={insightLoading} />
 
-      {/* Streak & Achievement */}
       <StreakCard streak={streak} label="Steps" emoji="🚶" />
       <AchievementBadge streak={streak} count={logs.length} />
 
-      {/* Weekly Chart */}
       <div className="bg-card border border-border rounded-2xl p-4">
         <p className="font-heading font-semibold text-sm mb-3">This Week</p>
         <WeekBarChart data={weekData} dataKey="steps" color="#a855f7" />
       </div>
 
-      {/* Monthly Chart */}
       <div className="bg-card border border-border rounded-2xl p-4">
         <p className="font-heading font-semibold text-sm mb-3">Last 30 Days</p>
         <MonthLineChart data={monthData} dataKey="steps" color="#a855f7" goalValue={goal} />
       </div>
 
-      {/* History */}
       <div>
         <p className="font-heading font-semibold text-sm mb-2">History</p>
         <div className="space-y-2">
