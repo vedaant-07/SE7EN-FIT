@@ -1,7 +1,138 @@
 const STORAGE_PREFIX = 'se7enfit_';
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit.onrender.com/api'
+).replace(/\/+$/, '');
+
+const TOKEN_KEY = `${STORAGE_PREFIX}auth_token`;
+const USER_KEY = `${STORAGE_PREFIX}user`;
+const LEGACY_AUTH_KEY = `${STORAGE_PREFIX}auth`;
+
 const nowIso = () => new Date().toISOString();
 const wait = (value) => Promise.resolve(value);
+
+const getToken = () => localStorage.getItem(TOKEN_KEY);
+
+const setToken = (token) => {
+  if (!token) return;
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(LEGACY_AUTH_KEY, 'true');
+};
+
+const clearToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(LEGACY_AUTH_KEY);
+};
+
+export const normalizeRole = (role) => {
+  const value = String(role || 'user')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
+  if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'super_admin';
+  if (['nagarsevak', 'nagar_sevak', 'nagar_sewak'].includes(value)) return 'nagarsevak';
+
+  return 'user';
+};
+
+const normalizeUser = (user = {}) => {
+  const normalized = {
+    ...user,
+    role: normalizeRole(user.role),
+    dbRole: user.dbRole || user.role,
+  };
+
+  normalized.full_name =
+    normalized.full_name ||
+    normalized.name ||
+    normalized.owner_name ||
+    normalized.email?.split('@')?.[0] ||
+    'SE7EN FIT User';
+
+  return normalized;
+};
+
+const cacheUser = (user) => {
+  const normalized = normalizeUser(user);
+  localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+  return normalized;
+};
+
+const readCachedUser = () => {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? normalizeUser(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearUser = () => {
+  localStorage.removeItem(USER_KEY);
+};
+
+async function apiRequest(path, options = {}) {
+  const {
+    method = 'GET',
+    body,
+    auth = true,
+    headers: extraHeaders = {},
+  } = options;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...extraHeaders,
+  };
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error('Network error. Backend is not reachable.');
+  }
+
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  const data = isJson
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      (data && typeof data === 'object' && (data.message || data.error)) ||
+      (typeof data === 'string' && data) ||
+      `Request failed (${response.status})`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.body = data;
+    throw error;
+  }
+
+  return data;
+}
+
+const storeSession = (session = {}) => {
+  const token = session.access_token || session.token;
+  if (!token) throw new Error('No access token returned from server');
+
+  setToken(token);
+
+  if (session.user) {
+    return cacheUser(session.user);
+  }
+
+  return readCachedUser();
+};
 
 const getStore = (name) => {
   try {
@@ -18,7 +149,6 @@ const setStore = (name, rows) => {
 };
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
 const matches = (row, query = {}) => Object.entries(query).every(([key, value]) => row?.[key] === value);
 
 const makeEntity = (name, seed = []) => ({
@@ -63,40 +193,9 @@ const makeEntity = (name, seed = []) => ({
   }
 });
 
-const currentUser = () => {
-  const raw = localStorage.getItem(`${STORAGE_PREFIX}user`);
-  if (raw) return JSON.parse(raw);
-  const user = {
-    id: 'local-user',
-    email: 'user@se7en.fit',
-    full_name: 'SE7EN FIT User',
-    role: 'user'
-  };
-  localStorage.setItem(`${STORAGE_PREFIX}user`, JSON.stringify(user));
-  return user;
-};
-
 const seed = {
-  UserProfile: [
-    {
-      id: 'profile-local-user',
-      user_id: 'local-user',
-      full_name: 'SE7EN FIT User',
-      fitness_goal: 'Build muscle and stay consistent',
-      level: 'beginner',
-      points: 1240,
-      created_date: nowIso()
-    }
-  ],
-  GymOwner: [
-    {
-      id: 'owner-local-user',
-      user_id: 'local-user',
-      gym_name: 'SE7EN FIT Demo Gym',
-      onboarding_complete: true,
-      created_date: nowIso()
-    }
-  ],
+  UserProfile: [],
+  GymOwner: [],
   WorkoutLog: [],
   NutritionLog: [],
   WaterLog: [],
@@ -127,8 +226,8 @@ const entityProxy = new Proxy({}, {
 const integrations = {
   Core: {
     InvokeLLM: async ({ prompt } = {}) => ({
-      response: 'SE7EN FIT local AI mode is active. Connect your own backend or AI API for production responses.',
-      text: 'SE7EN FIT local AI mode is active. Connect your own backend or AI API for production responses.',
+      response: 'SE7EN FIT AI backend is not connected yet.',
+      text: 'SE7EN FIT AI backend is not connected yet.',
       prompt
     }),
     SendEmail: async () => ({ success: true }),
@@ -138,31 +237,188 @@ const integrations = {
   }
 };
 
-export const base44 = {
-  auth: {
-    async isAuthenticated() {
-      return localStorage.getItem(`${STORAGE_PREFIX}auth`) === 'true';
-    },
-    async me() {
-      return currentUser();
-    },
-    async loginViaEmailPassword(email) {
-      const user = { ...currentUser(), email: email || 'user@se7en.fit' };
-      localStorage.setItem(`${STORAGE_PREFIX}user`, JSON.stringify(user));
-      localStorage.setItem(`${STORAGE_PREFIX}auth`, 'true');
-      return user;
-    },
-    loginWithProvider() {
-      localStorage.setItem(`${STORAGE_PREFIX}auth`, 'true');
-      return currentUser();
-    },
-    logout() {
-      localStorage.removeItem(`${STORAGE_PREFIX}auth`);
-    },
-    redirectToLogin() {
-      window.location.href = '/welcome';
+const loadGoogleIdentityScript = () => new Promise((resolve, reject) => {
+  if (window.google?.accounts?.id) {
+    resolve();
+    return;
+  }
+
+  const existing = document.querySelector('script[data-google-identity]');
+  if (existing) {
+    existing.addEventListener('load', resolve, { once: true });
+    existing.addEventListener('error', reject, { once: true });
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true;
+  script.defer = true;
+  script.dataset.googleIdentity = 'true';
+  script.onload = resolve;
+  script.onerror = () => reject(new Error('Google login script failed to load'));
+  document.head.appendChild(script);
+});
+
+const auth = {
+  async isAuthenticated() {
+    if (!getToken()) return false;
+
+    try {
+      await this.me();
+      return true;
+    } catch {
+      clearToken();
+      clearUser();
+      return false;
     }
   },
+
+  async me() {
+    const response = await apiRequest('/auth/me');
+    const user = response.user || response;
+    return cacheUser(user);
+  },
+
+  async loginViaEmailPassword(email, password, role = 'user') {
+    const session = await apiRequest('/auth/login', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: String(email || '').trim().toLowerCase(),
+        password,
+        role,
+      },
+    });
+
+    return storeSession(session);
+  },
+
+  async register(payload = {}) {
+    const session = await apiRequest('/auth/register', {
+      method: 'POST',
+      auth: false,
+      body: {
+        ...payload,
+        email: String(payload.email || '').trim().toLowerCase(),
+        role: payload.role || 'user',
+        phone: payload.phone || payload.mobile || undefined,
+        mobile: payload.mobile || payload.phone || undefined,
+      },
+    });
+
+    if (session?.token || session?.access_token) {
+      const user = storeSession(session);
+      return { access_token: session.access_token || session.token, user };
+    }
+
+    return session;
+  },
+
+  async verifyOtp({ email, otpCode }) {
+    const session = await apiRequest('/auth/verify-otp', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: String(email || '').trim().toLowerCase(),
+        otp_code: otpCode,
+        otpCode,
+      },
+    });
+
+    return {
+      access_token: session.access_token || session.token,
+      user: storeSession(session),
+    };
+  },
+
+  async resendOtp(email) {
+    return apiRequest('/auth/resend-otp', {
+      method: 'POST',
+      auth: false,
+      body: { email: String(email || '').trim().toLowerCase() },
+    });
+  },
+
+  async loginWithProvider(provider = 'google', role = 'user') {
+    if (provider !== 'google') {
+      throw new Error(`${provider} login is not supported`);
+    }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      throw new Error('Google login is not configured. Add VITE_GOOGLE_CLIENT_ID.');
+    }
+
+    await loadGoogleIdentityScript();
+
+    return new Promise((resolve, reject) => {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          try {
+            if (!response.credential) {
+              reject(new Error('Google did not return an ID token'));
+              return;
+            }
+
+            const session = await apiRequest('/auth/google', {
+              method: 'POST',
+              auth: false,
+              body: { idToken: response.credential, role },
+            });
+
+            resolve(storeSession(session));
+          } catch (error) {
+            reject(error);
+          }
+        },
+      });
+
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) {
+          reject(new Error('Google login was cancelled or blocked'));
+        }
+      });
+    });
+  },
+
+  setToken,
+  getToken,
+
+  logout() {
+    clearToken();
+    clearUser();
+  },
+
+  redirectToLogin() {
+    window.location.href = '/welcome';
+  }
+};
+
+const gymOwner = {
+  async getMine() {
+    return apiRequest('/gym-owners/me');
+  },
+
+  async upsert(data = {}) {
+    return apiRequest('/gym-owners/me', {
+      method: 'PUT',
+      body: data,
+    });
+  },
+
+  async completeOnboarding(data = {}) {
+    return apiRequest('/gym-owners/onboarding', {
+      method: 'POST',
+      body: data,
+    });
+  }
+};
+
+export const base44 = {
+  auth,
+  gymOwner,
   entities: entityProxy,
   integrations,
   functions: new Proxy({}, {
