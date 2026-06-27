@@ -17,14 +17,40 @@ export default function GymOwnerSignup() {
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
+  const upsertGymOwnerProfile = async () => {
+    return base44.gymOwner.upsert({
+      owner_name: form.ownerName,
+      email: form.email,
+      mobile: form.mobile,
+      phone: form.mobile,
+      gym_name: '',
+      onboarding_complete: false,
+    });
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirm) { setError('Passwords do not match'); return; }
     setLoading(true);
     try {
-      await base44.auth.register({ email: form.email, password: form.password });
-      setStep(2);
+      const result = await base44.auth.register({
+        email: form.email,
+        password: form.password,
+        name: form.ownerName,
+        owner_name: form.ownerName,
+        phone: form.mobile,
+        mobile: form.mobile,
+        role: 'gym_owner',
+      });
+
+      if (result?.requires_otp) {
+        setStep(2);
+        return;
+      }
+
+      await upsertGymOwnerProfile();
+      navigate('/gym-owner/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Registration failed');
     } finally { setLoading(false); }
@@ -34,18 +60,9 @@ export default function GymOwnerSignup() {
     setError('');
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email: form.email, otpCode: otp });
-      if (result?.access_token) base44.auth.setToken(result.access_token);
-      const user = await base44.auth.me();
-      await base44.entities.GymOwner.create({
-        user_id: user.id,
-        owner_name: form.ownerName,
-        email: form.email,
-        mobile: form.mobile,
-        gym_name: '',
-        onboarding_complete: false,
-      });
-      window.location.href = '/gym-owner/onboarding';
+      await base44.auth.verifyOtp({ email: form.email, otpCode: otp });
+      await upsertGymOwnerProfile();
+      navigate('/gym-owner/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid code');
     } finally { setLoading(false); }
