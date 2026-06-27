@@ -95,6 +95,14 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 10px; }
 
+/* Subscription premium CTA override */
+.rounded-xl.bg-accent.shadow-accent\/20,
+.rounded-xl.bg-accent.shadow-accent\/20:hover {
+  background-color: hsl(var(--foreground)) !important;
+  color: hsl(var(--background)) !important;
+  box-shadow: none !important;
+}
+
 /* Progress ring animation */
 @keyframes progress-ring {
   from { stroke-dashoffset: 283; }
