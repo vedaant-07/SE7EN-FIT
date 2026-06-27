@@ -6,78 +6,78 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 140 90% 45%;
+    --background: 108 29% 97%;
+    --foreground: 116 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 116 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 116 30% 10%;
+    --primary: 112 27% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
-    --accent: 140 90% 45%;
+    --secondary: 110 32% 93%;
+    --secondary-foreground: 116 30% 10%;
+    --muted: 110 32% 93%;
+    --muted-foreground: 113 25% 29%;
+    --accent: 112 27% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 140 90% 45%;
-    --chart-1: 140 90% 45%;
-    --chart-2: 150 70% 40%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 110 31% 85%;
+    --input: 110 31% 85%;
+    --ring: 112 27% 55%;
+    --chart-1: 112 27% 55%;
+    --chart-2: 112 28% 45%;
+    --chart-3: 112 30% 36%;
+    --chart-4: 113 28% 29%;
+    --chart-5: 110 31% 85%;
     --radius: 1rem;
     --font-heading: 'Space Grotesk', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 140 90% 45%;
+    --sidebar-background: 108 29% 97%;
+    --sidebar-foreground: 116 30% 10%;
+    --sidebar-primary: 112 27% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 12%;
-    --sidebar-ring: 140 90% 45%;
+    --sidebar-accent: 110 32% 93%;
+    --sidebar-accent-foreground: 116 30% 10%;
+    --sidebar-border: 110 31% 85%;
+    --sidebar-ring: 112 27% 55%;
   }
 
   .dark {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 140 90% 45%;
+    --background: 108 29% 97%;
+    --foreground: 116 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 116 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 116 30% 10%;
+    --primary: 112 27% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
-    --accent: 140 90% 45%;
+    --secondary: 110 32% 93%;
+    --secondary-foreground: 116 30% 10%;
+    --muted: 110 32% 93%;
+    --muted-foreground: 113 25% 29%;
+    --accent: 112 27% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 140 90% 45%;
-    --chart-1: 140 90% 45%;
-    --chart-2: 150 70% 40%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 140 90% 45%;
+    --border: 110 31% 85%;
+    --input: 110 31% 85%;
+    --ring: 112 27% 55%;
+    --chart-1: 112 27% 55%;
+    --chart-2: 112 28% 45%;
+    --chart-3: 112 30% 36%;
+    --chart-4: 113 28% 29%;
+    --chart-5: 110 31% 85%;
+    --sidebar-background: 108 29% 97%;
+    --sidebar-foreground: 116 30% 10%;
+    --sidebar-primary: 112 27% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 16%;
-    --sidebar-ring: 140 90% 45%;
+    --sidebar-accent: 110 32% 93%;
+    --sidebar-accent-foreground: 116 30% 10%;
+    --sidebar-border: 110 31% 85%;
+    --sidebar-ring: 112 27% 55%;
   }
 }
 
@@ -85,17 +85,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body, #root {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
   body {
     @apply bg-background text-foreground font-body;
   }
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 10px; }
 
-/* Global CTA color rules */
 .bg-accent.text-white,
 .bg-accent.text-accent-foreground,
 .bg-accent.hover\:bg-accent\/90,
@@ -113,7 +115,6 @@ a.bg-accent {
   color: hsl(var(--background)) !important;
 }
 
-/* Subscription premium CTA override */
 .rounded-xl.bg-accent.shadow-accent\/20,
 .rounded-xl.bg-accent.shadow-accent\/20:hover {
   background-color: hsl(var(--foreground)) !important;
@@ -121,7 +122,6 @@ a.bg-accent {
   box-shadow: none !important;
 }
 
-/* Progress ring animation */
 @keyframes progress-ring {
   from { stroke-dashoffset: 283; }
 }
@@ -130,23 +130,19 @@ a.bg-accent {
   animation: progress-ring 1s ease-out forwards;
 }
 
-/* Safe area support */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Smooth tap feedback */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Better text rendering */
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth page transitions */
 .page-enter {
   opacity: 0;
   transform: translateY(8px);
