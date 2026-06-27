@@ -1,0 +1,71 @@
+name: Build Android App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - 'vite.config.js'
+      - '.github/workflows/android-build.yml'
+
+jobs:
+  android:
+    name: Build APK and AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build:capacitor
+
+      - name: Create Android project
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Build unsigned release AAB
+        run: |
+          cd android
+          ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: se7enfit-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: se7enfit-release-aab-unsigned
+          path: android/app/build/outputs/bundle/release/*.aab
