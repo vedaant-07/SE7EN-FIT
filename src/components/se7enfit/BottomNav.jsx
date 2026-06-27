@@ -28,10 +28,7 @@ export default function BottomNav() {
                 isActive ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {isActive && (
-                <span className="absolute inset-0 bg-accent/10 rounded-2xl" />
-              )}
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
+              <Icon size={20} strokeWidth={isActive ? 2.4 : 1.8} />
               <span className={`text-[10px] font-medium tracking-wide ${isActive ? 'font-semibold' : ''}`}>{label}</span>
             </Link>
           );
