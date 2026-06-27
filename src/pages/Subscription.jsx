@@ -163,7 +163,7 @@ export default function Subscription() {
 
     setCurrent(nextSub);
     setCheckoutPlan(null);
-    toast({ title: `🎉 ${plan.label} Activated`, description: `Active until ${endDate.toDateString()}` });
+    toast({ title: `${plan.label} Activated`, description: `Active until ${endDate.toDateString()}` });
   };
 
   const continueToPayment = async () => {
@@ -241,7 +241,7 @@ export default function Subscription() {
       <>
         <TopBar title="Checkout" showBack backTo="/subscription" rightElement={null} />
         <div className="max-w-lg mx-auto px-4 py-4 pb-32 space-y-4">
-          <button onClick={() => setCheckoutPlan(null)} className="text-xs text-muted-foreground hover:text-foreground">← Back to plans</button>
+          <button onClick={() => setCheckoutPlan(null)} className="text-xs text-muted-foreground hover:text-foreground">Back to plans</button>
 
           <div className="rounded-3xl border border-accent/35 bg-gradient-to-b from-accent/10 to-card p-5">
             <div className="flex items-start justify-between gap-4">
@@ -419,7 +419,7 @@ export default function Subscription() {
 
                 {isPopular && !isCurrentPlan && (
                   <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-[9px] font-bold px-5 py-1 rounded-b-xl uppercase tracking-widest">
-                    🔥 Best Choice
+                    Best Choice
                   </div>
                 )}
 
@@ -453,12 +453,9 @@ export default function Subscription() {
                 {!isCurrentPlan && plan.key !== PLANS.FREE && plan.key !== PLANS.FREE_TRIAL && (
                   <Button
                     onClick={() => openCheckout(plan)}
-                    className={`w-full h-11 rounded-xl font-semibold text-sm transition-all ${
-                      isPopular ? 'bg-accent text-accent-foreground hover:bg-accent/90 shadow-md shadow-accent/20' :
-                      'bg-foreground text-background hover:bg-foreground/90'
-                    }`}
+                    className="w-full h-11 rounded-xl font-semibold text-sm transition-all bg-foreground text-background hover:bg-foreground/90 shadow-none"
                   >
-                    {isPopular ? '⚡ ' : ''}Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} />
+                    Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} />
                   </Button>
                 )}
 
