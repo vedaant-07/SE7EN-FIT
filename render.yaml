@@ -1,5 +1,23 @@
 services:
   - type: web
+    name: se7en-fit-web
+    runtime: static
+    rootDir: .
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+
+  - type: web
     name: se7en-fit-api
     runtime: node
     rootDir: server
