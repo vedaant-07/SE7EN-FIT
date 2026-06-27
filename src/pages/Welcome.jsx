@@ -66,7 +66,7 @@ export default function Welcome() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>ENFIT</div>
+          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
           <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto" />
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function Welcome() {
             <Zap size={36} className="text-accent" />
           </div>
           <h1 className="font-display font-black text-4xl tracking-tight">
-            SE<span className="text-accent">7</span>ENFIT
+            SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-2 font-medium">India's #1 AI Fitness App</p>
         </div>
@@ -101,14 +101,14 @@ export default function Welcome() {
         <div className="space-y-4 mb-6">
           <button
             onClick={() => navigate('/login/user')}
-            className="w-full h-16 bg-accent text-accent-foreground rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 shadow-lg shadow-accent/25 active:scale-[0.98] transition-all hover:bg-accent/90"
+            className="w-full h-16 bg-white text-black rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 shadow-lg shadow-white/10 active:scale-[0.98] transition-all hover:bg-white/90"
           >
-            <div className="w-10 h-10 rounded-xl bg-accent-foreground/10 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-black/5 flex items-center justify-center flex-shrink-0">
               <Dumbbell size={22} />
             </div>
             <div className="flex-1 text-left">
               <div className="font-bold">Continue as User</div>
-              <div className="text-xs font-normal opacity-75">Track fitness, nutrition & more</div>
+              <div className="text-xs font-normal opacity-70">Track fitness, nutrition & more</div>
             </div>
             <ChevronRight size={20} />
           </button>
