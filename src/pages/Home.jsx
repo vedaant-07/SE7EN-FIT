@@ -12,6 +12,7 @@ import DailyHabits from '@/components/se7enfit/DailyHabits';
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
 const iconTileClass = 'bg-[#77AC6F]/10 border border-[#77AC6F]/20 text-white';
+const fourPerViewStyle = { flex: '0 0 calc((100% - 18px) / 4)' };
 
 export default function Home() {
   const navigate = useNavigate();
@@ -222,20 +223,29 @@ export default function Home() {
 
         <div>
           <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
-          <div className="grid grid-cols-3 gap-2.5">
-            {[
-              { icon: Dumbbell, label: 'Log Workout', route: '/workout/log' },
-              { icon: Utensils, label: 'Log Meal', route: '/nutrition/log' },
-              { icon: Droplets, label: 'Add Water', route: '/tracking' },
-              { icon: Camera, label: 'Food Scan', route: '/food-scan' },
-              { icon: Building2, label: 'My Gym', route: '/my-gym' },
-              { icon: Scale, label: 'Progress', route: '/progress' },
-            ].map(({ icon: Icon, label, route }) => (
-              <button key={route} onClick={() => navigate(route)} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-95 transition-all">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}><Icon size={22} className="text-white" /></div>
-                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
-              </button>
-            ))}
+          <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex gap-1.5 px-1 snap-x snap-mandatory">
+              {[
+                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log' },
+                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log' },
+                { icon: Droplets, label: 'Add Water', route: '/tracking' },
+                { icon: Camera, label: 'Food Scan', route: '/food-scan' },
+                { icon: Building2, label: 'My Gym', route: '/my-gym' },
+                { icon: Scale, label: 'Progress', route: '/progress' },
+              ].map(({ icon: Icon, label, route }) => (
+                <button
+                  key={route}
+                  onClick={() => navigate(route)}
+                  style={fourPerViewStyle}
+                  className="snap-start flex flex-col items-center gap-1.5 rounded-2xl py-2 hover:bg-card/60 active:scale-95 transition-all"
+                >
+                  <div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center ${iconTileClass}`}>
+                    <Icon size={28} className="text-white" />
+                  </div>
+                  <span className="text-[10px] font-semibold text-center leading-tight whitespace-nowrap">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -303,6 +313,7 @@ export default function Home() {
           ))}
         </div>
       </div>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
     </>
   );
 }
