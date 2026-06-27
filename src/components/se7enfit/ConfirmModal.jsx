@@ -11,7 +11,7 @@ export default function ConfirmModal({ open, title, description, confirmLabel = 
         <Button variant="outline" onClick={onCancel} className="flex-1 rounded-xl h-10">{cancelLabel}</Button>
         <Button
           onClick={onConfirm}
-          className={`flex-1 rounded-xl h-10 ${destructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-accent text-accent-foreground hover:bg-accent/90'}`}
+          className={`flex-1 rounded-xl h-10 ${destructive ? 'bg-destructive text-white hover:bg-destructive/90 border border-destructive' : 'bg-accent text-accent-foreground hover:bg-accent/90'}`}
         >
           {confirmLabel}
         </Button>
