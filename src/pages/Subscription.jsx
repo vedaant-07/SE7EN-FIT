@@ -10,6 +10,48 @@ import { useToast } from '@/components/ui/use-toast';
 
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
+const AVAILABLE_OFFERS = [
+  {
+    code: 'WELCOME20',
+    title: 'Welcome Offer',
+    description: 'Save 20% on any paid subscription plan.',
+    tag: '20% OFF',
+    type: 'percent',
+    value: 20,
+  },
+  {
+    code: 'SE7EN50',
+    title: 'SE7EN FIT Starter',
+    description: 'Flat ₹50 off on Basic or Premium monthly plan.',
+    tag: '₹50 OFF',
+    type: 'flat',
+    value: 50,
+    appliesTo: [PLANS.BASIC, PLANS.PREMIUM_MONTHLY],
+  },
+  {
+    code: 'YEARLY25',
+    title: 'Annual Transformation',
+    description: 'Save 25% when you choose the annual plan.',
+    tag: '25% OFF',
+    type: 'percent',
+    value: 25,
+    appliesTo: [PLANS.PREMIUM_ANNUAL],
+  },
+];
+
+function isOfferEligible(offer, plan) {
+  if (!offer || !plan) return false;
+  if (!offer.appliesTo) return true;
+  return offer.appliesTo.includes(plan.key) || offer.appliesTo.includes(plan.billing);
+}
+
+function getOfferDiscount(offer, plan) {
+  if (!isOfferEligible(offer, plan)) return 0;
+  if (offer.type === 'percent') return Math.min(plan.price, Math.round((plan.price * offer.value) / 100));
+  if (offer.type === 'flat') return Math.min(plan.price, offer.value);
+  return 0;
+}
+
 function loadRazorpay() {
   return new Promise((resolve) => {
     if (window.Razorpay) { resolve(true); return; }
@@ -36,8 +78,7 @@ export default function Subscription() {
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState(null);
   const [coupon, setCoupon] = useState('');
-  const [referral, setReferral] = useState('');
-  const [appliedCode, setAppliedCode] = useState(null);
+  const [selectedOffer, setSelectedOffer] = useState(null);
   const [user, setUser] = useState(null);
   const [processing, setProcessing] = useState(false);
 
@@ -54,34 +95,52 @@ export default function Subscription() {
   const openCheckout = (plan) => {
     if (plan.key === PLANS.FREE_TRIAL || plan.key === PLANS.FREE) return;
     setCoupon('');
-    setReferral('');
-    setAppliedCode(null);
+    setSelectedOffer(null);
     setCheckoutPlan(plan);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const applyCode = (type) => {
-    const value = type === 'coupon' ? coupon.trim().toUpperCase() : referral.trim().toUpperCase();
+  const applyCoupon = () => {
+    const value = coupon.trim().toUpperCase();
     if (!value) {
-      toast({ title: `Enter a ${type} code`, variant: 'destructive' });
+      toast({ title: 'Enter a coupon code', variant: 'destructive' });
       return;
     }
-    setAppliedCode({ type, value });
-    toast({ title: `${type === 'coupon' ? 'Coupon' : 'Referral'} code applied`, description: value });
+
+    const offer = AVAILABLE_OFFERS.find(item => item.code === value);
+    if (!offer || !isOfferEligible(offer, checkoutPlan)) {
+      toast({ title: 'Invalid offer for this plan', description: 'Choose one of the available offers below.', variant: 'destructive' });
+      return;
+    }
+
+    setSelectedOffer(offer);
+    toast({ title: 'Offer applied', description: `${offer.code} saved ₹${getOfferDiscount(offer, checkoutPlan)}` });
   };
 
-  const completeSubscription = async (response, plan) => {
+  const selectOffer = (offer) => {
+    setSelectedOffer(offer);
+    setCoupon(offer.code);
+    toast({ title: 'Offer applied', description: `${offer.code} saved ₹${getOfferDiscount(offer, checkoutPlan)}` });
+  };
+
+  const clearOffer = () => {
+    setSelectedOffer(null);
+    setCoupon('');
+  };
+
+  const completeSubscription = async (response, plan, payableAmount, discountAmount) => {
     const { today, endDate } = getSubscriptionDates(plan);
 
     await base44.entities.Payment.create({
       user_id: user.id,
       plan: plan.key,
-      amount: plan.price,
+      amount: payableAmount,
+      original_amount: plan.price,
+      discount_amount: discountAmount,
       currency: 'INR',
       status: 'success',
       razorpay_payment_id: response.razorpay_payment_id,
-      applied_code: appliedCode?.value || undefined,
-      applied_code_type: appliedCode?.type || undefined,
+      applied_offer_code: selectedOffer?.code || undefined,
       paid_at: new Date().toISOString(),
     });
 
@@ -96,8 +155,10 @@ export default function Subscription() {
       start_date: today.toISOString().split('T')[0],
       end_date: endDate.toISOString().split('T')[0],
       payment_id: response.razorpay_payment_id,
-      applied_code: appliedCode?.value || undefined,
-      applied_code_type: appliedCode?.type || undefined,
+      original_amount: plan.price,
+      paid_amount: payableAmount,
+      discount_amount: discountAmount,
+      applied_offer_code: selectedOffer?.code || undefined,
     });
 
     setCurrent(nextSub);
@@ -117,6 +178,9 @@ export default function Subscription() {
       return;
     }
 
+    const discountAmount = getOfferDiscount(selectedOffer, checkoutPlan);
+    const payableAmount = Math.max(1, checkoutPlan.price - discountAmount);
+
     setProcessing(true);
     const loaded = await loadRazorpay();
     if (!loaded) {
@@ -127,7 +191,7 @@ export default function Subscription() {
 
     const options = {
       key: RAZORPAY_KEY_ID,
-      amount: checkoutPlan.price * 100,
+      amount: payableAmount * 100,
       currency: 'INR',
       name: 'SE7EN FIT',
       description: `${checkoutPlan.label} Plan`,
@@ -139,13 +203,14 @@ export default function Subscription() {
       },
       notes: {
         plan: checkoutPlan.key,
-        coupon: appliedCode?.type === 'coupon' ? appliedCode.value : '',
-        referral: appliedCode?.type === 'referral' ? appliedCode.value : '',
+        offer: selectedOffer?.code || '',
+        original_amount: String(checkoutPlan.price),
+        discount_amount: String(discountAmount),
       },
       theme: { color: '#22c55e' },
       handler: async (response) => {
         try {
-          await completeSubscription(response, checkoutPlan);
+          await completeSubscription(response, checkoutPlan, payableAmount, discountAmount);
         } catch (error) {
           toast({ title: 'Payment done, activation failed', description: error.message || 'Please contact support.', variant: 'destructive' });
         } finally {
@@ -168,6 +233,10 @@ export default function Subscription() {
   if (loading) return <LoadingScreen />;
 
   if (checkoutPlan) {
+    const eligibleOffers = AVAILABLE_OFFERS.filter(offer => isOfferEligible(offer, checkoutPlan));
+    const discountAmount = getOfferDiscount(selectedOffer, checkoutPlan);
+    const payableAmount = Math.max(1, checkoutPlan.price - discountAmount);
+
     return (
       <>
         <TopBar title="Checkout" showBack backTo="/subscription" rightElement={null} />
@@ -208,23 +277,57 @@ export default function Subscription() {
               <Gift size={15} className="text-accent" /> Have a code?
             </p>
 
-            {appliedCode && (
+            {selectedOffer && (
               <div className="rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-xs text-accent font-semibold flex items-center justify-between">
-                <span>{appliedCode.type === 'coupon' ? 'Coupon' : 'Referral'} applied: {appliedCode.value}</span>
-                <button onClick={() => setAppliedCode(null)} className="text-muted-foreground hover:text-foreground">Remove</button>
+                <span>{selectedOffer.code} applied • You save ₹{discountAmount}</span>
+                <button onClick={clearOffer} className="text-muted-foreground hover:text-foreground">Remove</button>
               </div>
             )}
 
             <div className="flex gap-2">
               <Input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
                 placeholder="COUPON CODE" className="flex-1 h-12 rounded-xl bg-muted/40 uppercase font-mono" />
-              <button onClick={() => applyCode('coupon')} className="px-4 h-12 rounded-xl bg-accent text-accent-foreground text-sm font-bold">Apply</button>
+              <button onClick={applyCoupon} className="px-4 h-12 rounded-xl bg-accent text-accent-foreground text-sm font-bold">Apply</button>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-heading font-semibold text-sm flex items-center gap-2">
+                <Gift size={15} className="text-accent" /> Available offers
+              </p>
+              <span className="text-[10px] text-muted-foreground">Tap to apply</span>
             </div>
 
-            <div className="flex gap-2">
-              <Input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())}
-                placeholder="REFERRAL CODE" className="flex-1 h-12 rounded-xl bg-muted/40 uppercase font-mono" />
-              <button onClick={() => applyCode('referral')} className="px-4 h-12 rounded-xl bg-muted border border-border text-sm font-medium">Apply</button>
+            <div className="space-y-2">
+              {eligibleOffers.map(offer => {
+                const active = selectedOffer?.code === offer.code;
+                const savings = getOfferDiscount(offer, checkoutPlan);
+                return (
+                  <button
+                    key={offer.code}
+                    onClick={() => selectOffer(offer)}
+                    className={`w-full text-left rounded-2xl border p-3 transition-all active:scale-[0.99] ${
+                      active ? 'border-accent bg-accent/10' : 'border-border bg-background/60 hover:border-accent/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-foreground">{offer.title}</span>
+                          {active && <span className="text-[9px] font-bold text-accent">APPLIED</span>}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">{offer.description}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground mt-2">Code: {offer.code}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="inline-flex rounded-full bg-accent/15 px-2 py-1 text-[10px] font-bold text-accent">{offer.tag}</span>
+                        <p className="text-[10px] text-muted-foreground mt-1">Save ₹{savings}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -235,10 +338,22 @@ export default function Subscription() {
           </div>
 
           <div className="rounded-3xl border border-accent/30 bg-card p-4 shadow-lg shadow-accent/5">
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Plan price</span>
+                <span>₹{checkoutPlan.price}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-xs text-accent">
+                  <span>Offer discount</span>
+                  <span>-₹{discountAmount}</span>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <p className="text-[11px] text-muted-foreground">Total payable</p>
-                <p className="font-heading text-2xl font-black">₹{checkoutPlan.price}</p>
+                <p className="font-heading text-2xl font-black">₹{payableAmount}</p>
               </div>
               <Button onClick={continueToPayment} disabled={processing} className="h-12 rounded-2xl bg-accent px-6 text-accent-foreground font-bold hover:bg-accent/90">
                 {processing ? 'Processing...' : <>Pay Now <ChevronRight size={15} /></>}
