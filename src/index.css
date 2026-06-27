@@ -122,6 +122,14 @@ a.bg-accent {
   box-shadow: none !important;
 }
 
+button.border-border:has(svg.lucide-zap) {
+  color: hsl(var(--foreground)) !important;
+}
+
+button.border-border:has(svg.lucide-zap) svg {
+  color: hsl(var(--foreground)) !important;
+}
+
 @keyframes progress-ring {
   from { stroke-dashoffset: 283; }
 }
