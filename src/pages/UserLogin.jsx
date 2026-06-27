@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,12 +11,18 @@ import GoogleIcon from '@/components/GoogleIcon';
 
 export default function UserLogin() {
   const navigate = useNavigate();
+  const { checkUserAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const goToDashboard = async () => {
+    await checkUserAuth();
+    navigate('/user-dashboard', { replace: true });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +35,7 @@ export default function UserLogin() {
         return;
       }
       if (result.role !== 'user') throw new Error('This account is not registered as a user');
-      navigate('/user-dashboard', { replace: true });
+      await goToDashboard();
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -42,7 +49,7 @@ export default function UserLogin() {
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
       if (result.user?.role !== 'user') throw new Error('This account is not registered as a user');
-      navigate('/user-dashboard', { replace: true });
+      await goToDashboard();
     } catch (err) {
       setError(err.message || 'Invalid verification code');
     } finally {
@@ -67,7 +74,7 @@ export default function UserLogin() {
       if (user.role !== 'user') {
         throw new Error('This Google account is not registered as a user');
       }
-      navigate('/user-dashboard', { replace: true });
+      await goToDashboard();
     } catch (err) {
       setError(err.message || 'Google login failed');
     } finally {
@@ -137,7 +144,7 @@ export default function UserLogin() {
         </div>
 
         <Button variant="outline" className="w-full h-12 text-sm font-medium mb-6 rounded-xl" onClick={handleGoogle} disabled={loading}>
-          <GoogleIcon className="w-5 h-5 mr-2" />
+          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GoogleIcon className="w-5 h-5 mr-2" />}
           Continue with Google
         </Button>
 
