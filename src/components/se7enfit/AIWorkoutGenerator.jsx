@@ -26,10 +26,8 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
 
       setPlan(data);
 
-      // Save to WorkoutPlan entity
-      const user = await base44.auth.me();
-      const savedPlan = await base44.entities.WorkoutPlan.create({
-        user_id: user.id,
+      await base44.entities.WorkoutPlan.create({
+        user_id: (await base44.auth.me()).id,
         name: data.planName || 'AI Generated Workout',
         goal: data.goal || profile?.goal,
         days_per_week: (data.weeklySchedule || []).length,
@@ -50,14 +48,14 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
       <Lock size={24} className="text-yellow-400 mx-auto mb-2" />
       <p className="font-semibold text-sm mb-1">Workout Generator Locked</p>
       <p className="text-xs text-muted-foreground mb-3">Upgrade to generate AI gym-based workout plans.</p>
-      <a href="/subscription" className="inline-flex items-center gap-1.5 bg-yellow-500 text-black text-xs font-semibold px-4 py-2 rounded-xl"><Crown size={12} /> Upgrade</a>
+      <a href="/subscription" className="inline-flex items-center gap-1.5 bg-white text-black text-xs font-semibold px-4 py-2 rounded-xl"><Crown size={12} /> Upgrade</a>
     </div>
   );
 
   if (!plan) return (
     <div className="bg-card border border-border rounded-2xl p-4">
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center"><Dumbbell size={16} className="text-accent" /></div>
+        <div className="w-9 h-9 rounded-xl bg-muted/60 border border-border flex items-center justify-center"><Dumbbell size={16} className="text-white" /></div>
         <div className="flex-1">
           <p className="font-heading font-semibold text-sm">AI Gym Workout Generator</p>
           <p className="text-xs text-muted-foreground">
@@ -70,11 +68,10 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
         </div>
       </div>
 
-      {/* Equipment chips */}
       {equipment?.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {equipment.slice(0, 5).map((e, i) => (
-            <span key={i} className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full border border-accent/20">{e.equipment_name}</span>
+            <span key={i} className="text-[10px] bg-muted/60 text-muted-foreground px-2 py-0.5 rounded-full border border-border">{e.equipment_name}</span>
           ))}
           {equipment.length > 5 && <span className="text-[10px] text-muted-foreground px-2 py-0.5">+{equipment.length - 5} more</span>}
         </div>
@@ -83,11 +80,11 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
       {!gymName && (
         <div className="bg-muted/40 border border-border rounded-xl p-3 mb-3 flex items-start gap-2">
           <Building2 size={14} className="text-muted-foreground flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-muted-foreground">Connect your gym with referral code in <a href="/my-gym" className="text-accent underline">My Gym</a> to unlock machine-based workout plans.</p>
+          <p className="text-[11px] text-muted-foreground">Connect your gym with referral code in <a href="/my-gym" className="text-white underline">My Gym</a> to unlock machine-based workout plans.</p>
         </div>
       )}
 
-      <Button onClick={generate} disabled={loading} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm">
+      <Button onClick={generate} disabled={loading} className="w-full h-10 rounded-xl bg-white text-black hover:bg-white/90 text-sm font-bold">
         {loading
           ? <><Loader2 size={14} className="mr-2 animate-spin" />Generating with Gemini...</>
           : <><Zap size={14} className="mr-2" />Generate AI Workout Plan</>}
@@ -97,11 +94,11 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="bg-gradient-to-r from-accent/15 to-accent/5 p-4 border-b border-border/50">
+      <div className="bg-muted/35 p-4 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <Sparkles size={13} className="text-accent" />
+              <Sparkles size={13} className="text-white" />
               <p className="font-heading font-bold text-sm">{plan.planName}</p>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -135,7 +132,7 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
                         <p className="font-heading font-semibold text-sm">{ex.exerciseName}</p>
                         <p className="text-[10px] text-muted-foreground">{ex.targetMuscle} • {ex.equipmentUsed}</p>
                       </div>
-                      <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full shrink-0">{ex.difficulty}</span>
+                      <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0">{ex.difficulty}</span>
                     </div>
                     <div className="flex gap-2 flex-wrap mb-2">
                       <span className="text-xs font-medium">{ex.sets} sets × {ex.reps}</span>
@@ -149,7 +146,7 @@ export default function AIWorkoutGenerator({ profile, equipment, gymName, subscr
                       </div>
                     )}
                     {ex.formTips?.length > 0 && (
-                      <p className="text-[10px] text-accent/70 mt-1.5">💡 {ex.formTips[0]}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1.5">💡 {ex.formTips[0]}</p>
                     )}
                   </div>
                 ))}
