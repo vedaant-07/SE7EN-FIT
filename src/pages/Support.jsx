@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import TopBar from '@/components/se7enfit/TopBar';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Mail, FileText, Shield, Heart, CreditCard, ChevronRight, Info, AlertCircle, Smartphone, Globe, ExternalLink } from 'lucide-react';
+import { MessageSquare, Mail, FileText, Shield, Heart, CreditCard, ChevronRight, Info, AlertCircle, Smartphone } from 'lucide-react';
+
+const SUPPORT_EMAIL = 'se7enfits.07@gmail.com';
 
 const FAQ = [
   { q: 'How do I reset my password?', a: 'Go to Profile → tap "Forgot Password" or use the login page forgot password link.' },
@@ -10,8 +12,8 @@ const FAQ = [
   { q: 'How do Food Scans work?', a: 'Take a photo of your meal and our AI estimates the calories and macros. Results are approximate — always verify with labels.' },
   { q: 'Will Health Connect / Apple Health sync work?', a: 'Health sync requires the SE7ENFIT native mobile app. The web app supports full manual tracking. Mobile app is coming soon.' },
   { q: 'How do I join a gym on the app?', a: 'Go to My Gym, enter the referral code your gym owner shared, and submit a join request. The owner approves it.' },
-  { q: 'I was charged but my plan did not activate.', a: 'Contact us immediately at support@se7enfit.app with your payment ID. We will resolve within 24 hours.' },
-  { q: 'How do I delete my account?', a: 'Email support@se7enfit.app with subject "Delete Account". We will process within 7 business days and remove all your data.' },
+  { q: 'I was charged but my plan did not activate.', a: `Contact us immediately at ${SUPPORT_EMAIL} with your payment ID. We will resolve within 24 hours.` },
+  { q: 'How do I delete my account?', a: `Email ${SUPPORT_EMAIL} with subject "Delete Account". We will process within 7 business days and remove all your data.` },
 ];
 
 export default function Support() {
@@ -21,7 +23,6 @@ export default function Support() {
 
   const handleSend = () => {
     if (!form.subject.trim() || !form.message.trim()) return;
-    // In production: call a backend function to send email
     setSent(true);
   };
 
@@ -37,9 +38,9 @@ export default function Support() {
           </div>
           <h2 className="font-heading font-bold text-xl">How can we help?</h2>
           <p className="text-xs text-muted-foreground mt-1.5">Get help anytime — we typically respond within 24 hours</p>
-          <a href="mailto:support@se7enfit.app"
+          <a href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-flex items-center gap-1.5 mt-3 text-accent text-sm font-semibold hover:underline">
-            <Mail size={14} /> support@se7enfit.app
+            <Mail size={14} /> {SUPPORT_EMAIL}
           </a>
         </div>
 
@@ -80,7 +81,7 @@ export default function Support() {
             {[
               { label: 'Version', value: '1.0.0 (Beta)' },
               { label: 'Platform', value: 'Web + Mobile (coming soon)' },
-              { label: 'Market', value: 'India 🇮🇳' },
+              { label: 'Market', value: 'India' },
               { label: 'Payments', value: 'Razorpay (INR)' },
               { label: 'AI Engine', value: 'Google Gemini' },
             ].map(item => (
@@ -170,7 +171,7 @@ export default function Support() {
                 Send Message
               </button>
               <p className="text-[10px] text-muted-foreground text-center">
-                Or email directly: <a href="mailto:support@se7enfit.app" className="text-accent">support@se7enfit.app</a>
+                Or email directly: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent">{SUPPORT_EMAIL}</a>
               </p>
             </div>
           )}
@@ -184,8 +185,8 @@ export default function Support() {
               <p className="text-sm font-semibold text-destructive">Delete My Account</p>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                 To permanently delete your account and all data, email us at{' '}
-                <a href="mailto:support@se7enfit.app?subject=Delete Account Request" className="text-accent underline">
-                  support@se7enfit.app
+                <a href={`mailto:${SUPPORT_EMAIL}?subject=Delete Account Request`} className="text-accent underline">
+                  {SUPPORT_EMAIL}
                 </a>{' '}
                 with subject "Delete Account Request". We process within 7 business days.
               </p>
@@ -194,7 +195,7 @@ export default function Support() {
         </div>
 
         <p className="text-center text-[10px] text-muted-foreground pb-2">
-          SE7ENFIT © 2026 • Made in India 🇮🇳
+          SE7ENFIT © 2026 • Made in India
         </p>
       </div>
     </>
