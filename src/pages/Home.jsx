@@ -189,14 +189,17 @@ export default function Home() {
           <DailyScoreCard score={fitnessScore} label={scoreLabel} onClick={() => navigate('/tracking')} />
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5">
-          <MetricCard icon={<Flame size={20} />} label="Calories" value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`} percent={(todayData.calories / calorieTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
-          <MetricCard icon={<Zap size={20} />} label="Protein" value={`${todayData.protein}g`} sub={`/ ${proteinTarget}g`} percent={(todayData.protein / proteinTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
-          <MetricCard icon={<Droplets size={20} />} label="Water" value={`${Math.round(todayData.water / 250)}`} sub={`/ ${Math.round(waterGoal / 250)} glasses`} percent={(todayData.water / waterGoal) * 100} onClick={() => navigate('/tracking/water')} barColor="bg-accent" />
-          <MetricCard icon={<Footprints size={20} />} label="Steps" value={todayData.steps.toLocaleString()} sub={`/ ${stepGoal.toLocaleString()}`} percent={(todayData.steps / stepGoal) * 100} onClick={() => navigate('/tracking/steps')} barColor="bg-accent" />
-          <MetricCard icon={<Moon size={20} />} label="Sleep" value={`${todayData.sleep}h`} sub={`/ ${profile.sleep_goal_hours || 7}h goal`} percent={(todayData.sleep / (profile.sleep_goal_hours || 7)) * 100} onClick={() => navigate('/tracking/sleep')} barColor="bg-accent" />
-          <MetricCard icon={<Dumbbell size={20} />} label="Workout" value={todayData.workoutDone ? 'Done' : 'Pending'} sub={todayData.workoutDone ? 'Great job' : 'Tap to start'} percent={todayData.workoutDone ? 100 : 0} onClick={() => navigate('/workout')} barColor="bg-accent" />
-        </div>
+        <DailyStatsRows
+          calories={todayData.calories}
+          calorieTarget={calorieTarget}
+          protein={todayData.protein}
+          proteinTarget={proteinTarget}
+          waterGlasses={Math.round(todayData.water / 250)}
+          waterGoalGlasses={Math.round(waterGoal / 250)}
+          steps={todayData.steps}
+          stepGoal={stepGoal}
+          onNavigate={navigate}
+        />
 
         {gymStatus.gym && (
           <button onClick={() => navigate('/my-gym')}
@@ -379,21 +382,29 @@ function DailyScoreCard({ score, label, onClick }) {
   );
 }
 
-function MetricCard({ icon, label, value, sub, percent, onClick, barColor }) {
-  const pct = Math.min(Math.max(percent || 0, 0), 100);
+function DailyStatsRows({ calories, calorieTarget, protein, proteinTarget, waterGlasses, waterGoalGlasses, steps, stepGoal, onNavigate }) {
+  const rows = [
+    { label: 'Calories', value: `${calories}`, target: `/ ${calorieTarget} kcal`, route: '/nutrition' },
+    { label: 'Protein', value: `${protein}g`, target: `/ ${proteinTarget}g`, route: '/nutrition' },
+    { label: 'Water', value: `${waterGlasses}`, target: `/ ${waterGoalGlasses} glasses`, route: '/tracking/water' },
+    { label: 'Steps', value: steps.toLocaleString(), target: `/ ${stepGoal.toLocaleString()}`, route: '/tracking/steps' },
+  ];
+
   return (
-    <button onClick={onClick} className="bg-card border border-border rounded-2xl py-3 px-2 flex flex-col items-center gap-2 hover:border-accent/30 active:scale-[0.97] transition-all w-full">
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${iconTileClass}`}>
-        <span className="text-white">{icon}</span>
-      </div>
-      <div className="text-center w-full px-1">
-        <p className="text-sm font-bold font-heading leading-none">{value}</p>
-        <p className="text-[10px] font-semibold text-foreground/80 mt-0.5">{label}</p>
-        <p className="text-[9px] text-muted-foreground opacity-70">{sub}</p>
-      </div>
-      <div className="w-full px-2 h-1 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
-      </div>
-    </button>
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {rows.map((row, index) => (
+        <button
+          key={row.label}
+          onClick={() => onNavigate(row.route)}
+          className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/35 active:scale-[0.995] transition-all ${index !== rows.length - 1 ? 'border-b border-border/60' : ''}`}
+        >
+          <span className="text-sm font-semibold text-foreground">{row.label}</span>
+          <span className="flex items-baseline gap-1.5 text-right">
+            <span className="font-heading text-base font-black text-white">{row.value}</span>
+            <span className="text-[11px] text-muted-foreground">{row.target}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
