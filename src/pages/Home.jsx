@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel } from '@/lib/fitnessUtils';
+import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore } from '@/lib/fitnessUtils';
 import { Flame, Droplets, Footprints, Moon, Dumbbell, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
@@ -168,11 +168,26 @@ export default function Home() {
   const stepGoal = profile.daily_step_goal || 8000;
   const isPremium = subscription && subscription.plan !== 'free';
 
+  const fitnessScore = calculateFitnessScore({
+    workoutDone: todayData.workoutDone,
+    stepsPercent: (todayData.steps / stepGoal) * 100,
+    waterPercent: (todayData.water / waterGoal) * 100,
+    caloriesOnTrack: todayData.calories > 0 && todayData.calories <= calorieTarget * 1.1,
+    sleepHours: todayData.sleep,
+    proteinOnTrack: todayData.protein >= proteinTarget * 0.8,
+  });
+  const scoreLabel = fitnessScore >= 80 ? 'Excellent' : fitnessScore >= 50 ? 'Good Progress' : 'Let\'s Go';
+
   return (
     <>
       <TopBar />
       <div className="px-4 pt-3 pb-6 space-y-5">
         <AdBanners ads={ads} />
+
+        <div>
+          <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Daily Fitness</h3>
+          <DailyScoreCard score={fitnessScore} label={scoreLabel} onClick={() => navigate('/tracking')} />
+        </div>
 
         <div className="grid grid-cols-3 gap-2.5">
           <MetricCard icon={<Flame size={20} />} label="Calories" value={`${todayData.calories}`} sub={`/ ${calorieTarget} kcal`} percent={(todayData.calories / calorieTarget) * 100} onClick={() => navigate('/nutrition')} barColor="bg-accent" />
@@ -335,6 +350,30 @@ function AdCard({ ad }) {
             </div>
           </div>
         </div>
+      </div>
+    </button>
+  );
+}
+
+function DailyScoreCard({ score, label, onClick }) {
+  const pct = Math.min(Math.max(score || 0, 0), 100);
+  return (
+    <button onClick={onClick} className="w-full bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/25 rounded-3xl px-5 py-4 hover:border-accent/40 active:scale-[0.98] transition-all">
+      <div className="flex items-center gap-3 text-left">
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}>
+          <Trophy size={18} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-heading font-bold text-sm">Daily Score</p>
+            <span className="text-xs bg-accent/20 text-accent px-2.5 py-1 rounded-full font-black">{pct}/100</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{label} • Tap to view today’s tracking</p>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-accent transition-all duration-700" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
       </div>
     </button>
   );
