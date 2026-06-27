@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -8,6 +9,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { initNativeApp } from '@/lib/nativeBridge';
 
 // Auth pages
 import Login from '@/pages/Login';
@@ -38,7 +40,7 @@ import Challenges from '@/pages/Challenges';
 import Rewards from '@/pages/Rewards';
 import PolicyPages from '@/pages/PolicyPages';
 import GymOwnerLogin from '@/pages/GymOwnerLogin';
-import GymOwnerRegister from '@/pages/GymOwnerRegister';
+import RegisterLegacy from '@/pages/Register';
 import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
@@ -59,7 +61,7 @@ const AuthenticatedApp = () => {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>ENFIT</div>
+          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
           <div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
@@ -84,7 +86,7 @@ const AuthenticatedApp = () => {
       <Route path="/privacy" element={<PolicyPages />} />
       <Route path="/policy" element={<PolicyPages />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<RegisterLegacy />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -132,6 +134,10 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  useEffect(() => {
+    initNativeApp();
+  }, []);
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
