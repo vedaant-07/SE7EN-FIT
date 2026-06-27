@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -29,6 +29,13 @@ export default function UserLogin() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (!showOtp || resendCooldown <= 0) return undefined;
+    const timer = window.setInterval(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [showOtp, resendCooldown]);
 
   const goToDashboard = useCallback(async () => {
     await checkUserAuth().catch(() => null);
@@ -58,6 +65,7 @@ export default function UserLogin() {
       const result = await base44.auth.loginViaEmailPassword(email, password, 'user');
       if (result?.requires_otp) {
         setShowOtp(true);
+        setResendCooldown(60);
         setSuccess(result.message || 'Login verification code sent to your email.');
         return;
       }
@@ -86,13 +94,18 @@ export default function UserLogin() {
   };
 
   const handleResend = async () => {
+    if (resendCooldown > 0 || loading) return;
     setError('');
     setSuccess('');
+    setLoading(true);
     try {
       await base44.auth.resendOtp(email);
+      setResendCooldown(60);
       setSuccess('New verification code sent.');
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to resend code'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,7 +144,9 @@ export default function UserLogin() {
 
           <p className="text-center text-sm text-muted-foreground mt-4">
             Didn't get code?{' '}
-            <button onClick={handleResend} className="text-accent font-medium hover:underline">Resend</button>
+            <button onClick={handleResend} disabled={resendCooldown > 0 || loading} className="text-accent font-medium hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed disabled:no-underline">
+              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
+            </button>
           </p>
         </div>
       </div>
