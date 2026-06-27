@@ -311,8 +311,8 @@ function AdBanners({ ads }) {
         <h3 className="font-heading font-semibold text-sm">Offers & Advertisements</h3>
         <span className="text-[10px] text-muted-foreground">Sponsored</span>
       </div>
-      <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
-        <div className="flex gap-3 px-1 snap-x snap-mandatory">
+      <div className="overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+        <div className="flex gap-3">
           {safeArray(ads).map(ad => <AdCard key={ad.id || ad.title} ad={ad} />)}
         </div>
       </div>
@@ -332,9 +332,9 @@ function AdCard({ ad }) {
     <button
       type="button"
       onClick={handleClick}
-      className="snap-start flex-shrink-0 w-[88%] max-w-[420px] overflow-hidden rounded-3xl border border-border bg-card text-left active:scale-[0.99] transition-all"
+      className="snap-start flex-shrink-0 w-full overflow-hidden rounded-3xl border border-border bg-card text-left active:scale-[0.99] transition-all"
     >
-      <div className="relative min-h-[150px] bg-gradient-to-br from-accent/25 via-emerald-500/10 to-yellow-500/10">
+      <div className="relative min-h-[148px] bg-gradient-to-br from-accent/25 via-emerald-500/10 to-yellow-500/10">
         {mediaUrl && isVideoAd(ad) && (
           <video src={mediaUrl} className="absolute inset-0 h-full w-full object-cover" muted loop playsInline autoPlay />
         )}
@@ -342,17 +342,17 @@ function AdCard({ ad }) {
           <img src={mediaUrl} alt={ad.title || 'Advertisement'} className="absolute inset-0 h-full w-full object-cover" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
-        <div className="relative z-10 flex min-h-[150px] flex-col justify-between p-4">
+        <div className="relative z-10 flex min-h-[148px] flex-col justify-between p-4">
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-              <Megaphone size={11} /> {ad.offer_text || ad.source_name || 'Offer'}
+            <span className="inline-flex max-w-[68%] items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+              <Megaphone size={11} className="shrink-0" /> <span className="truncate">{ad.offer_text || ad.source_name || 'Offer'}</span>
             </span>
-            <span className="rounded-full bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase text-white/80">
+            <span className="shrink-0 rounded-full bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase text-white/80">
               {String(ad.source_type || 'admin').replace('_', ' ')}
             </span>
           </div>
-          <div>
-            <p className="font-heading text-xl font-black leading-tight text-white">{ad.title || 'Special offer'}</p>
+          <div className="min-w-0">
+            <p className="font-heading text-[22px] font-black leading-tight text-white line-clamp-2">{ad.title || 'Special offer'}</p>
             <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/75">{ad.description || ad.subtitle || 'Tap to view this offer.'}</p>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-black">
               {ad.cta_label || 'View Offer'} <ChevronRight size={13} />
