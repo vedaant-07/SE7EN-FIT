@@ -11,7 +11,7 @@ import DailyHabits from '@/components/se7enfit/DailyHabits';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const iconTileClass = 'bg-zinc-800/90 border border-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
+const iconTileClass = 'bg-[#00A550] border border-[#4ee69b]/40 text-white shadow-[0_0_18px_rgba(0,165,80,0.32),inset_0_1px_0_rgba(255,255,255,0.16)]';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -151,7 +151,7 @@ export default function Home() {
             <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center ${iconTileClass}`}>
               <Flame size={16} className="text-white" />
               <p className="text-xs font-bold font-heading text-white">{profile.streak_days || 0}</p>
-              <p className="text-[8px] text-muted-foreground">STREAK</p>
+              <p className="text-[8px] text-white/70">STREAK</p>
             </div>
           </div>
         </div>
