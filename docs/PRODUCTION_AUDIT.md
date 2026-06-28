@@ -2,13 +2,16 @@
 
 This document is the working audit for making the full SE7EN FIT ecosystem production-ready across:
 
-- `vedaant-07/SE7EN-FIT` — user app, Capacitor native app, and current Render API
+- `vedaant-07/SE7EN-FIT` — user app, Capacitor native app, and Render API
 - `vedaant-07/GYM-OWNER` — public website + gym management tool
 - `vedaant-07/super-admin-station` — super admin dashboard
 
-## Non-negotiable rule
+## Non-negotiable rules
 
-Do not change the user-facing app UI in `SE7EN-FIT` without explicit approval. App work should be limited to API integration, production wiring, bug fixes, native setup, and backend/server work unless UI approval is requested first.
+1. Do not change the user-facing app UI in `SE7EN-FIT` without explicit approval.
+2. Do not build placeholder, demo, local-only, or compatibility-only production features.
+3. Production data must live in typed Supabase tables, not local storage or JSON compatibility tables.
+4. All privileged writes must go through the Render backend with role checks.
 
 The gym owner website and admin panel can be redesigned or extended where needed.
 
@@ -30,6 +33,7 @@ There must be one source of truth:
 - One auth/session model
 - One role model
 - Shared data between app, gym website, and admin panel
+- Permanent Supabase Storage media URLs
 
 ---
 
@@ -42,21 +46,20 @@ Current state:
 - React/Vite app with Capacitor Android scripts already present.
 - Render blueprint already defines a static frontend service and a Node backend service.
 - Backend is currently inside `server/index.js`.
-- Backend already supports Supabase Auth, OTP via Mailjet, `/api/auth/*`, `/api/gym-owners/*`, and generic `/api/entities/:entity` compatibility routes.
-- Generic entity storage currently uses `public.entity_records` JSON-style records, which is useful as a compatibility bridge but not ideal as the final production schema.
+- Backend already supports Supabase Auth, OTP via Mailjet, `/api/auth/*`, and `/api/gym-owners/*`.
+- A previous generic entity route exists, but it is not the production target.
 
 Production gaps:
 
-- Dedicated production tables are missing for most product modules.
-- Generic entity API needs to be replaced or supplemented with typed module APIs.
+- Critical modules must be moved to typed production APIs backed by typed Supabase tables.
 - File/media upload must use permanent Supabase Storage URLs.
 - AI Trainer and Food Scan need production AI endpoints.
 - Support requests must write into shared `support_tickets`.
 - Notifications and push tokens need production backend routes.
-- Admin controls should not depend on local compatibility entities.
+- Admin controls must use typed tables and audited service-role backend operations.
 - Native app needs final API URL, Android permissions verification, release signing, Play Store AAB workflow, and crash testing.
 
-Risk level: high until data model is unified.
+Risk level: high until all core UI flows are moved to typed APIs.
 
 ### 2. Gym owner repository: `GYM-OWNER`
 
@@ -142,7 +145,7 @@ Rules:
 | Support | Partial | Missing/partial | Existing foundation | Needs all clients to same table/API |
 | Notifications | Partial | Partial | Existing foundation | Needs push tokens and delivery workflow |
 | Payments/subscriptions | Partial | Partial | Missing full control | Needs provider + tables |
-| Media uploads | Temporary/fallback | Partial | Partial | Needs Supabase Storage upload API |
+| Media uploads | Partial | Partial | Partial | Needs Supabase Storage upload API |
 | Native Android | Partial | N/A | N/A | Needs final API env + release workflow |
 
 ---
@@ -151,9 +154,9 @@ Rules:
 
 ### Foundation
 
-- [ ] Finalize Supabase master schema.
-- [ ] Add storage buckets and policies.
-- [ ] Add typed backend modules instead of relying only on `entity_records`.
+- [x] Add Supabase production schema migration.
+- [ ] Apply schema to Supabase project.
+- [ ] Add backend production route modules.
 - [ ] Standardize API base URL in all repos.
 - [ ] Standardize auth token/session handling.
 - [ ] Add role middleware for admin, gym owner, gym staff, user.
@@ -163,7 +166,7 @@ Rules:
 
 - [ ] Keep UI unchanged unless approved.
 - [ ] Connect all data reads/writes to production API.
-- [ ] Replace temporary upload URLs with permanent storage URLs.
+- [ ] Replace non-permanent upload URLs with Supabase Storage URLs.
 - [ ] Add production support tickets.
 - [ ] Add push token registration.
 - [ ] Finalize native Android permission and AAB build.
@@ -188,21 +191,19 @@ Rules:
 
 ## Recommended build order
 
-1. Supabase master schema and storage buckets.
-2. Backend auth/role/middleware cleanup.
-3. Backend typed APIs for core modules.
-4. Gym owner website connection to typed APIs.
-5. Admin panel full control modules.
-6. App data integration without UI changes.
-7. Native Android production build and testing.
-8. Render deployment and environment validation.
+1. Apply Supabase production schema and storage buckets.
+2. Replace backend generic data access with typed production modules.
+3. Connect gym owner website to typed APIs.
+4. Connect admin panel full control modules.
+5. Connect app data integration without UI changes.
+6. Native Android production build and testing.
+7. Render deployment and environment validation.
 
 ---
 
 ## Next implementation files
 
-- `docs/API_CONTRACT.md`
-- `docs/SUPABASE_SCHEMA_PLAN.md`
-- `server/routes/*` or a modular rewrite of `server/index.js`
-- Supabase migrations for product schema
+- `server/supabase/migrations/002_production_schema.sql`
+- `server/routes/*`
+- `server/middleware/*`
 - Shared API adapters for app and gym owner website
