@@ -142,6 +142,70 @@ a.bg-accent.text-accent-foreground:hover,
   color: #000000 !important;
 }
 
+/* Remove green accent borders/rings across cards, tabs, bars and feature tiles. */
+.border-accent,
+.border-accent\/5,
+.border-accent\/10,
+.border-accent\/20,
+.border-accent\/30,
+.border-accent\/40,
+.border-accent\/50,
+.border-primary,
+.border-primary\/10,
+.border-primary\/20,
+.border-primary\/30,
+.border-primary\/40,
+.border-primary\/50 {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+.hover\:border-accent:hover,
+.hover\:border-accent\/10:hover,
+.hover\:border-accent\/20:hover,
+.hover\:border-accent\/30:hover,
+.hover\:border-accent\/40:hover,
+.hover\:border-accent\/50:hover,
+.hover\:border-primary:hover,
+.hover\:border-primary\/10:hover,
+.hover\:border-primary\/20:hover,
+.hover\:border-primary\/30:hover,
+.hover\:border-primary\/40:hover,
+.hover\:border-primary\/50:hover,
+.focus\:border-accent:focus,
+.focus\:border-primary:focus,
+.focus-visible\:border-accent:focus-visible,
+.focus-visible\:border-primary:focus-visible,
+.active\:border-accent:active,
+.active\:border-primary:active {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+}
+
+.focus\:ring-accent:focus,
+.focus\:ring-primary:focus,
+.focus-visible\:ring-accent:focus-visible,
+.focus-visible\:ring-primary:focus-visible {
+  --tw-ring-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+/* Specifically neutralize tapped/hovered Home dashboard cards such as Weight, Rewards, Community and Premium. */
+.px-4.pt-3.pb-6.space-y-5 a > .bg-card.border,
+.px-4.pt-3.pb-6.space-y-5 button.bg-card.border,
+.px-4.pt-3.pb-6.space-y-5 .grid a > div.bg-card.border,
+.px-4.pt-3.pb-6.space-y-5 .grid button.bg-card.border {
+  border-color: hsl(var(--border)) !important;
+}
+
+.px-4.pt-3.pb-6.space-y-5 a > .bg-card.border:hover,
+.px-4.pt-3.pb-6.space-y-5 button.bg-card.border:hover,
+.px-4.pt-3.pb-6.space-y-5 .grid a > div.bg-card.border:hover,
+.px-4.pt-3.pb-6.space-y-5 .grid button.bg-card.border:hover,
+.px-4.pt-3.pb-6.space-y-5 a > .bg-card.border:focus,
+.px-4.pt-3.pb-6.space-y-5 button.bg-card.border:focus,
+.px-4.pt-3.pb-6.space-y-5 .grid a > div.bg-card.border:focus,
+.px-4.pt-3.pb-6.space-y-5 .grid button.bg-card.border:focus {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+}
+
 .px-4.pt-3.pb-6.space-y-5 > div:first-child .snap-x > .flex > button:first-child > div.relative.min-h-\[148px\] {
   background-image: url('/fitness-ad.svg') !important;
   background-size: cover !important;
