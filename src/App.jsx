@@ -58,8 +58,10 @@ const Router = isCapacitorBuild || isCapacitorWebView || Capacitor.isNativePlatf
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isOwnerDirectRoute = pathname === '/gym-owner/dashboard';
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (!isOwnerDirectRoute && (isLoadingPublicSettings || isLoadingAuth)) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
@@ -70,7 +72,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
+  if (!isOwnerDirectRoute && authError) {
     if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
     else if (authError.type === 'auth_required') { navigateToLogin(); return null; }
   }
@@ -84,6 +86,7 @@ const AuthenticatedApp = () => {
       <Route path="/signup/gym-owner" element={<GymOwnerSignup />} />
       <Route path="/gym-owner/login" element={<GymOwnerLogin />} />
       <Route path="/gym-owner/register" element={<GymOwnerSignup />} />
+      <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
       <Route path="/terms" element={<PolicyPages />} />
       <Route path="/privacy" element={<PolicyPages />} />
       <Route path="/policy" element={<PolicyPages />} />
@@ -95,7 +98,6 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/welcome" replace />} />}>
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/gym-owner/onboarding" element={<GymOwnerOnboarding />} />
-        <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
           <Route path="/user-dashboard" element={<Home />} />
