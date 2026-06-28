@@ -122,6 +122,16 @@ function addCrud(app, base, table, key, defaults = {}) {
 function register(app) {
   if (app.__se7enfitOwnerExtraRoutes) return;
   app.__se7enfitOwnerExtraRoutes = true;
+
+  app.get('/api/public/download-links', wrap(async (_req, res) => {
+    const { data } = await db.from('app_settings').select('value').eq('key', 'download_links').maybeSingle();
+    reply(res, {
+      play_store_url: data?.value?.play_store_url || process.env.PLAY_STORE_URL || '',
+      app_store_url: data?.value?.app_store_url || process.env.APP_STORE_URL || '',
+      apk_url: data?.value?.apk_url || process.env.APK_URL || '',
+    });
+  }));
+
   addCrud(app, 'plans', 'gym_plans', 'plan_id', { active: true });
   addCrud(app, 'classes', 'gym_classes', 'class_id', { status: 'active' });
   addCrud(app, 'reviews', 'gym_reviews', 'review_id', { status: 'published', source: 'gym_owner' });
