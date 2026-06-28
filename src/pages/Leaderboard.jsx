@@ -58,11 +58,36 @@ export default function Leaderboard() {
         base44.entities.LeaderboardPrize.filter({ gym_id: p.primary_gym_id }).catch(() => []),
       ]);
 
+      const activeMembers = safeArray(membershipsRaw).filter(m => (m.status || 'active') !== 'rejected');
+      const memberIds = new Set(activeMembers.map(m => String(m.user_id)));
+      let profileRows = safeArray(allProfilesRaw).filter(row => memberIds.has(String(row.user_id)));
+      let walletRows = safeArray(walletsRaw).filter(row => memberIds.has(String(row.user_id)));
+
+      if (profileRows.length < activeMembers.length) {
+        const missingIds = activeMembers
+          .map(m => m.user_id)
+          .filter(id => id && !profileRows.some(row => String(row.user_id) === String(id)));
+        const fetchedProfiles = await Promise.all(missingIds.map(id =>
+          base44.entities.UserProfile.filter({ user_id: id }).catch(() => [])
+        ));
+        profileRows = [...profileRows, ...fetchedProfiles.flatMap(safeArray)];
+      }
+
+      if (walletRows.length < activeMembers.length) {
+        const missingIds = activeMembers
+          .map(m => m.user_id)
+          .filter(id => id && !walletRows.some(row => String(row.user_id) === String(id)));
+        const fetchedWallets = await Promise.all(missingIds.map(id =>
+          base44.entities.RewardWallet.filter({ user_id: id }).catch(() => [])
+        ));
+        walletRows = [...walletRows, ...fetchedWallets.flatMap(safeArray)];
+      }
+
       const owners = safeArray(ownersRaw);
       setGym(owners.find(o => String(o.id) === String(p.primary_gym_id)) || null);
-      setMembers(safeArray(membershipsRaw).filter(m => (m.status || 'active') !== 'rejected'));
-      setProfiles(safeArray(allProfilesRaw));
-      setWallets(safeArray(walletsRaw));
+      setMembers(activeMembers);
+      setProfiles(profileRows);
+      setWallets(walletRows);
       setPrizes(safeArray(prizeRaw).filter(pr => (pr.status || 'active') === 'active'));
     } catch (error) {
       console.error('[Leaderboard] load failed:', error);
