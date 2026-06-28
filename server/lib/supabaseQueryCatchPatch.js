@@ -9,11 +9,11 @@ export function patchSupabaseQueryCatch() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const sample = client.from('__se7enfit_patch_probe__').select('*');
-  let proto = sample;
-  for (let i = 0; i < 8 && proto; i += 1) {
-    if (typeof proto.then === 'function') {
-      if (typeof proto.catch !== 'function') {
-        Object.defineProperty(proto, 'catch', {
+  let target = Object.getPrototypeOf(sample);
+  for (let i = 0; i < 10 && target; i += 1) {
+    if (typeof target.then === 'function' || typeof sample.then === 'function') {
+      if (typeof target.catch !== 'function') {
+        Object.defineProperty(target, 'catch', {
           configurable: true,
           writable: true,
           value(onRejected) {
@@ -23,7 +23,7 @@ export function patchSupabaseQueryCatch() {
       }
       return;
     }
-    proto = Object.getPrototypeOf(proto);
+    target = Object.getPrototypeOf(target);
   }
 }
 
