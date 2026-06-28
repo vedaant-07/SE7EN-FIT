@@ -2,11 +2,78 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 
 const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const authDb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const reply = (res, item) => res.json({ item });
 const list = (res, items) => res.json({ items: items || [] });
 const error = (res, err) => res.status(err.status || 500).json({ error: err.message || 'Request failed' });
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((err) => error(res, err));
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
+const cleanEmail = (email) => String(email || '').trim().toLowerCase();
+const roleOf = (role) => ['owner', 'gymowner', 'gym_owner'].includes(String(role || '').trim().toLowerCase().replace(/[\s-]+/g, '_')) ? 'gym_owner' : String(role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+async function findAuthUserByEmail(email) {
+  const target = cleanEmail(email);
+  for (let page = 1; page <= 10; page += 1) {
+    const { data } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    const found = (data?.users || []).find((u) => cleanEmail(u.email) === target);
+    if (found) return found;
+    if (!data?.users?.length || data.users.length < 1000) return null;
+  }
+  return null;
+}
+async function upsertGymOwnerProfile(authUser, meta) {
+  const profilePayload = {
+    user_id: authUser.id,
+    email: cleanEmail(authUser.email || meta.email),
+    role: 'gym_owner',
+    status: 'active',
+    source: 'website',
+    full_name: meta.full_name || meta.owner_name || meta.name || null,
+    phone: meta.phone || meta.mobile || null,
+    metadata: { ...meta, role: 'gym_owner', source_detail: 'gym_owner' },
+    updated_at: new Date().toISOString(),
+  };
+  const saved = await db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' }).select('*').single();
+  if (saved.error) throw fail(saved.error.message, 500);
+  await db.from('user_roles').upsert({ user_id: authUser.id, role: 'gym_owner' }, { onConflict: 'user_id,role' }).catch(() => null);
+  return saved.data;
+}
+async function fixedGymOwnerRegister(req, res, next) {
+  try {
+    if (roleOf(req.body?.role) !== 'gym_owner') return next();
+    const body = req.body || {};
+    const email = cleanEmail(body.email);
+    const password = body.password;
+    if (!email || !password) throw fail('Email and password are required', 400);
+    if (String(password).length < 6) throw fail('Password must be at least 6 characters', 400);
+    const meta = { role: 'gym_owner', email, full_name: body.full_name || body.name || body.owner_name, name: body.name || body.full_name || body.owner_name, owner_name: body.owner_name || body.name || body.full_name, phone: body.phone || body.mobile, mobile: body.mobile || body.phone, gym_name: body.gym_name || body.gymName };
+    const existing = await findAuthUserByEmail(email).catch(() => null);
+    if (existing?.id) {
+      const currentProfile = await db.from('profiles').select('user_id,role').eq('user_id', existing.id).maybeSingle();
+      if (currentProfile.data?.user_id) throw fail('Account already exists. Please log in instead.', 409);
+      const updated = await db.auth.admin.updateUserById(existing.id, { password, email_confirm: true, user_metadata: { ...(existing.user_metadata || {}), ...meta } });
+      if (updated.error) throw fail(updated.error.message || 'Could not update account.', 400);
+    } else {
+      const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: meta });
+      if (created.error) throw fail(created.error.message || 'Could not create account.', 400);
+    }
+    const login = await authDb.auth.signInWithPassword({ email, password });
+    if (login.error) throw fail(login.error.message || 'Could not create login session.', 400);
+    const profile = await upsertGymOwnerProfile(login.data.user, meta);
+    return res.status(201).json({ access_token: login.data.session.access_token, token: login.data.session.access_token, refresh_token: login.data.session.refresh_token, expires_at: login.data.session.expires_at, user: { id: login.data.user.id, email, full_name: profile.full_name, phone: profile.phone, role: 'gym_owner', status: profile.status } });
+  } catch (err) {
+    return error(res, err);
+  }
+}
+
+const originalPost = express.application.post;
+express.application.post = function patchedPost(path, ...handlers) {
+  if (path === '/api/auth/register' && !this.__se7enfitGymOwnerRegisterFixed) {
+    this.__se7enfitGymOwnerRegisterFixed = true;
+    originalPost.call(this, path, fixedGymOwnerRegister);
+  }
+  return originalPost.call(this, path, ...handlers);
+};
 
 async function user(req) {
   const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
