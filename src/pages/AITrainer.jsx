@@ -260,9 +260,9 @@ export default function AITrainer() {
           )}
 
           {gymEquipment.length > 0 && (
-            <div className="bg-accent/5 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
-              <Sparkles size={12} className="text-accent flex-shrink-0" />
-              <p className="text-xs text-accent">Using {gymEquipment.length} machines from your gym</p>
+            <div className="bg-card border border-border rounded-xl px-3 py-2 flex items-center gap-2">
+              <Sparkles size={12} className="text-white flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">Using {gymEquipment.length} machines from your gym</p>
             </div>
           )}
 
@@ -272,14 +272,14 @@ export default function AITrainer() {
                 <div className="w-16 h-16 mx-auto rounded-3xl bg-accent/15 flex items-center justify-center mb-3 border border-accent/20">
                   <Bot size={30} className="text-accent" />
                 </div>
-                <h2 className="font-heading font-bold text-lg">SE7ENFIT AI Coach</h2>
+                <h2 className="font-heading font-bold text-lg">SE7EN FIT AI Coach</h2>
                 <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto leading-relaxed">
                   Personalized coaching for your profile, diet and gym. Chat history is saved automatically.
                 </p>
                 {profile && (
-                  <div className="mt-3 inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-3 py-1.5">
-                    <Zap size={11} className="text-accent" />
-                    <span className="text-[11px] text-accent font-medium">
+                  <div className="mt-3 inline-flex items-center gap-2 bg-card border border-border rounded-full px-3 py-1.5">
+                    <Zap size={11} className="text-white" />
+                    <span className="text-[11px] text-muted-foreground font-medium">
                       {GOALS_LABELS[profile.goal] || 'Your goal'} • {profile.diet_preference?.replace(/_/g, ' ')} • {profile.fitness_level}
                     </span>
                   </div>
@@ -291,7 +291,7 @@ export default function AITrainer() {
                     key={i}
                     onClick={() => canSend && sendMessage(p.prompt)}
                     disabled={!canSend || loading}
-                    className="text-left p-3 rounded-2xl border border-border bg-card hover:border-accent/30 active:scale-[0.97] transition-all disabled:opacity-40"
+                    className="text-left p-3 rounded-2xl border border-border bg-card hover:border-white/30 active:scale-[0.97] transition-all disabled:opacity-40"
                   >
                     <span className="text-base">{p.icon}</span>
                     <p className="text-xs font-medium mt-1.5 leading-tight">{p.label}</p>
@@ -318,7 +318,7 @@ export default function AITrainer() {
                 )}
                 <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${
                   msg.role === 'user'
-                    ? 'bg-accent text-accent-foreground rounded-br-sm'
+                    ? 'bg-card border border-border text-foreground rounded-br-sm'
                     : 'bg-card border border-border rounded-bl-sm'
                 }`}>
                   {msg.role === 'assistant' ? (
@@ -327,13 +327,13 @@ export default function AITrainer() {
                         {content}
                       </ReactMarkdown>
                       <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
-                        <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><ThumbsUp size={12} className="text-muted-foreground" /></button>
-                        <button className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><Bookmark size={12} className="text-muted-foreground" /></button>
-                        <button onClick={() => i > 0 && sendMessage(safeText(messages[i - 1]?.content))} className="p-1.5 hover:bg-accent/10 rounded-lg transition-colors"><RefreshCw size={12} className="text-muted-foreground" /></button>
+                        <button className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><ThumbsUp size={12} className="text-muted-foreground" /></button>
+                        <button className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><Bookmark size={12} className="text-muted-foreground" /></button>
+                        <button onClick={() => i > 0 && sendMessage(safeText(messages[i - 1]?.content))} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"><RefreshCw size={12} className="text-muted-foreground" /></button>
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm">{content}</p>
+                    <p className="text-sm text-foreground">{content}</p>
                   )}
                 </div>
               </div>
@@ -348,7 +348,7 @@ export default function AITrainer() {
               <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1 items-center">
                   {[0, 150, 300].map(d => (
-                    <div key={d} className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                    <div key={d} className="w-2 h-2 bg-white/70 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
                   ))}
                   <span className="text-xs text-muted-foreground ml-2">AI coach is thinking...</span>
                 </div>
@@ -362,7 +362,7 @@ export default function AITrainer() {
           {!canSend ? (
             <div className="text-center py-2">
               <p className="text-xs text-muted-foreground mb-2">Daily AI limit reached</p>
-              <a href="/subscription" className="inline-flex items-center gap-1.5 bg-yellow-500 text-black text-xs font-semibold px-4 py-2 rounded-xl">
+              <a href="/subscription" className="inline-flex items-center gap-1.5 bg-white text-black text-xs font-semibold px-4 py-2 rounded-xl">
                 <Crown size={12} /> Upgrade for Unlimited AI
               </a>
             </div>
@@ -379,7 +379,7 @@ export default function AITrainer() {
                 onClick={() => sendMessage(input)}
                 disabled={loading || !input.trim()}
                 size="icon"
-                className="h-11 w-11 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 flex-shrink-0"
+                className="h-11 w-11 rounded-xl bg-white text-black hover:bg-white/90 flex-shrink-0"
               >
                 <Send size={16} />
               </Button>
