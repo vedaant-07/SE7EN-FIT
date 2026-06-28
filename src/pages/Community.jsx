@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import EmptyState from '@/components/se7enfit/EmptyState';
+import MediaUploadCropper from '@/components/se7enfit/MediaUploadCropper';
 import { Button } from '@/components/ui/button';
 import { Heart, MessageCircle, Plus, X, Send, Users, Edit2, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,11 +16,19 @@ const POST_TYPES = [
   { key: 'achievement', label: 'Achievement', icon: '🏆', color: 'bg-muted text-muted-foreground' },
 ];
 
+const emptyPost = { content: '', type: 'general', media_url: '', image_url: '', video_url: '', media_type: 'image', media_crop: 'center center' };
+
 function canManagePost(post, user, profile) {
   if (!post || !user) return false;
   const isOwner = String(post.user_id) === String(user.id);
   const isAdmin = ['admin', 'super_admin'].includes(user.role) || ['admin', 'super_admin'].includes(profile?.role);
   return isOwner || isAdmin;
+}
+
+function isVideoPost(post) {
+  const type = String(post.media_type || '').toLowerCase();
+  const url = String(post.media_url || post.video_url || '').toLowerCase();
+  return type === 'video' || /\.(mp4|webm|mov)(\?|$)/.test(url);
 }
 
 export default function Community() {
@@ -29,7 +38,7 @@ export default function Community() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [newPost, setNewPost] = useState({ content: '', type: 'general' });
+  const [newPost, setNewPost] = useState(emptyPost);
   const [submitting, setSubmitting] = useState(false);
   const [likedIds, setLikedIds] = useState(new Set());
   const [editingPostId, setEditingPostId] = useState(null);
@@ -52,18 +61,27 @@ export default function Community() {
   };
 
   const handlePost = async () => {
-    if (!newPost.content.trim()) return;
+    if (!newPost.content.trim() && !newPost.media_url) return;
     setSubmitting(true);
     await base44.entities.CommunityPost.create({
       user_id: user.id,
       user_name: profile?.full_name || user.full_name || 'User',
       content: newPost.content,
       type: newPost.type,
+      media_url: newPost.media_url,
+      image_url: newPost.media_type === 'image' ? newPost.media_url : '',
+      video_url: newPost.media_type === 'video' ? newPost.media_url : '',
+      media_type: newPost.media_type,
+      media_crop: newPost.media_crop || 'center center',
+      media_width: newPost.media_width,
+      media_height: newPost.media_height,
+      media_duration: newPost.media_duration,
+      media_quality: newPost.media_quality,
       likes_count: 0,
       comments_count: 0,
     });
-    toast({ title: 'Post shared', description: 'Your post is live in the community.' });
-    setNewPost({ content: '', type: 'general' });
+    toast({ title: 'Post shared', description: 'Your photo/video post is live in the community.' });
+    setNewPost(emptyPost);
     setShowCreate(false);
     setSubmitting(false);
     loadData();
@@ -144,7 +162,6 @@ export default function Community() {
       <TopBar title="Community" showBack />
       <div className="px-4 py-3 pb-6 space-y-3 max-w-lg mx-auto">
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-heading font-bold text-base">SE7EN FIT Community</h2>
@@ -156,7 +173,6 @@ export default function Community() {
           </Button>
         </div>
 
-        {/* Create Post */}
         {showCreate && (
           <div className="bg-card border border-border rounded-2xl p-3.5 space-y-3">
             <h3 className="font-heading font-semibold text-sm">Share with the community</h3>
@@ -176,17 +192,22 @@ export default function Community() {
             <textarea
               value={newPost.content}
               onChange={e => setNewPost(p => ({ ...p, content: e.target.value }))}
-              placeholder="What's on your fitness mind? Share a workout, meal, or motivation! 💪"
+              placeholder="What's on your fitness mind? Share a workout, meal, photo, or video! 💪"
               rows={3}
               className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white"
             />
-            <Button onClick={handlePost} disabled={submitting || !newPost.content.trim()} className="w-full h-10 rounded-xl bg-white text-black hover:bg-white/90 text-sm font-bold">
+            <MediaUploadCropper
+              label="Photo / Video"
+              helper="Upload 1080p image/video. Video max 2 minutes. Crop preview before posting."
+              value={newPost}
+              onChange={(media) => setNewPost(p => ({ ...p, ...media }))}
+            />
+            <Button onClick={handlePost} disabled={submitting || (!newPost.content.trim() && !newPost.media_url)} className="w-full h-10 rounded-xl bg-white text-black hover:bg-white/90 text-sm font-bold">
               {submitting ? 'Sharing...' : <><Send size={14} className="mr-2" /> Share Post</>}
             </Button>
           </div>
         )}
 
-        {/* Feed */}
         {posts.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -203,6 +224,8 @@ export default function Community() {
               const timeAgo = getTimeAgo(post.created_date);
               const canManage = canManagePost(post, user, profile);
               const isEditing = editingPostId === post.id;
+              const mediaUrl = post.media_url || post.image_url || post.video_url;
+              const isVideo = isVideoPost(post);
               return (
                 <div key={post.id} className="bg-card border border-border rounded-2xl p-3.5">
                   <div className="flex items-start gap-3 mb-3">
@@ -216,7 +239,7 @@ export default function Community() {
                           {typeInfo.icon} {typeInfo.label}
                         </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{timeAgo}{post.edited_at ? ' • edited' : ''}</p>
+                      <p className="text-[10px] text-muted-foreground">{timeAgo}{post.edited_at ? ' • edited' : ''}{post.media_quality ? ` • ${post.media_quality}` : ''}</p>
                     </div>
                     {canManage && (
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -243,12 +266,16 @@ export default function Community() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-sm leading-relaxed mb-3">{post.content}</p>
+                    post.content && <p className="text-sm leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
                   )}
 
-                  {post.image_url && (
-                    <div className="mb-3 rounded-xl overflow-hidden">
-                      <img src={post.image_url} alt="Post" className="w-full max-h-48 object-cover" />
+                  {mediaUrl && (
+                    <div className="mb-3 rounded-xl overflow-hidden bg-black border border-border">
+                      {isVideo ? (
+                        <video src={mediaUrl} className="w-full max-h-[360px] object-cover" style={{ objectPosition: post.media_crop || 'center center' }} controls playsInline preload="metadata" />
+                      ) : (
+                        <img src={mediaUrl} alt="Post" className="w-full max-h-[360px] object-cover" style={{ objectPosition: post.media_crop || 'center center' }} loading="lazy" decoding="async" />
+                      )}
                     </div>
                   )}
                   <div className="flex items-center gap-4 pt-2 border-t border-border/50">
