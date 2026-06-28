@@ -118,7 +118,7 @@ export default function UserLogin() {
           <button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
             <ChevronLeft size={18} />
           </button>
-          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
         </div>
 
         <div className="flex-1 max-w-sm w-full mx-auto">
@@ -162,7 +162,7 @@ export default function UserLogin() {
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
           <ChevronLeft size={18} />
         </button>
-        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
       </div>
 
       <div className="flex-1 max-w-sm w-full mx-auto">
