@@ -66,7 +66,7 @@ export async function getNativeFoodPhoto(source = 'camera') {
     allowEditing: false,
     resultType: CameraResultType.DataUrl,
     source: source === 'gallery' ? CameraSource.Photos : CameraSource.Camera,
-    promptLabelHeader: 'SE7ENFIT Food Scan',
+    promptLabelHeader: 'SE7EN FIT Food Scan',
     promptLabelPhoto: 'Choose from Gallery',
     promptLabelPicture: 'Use Camera'
   });
