@@ -121,7 +121,7 @@ export default function UserSignup() {
       <div className="min-h-screen bg-background flex flex-col px-6">
         <div className="flex items-center gap-3 pt-14 mb-8">
           <button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center"><ChevronLeft size={18} /></button>
-          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
         </div>
         <div className="max-w-sm w-full mx-auto">
           <div className="mb-8">
@@ -155,7 +155,7 @@ export default function UserSignup() {
       <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       <div className="flex items-center gap-3 pt-14 mb-8">
         <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all"><ChevronLeft size={18} /></button>
-        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+        <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
       </div>
       <div className="flex-1 max-w-sm w-full mx-auto pb-10">
         <div className="mb-8">
