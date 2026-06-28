@@ -60,7 +60,7 @@ const AuthenticatedApp = () => {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
           <div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
