@@ -65,15 +65,15 @@ async function exchangeGoogleCredential(credential, role) {
 export default function GoogleSignInButton({ role = 'user', onSuccess, onError, disabled }) {
   const containerRef = useRef(null);
   const [ready, setReady] = useState(false);
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
+    if (!clientId) return undefined;
+
     let mounted = true;
 
     const render = async () => {
       try {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId) throw new Error('Google login is not configured. Add VITE_GOOGLE_CLIENT_ID.');
-
         await loadGoogleIdentityScript();
         if (!mounted || !containerRef.current) return;
 
@@ -109,14 +109,16 @@ export default function GoogleSignInButton({ role = 'user', onSuccess, onError, 
 
     render();
     return () => { mounted = false; };
-  }, [role, onSuccess, onError]);
+  }, [clientId, role, onSuccess, onError]);
+
+  if (!clientId) return null;
 
   return (
     <div className={`w-full min-h-12 rounded-xl overflow-hidden ${disabled ? 'pointer-events-none opacity-60' : ''}`}>
       <div ref={containerRef} className="w-full flex justify-center" />
       {!ready && (
         <div className="w-full h-12 rounded-xl border border-border flex items-center justify-center text-sm font-medium text-muted-foreground">
-          Loading Google…
+          Loading Google...
         </div>
       )}
     </div>
