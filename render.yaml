@@ -35,3 +35,7 @@ services:
         sync: false
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: PLAY_STORE_URL
+        sync: false
+      - key: APP_STORE_URL
+        sync: false
