@@ -119,6 +119,7 @@ const AuthenticatedApp = () => {
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/food-scan" element={<FoodScan />} />
           <Route path="/challenges" element={<Challenges />} />
+          <Route path="/challenges/:challengeId" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/workout/guide" element={<WorkoutGuide />} />
           <Route path="/my-gym" element={<MyGym />} />
