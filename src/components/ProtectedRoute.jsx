@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const DefaultFallback = () => (
@@ -13,10 +14,11 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
   const { isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();
 
   useEffect(() => {
-    if (!authChecked && !isLoadingAuth) {
+    const hasToken = Boolean(base44.auth.getToken());
+    if ((!authChecked && !isLoadingAuth) || (authChecked && !isAuthenticated && hasToken && !isLoadingAuth)) {
       checkUserAuth();
     }
-  }, [authChecked, isLoadingAuth, checkUserAuth]);
+  }, [authChecked, isAuthenticated, isLoadingAuth, checkUserAuth]);
 
   if (isLoadingAuth || !authChecked) {
     return fallback;
@@ -30,6 +32,7 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
   }
 
   if (!isAuthenticated) {
+    if (base44.auth.getToken()) return fallback;
     return unauthenticatedElement;
   }
 
