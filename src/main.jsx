@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import '@/index.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
-const path = window.location.pathname;
+const path = '';
 
 function renderFallback(message, actionPath = '/login/gym-owner', actionLabel = 'Login Again') {
   root.render(
