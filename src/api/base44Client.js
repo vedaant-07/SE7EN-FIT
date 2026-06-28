@@ -1,7 +1,7 @@
 const STORAGE_PREFIX = 'se7enfit_';
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit.onrender.com/api'
+  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
 ).replace(/\/+$/, '');
 
 const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000);
@@ -149,6 +149,33 @@ async function apiRequest(path, options = {}) {
   }
 
   return data;
+}
+
+async function apiUpload(path, formData, options = {}) {
+  const token = getToken();
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? window.setTimeout(() => controller.abort(), options.timeoutMs || 60000) : null;
+  try {
+    const response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+      signal: controller?.signal,
+    });
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await response.json().catch(() => null) : await response.text().catch(() => null);
+    if (!response.ok) {
+      const error = new Error((data && typeof data === 'object' && (data.message || data.error)) || 'Upload failed');
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw makeTimeoutError();
+    throw error;
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
 }
 
 const storeSession = (session = {}) => {
@@ -322,13 +349,23 @@ const entityProxy = new Proxy({}, {
 
 const integrations = {
   Core: {
-    InvokeLLM: async ({ prompt } = {}) => ({
-      response: 'SE7EN FIT AI backend is not connected yet.',
-      text: 'SE7EN FIT AI backend is not connected yet.',
-      prompt
-    }),
+    InvokeLLM: async ({ prompt, context } = {}) => {
+      const response = await apiRequest('/ai/trainer', {
+        method: 'POST',
+        body: { message: prompt || '', context: context || {} },
+      });
+      return { response: response.reply || response.text || '', text: response.reply || response.text || '', message: response.message };
+    },
     SendEmail: async () => ({ success: true }),
-    UploadFile: async ({ file } = {}) => ({ url: file ? URL.createObjectURL(file) : '' }),
+    UploadFile: async ({ file, purpose = 'community' } = {}) => {
+      if (!file) return { url: '' };
+      const form = new FormData();
+      form.append('file', file);
+      form.append('purpose', purpose);
+      const response = await apiUpload('/uploads/media', form);
+      const asset = response.asset || response.item || response;
+      return { url: asset.public_url || response.public_url || '', asset };
+    },
     GenerateImage: async () => ({ url: '' }),
     ExtractDataFromUploadedFile: async () => ({ data: null })
   }
