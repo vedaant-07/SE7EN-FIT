@@ -48,6 +48,7 @@ import GymOwnerOnboarding from '@/pages/GymOwnerOnboarding';
 import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminLeaderboardPrizes from '@/pages/admin/AdminLeaderboardPrizes';
 import Support from '@/pages/Support';
 
 const isCapacitorBuild = import.meta.env.MODE === 'capacitor';
@@ -126,6 +127,7 @@ const AuthenticatedApp = () => {
           <Route path="/workout/guide" element={<WorkoutGuide />} />
           <Route path="/my-gym" element={<MyGym />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/leaderboard-prizes" element={<AdminLeaderboardPrizes />} />
           <Route path="/support" element={<Support />} />
         </Route>
       </Route>
