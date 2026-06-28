@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.se7enfit.app',
-  appName: 'SE7ENFIT',
+  appName: 'SE7EN FIT',
   webDir: 'dist',
   server: {
     androidScheme: 'https'
