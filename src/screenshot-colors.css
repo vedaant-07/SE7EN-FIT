@@ -211,3 +211,9 @@ a.bg-accent.text-accent-foreground:hover,
   background-size: cover !important;
   background-position: center 28% !important;
 }
+
+/* AI Trainer: only user chat bubbles can show edit/delete. Assistant replies keep like, bookmark, and regenerate only. */
+.prose.prose-sm.prose-invert + div.flex.items-center.gap-1.mt-2.pt-2.border-t.border-border\/50 > button:nth-of-type(4),
+.prose.prose-sm.prose-invert + div.flex.items-center.gap-1.mt-2.pt-2.border-t.border-border\/50 > button:nth-of-type(5) {
+  display: none !important;
+}
