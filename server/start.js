@@ -2,6 +2,7 @@ import 'dotenv/config';
 import './lib/renderCorsDefaults.js';
 import './lib/supabaseQueryCatchPatch.js';
 import './routes/gymOwnerPreload.js';
+import './routes/gymOwnerEmailPreload.js';
 import './routes/healthEntityPreload.js';
 import './routes/entityCompatPreload.js';
 import './routes/adminExtraPreload.js';
