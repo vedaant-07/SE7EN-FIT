@@ -17,17 +17,6 @@ export default function GymOwnerSignup() {
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const upsertGymOwnerProfile = async () => {
-    return base44.gymOwner.upsert({
-      owner_name: form.ownerName,
-      email: form.email,
-      mobile: form.mobile,
-      phone: form.mobile,
-      gym_name: '',
-      onboarding_complete: false,
-    });
-  };
-
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -49,7 +38,6 @@ export default function GymOwnerSignup() {
         return;
       }
 
-      await upsertGymOwnerProfile();
       navigate('/gym-owner/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Registration failed');
@@ -61,7 +49,6 @@ export default function GymOwnerSignup() {
     setLoading(true);
     try {
       await base44.auth.verifyOtp({ email: form.email, otpCode: otp });
-      await upsertGymOwnerProfile();
       navigate('/gym-owner/onboarding', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid code');
