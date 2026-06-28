@@ -45,7 +45,7 @@ import UserLogin from '@/pages/UserLogin';
 import UserSignup from '@/pages/UserSignup';
 import GymOwnerSignup from '@/pages/GymOwnerSignup';
 import GymOwnerOnboarding from '@/pages/GymOwnerOnboardingProduction';
-import GymOwnerDashboard from '@/pages/GymOwnerDashboard';
+import GymOwnerDashboard from '@/pages/GymOwnerDashboardProduction';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminLeaderboardPrizes from '@/pages/admin/AdminLeaderboardPrizes';
