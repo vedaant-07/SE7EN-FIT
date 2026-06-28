@@ -1,13 +1,13 @@
 # SE7EN FIT API Contract
 
-This is the production API contract for connecting the app, website/gym management tool, and admin dashboard to one Render backend and one Supabase database.
+This is the production-only API contract for connecting the app, website/gym management tool, and admin dashboard to one Render backend and one Supabase database.
 
 Base URL examples:
 
 ```text
 Production: https://api.se7enfit.com/api
-Temporary Render: https://se7en-fit-api.onrender.com/api
-Local: http://localhost:8080/api
+Render production service: https://se7en-fit-api.onrender.com/api
+Local development: http://localhost:8080/api
 ```
 
 All authenticated requests use:
@@ -17,6 +17,8 @@ Authorization: Bearer <supabase_access_token>
 Content-Type: application/json
 ```
 
+No production feature should depend on local storage data, demo data, placeholder APIs, or generic JSON entity storage. Production modules use typed API routes and typed Supabase tables.
+
 ---
 
 ## Response format
@@ -24,34 +26,25 @@ Content-Type: application/json
 Successful list:
 
 ```json
-{
-  "items": []
-}
+{ "items": [] }
 ```
 
 Successful object:
 
 ```json
-{
-  "item": {}
-}
+{ "item": {} }
 ```
 
 Successful action:
 
 ```json
-{
-  "success": true,
-  "message": "Done"
-}
+{ "success": true, "message": "Done" }
 ```
 
 Error:
 
 ```json
-{
-  "error": "Readable error message"
-}
+{ "error": "Readable error message" }
 ```
 
 ---
@@ -66,17 +59,7 @@ Error:
 | POST | `/auth/resend-otp` | Public | Resend active OTP challenge |
 | POST | `/auth/google` | Public | Login with Google ID token |
 | GET | `/auth/me` | Authenticated | Return current user + role + profile |
-| POST | `/auth/logout` | Authenticated | Optional server-side logout/audit |
-
-Role payloads:
-
-```json
-{
-  "email": "owner@example.com",
-  "password": "secret123",
-  "role": "gym_owner"
-}
-```
+| POST | `/auth/logout` | Authenticated | Server-side logout/audit event |
 
 Supported roles:
 
@@ -86,179 +69,144 @@ super_admin, admin, staff, gym_owner, gym_staff, user
 
 ---
 
-## Profiles and users
+## Production route map
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/profiles/me` | User | Current user's full profile |
-| PUT | `/profiles/me` | User | Update current user profile |
-| GET | `/users/me/dashboard` | User | App dashboard aggregate |
-| GET | `/admin/users` | Admin | List/search users |
-| GET | `/admin/users/:id` | Admin | Full user detail |
-| PATCH | `/admin/users/:id/status` | Admin | Block/unblock/pending |
-| PATCH | `/admin/users/:id/role` | Super admin | Assign role |
-
----
-
-## Gyms and gym owners
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/gym-owners/me` | Gym owner | Current owner profile + gyms |
-| PUT | `/gym-owners/me` | Gym owner | Update owner profile |
-| POST | `/gym-owners/onboarding` | Gym owner | Complete gym setup and create referral code |
-| GET | `/gyms/me` | Gym owner/staff | Owner/staff gym list |
-| POST | `/gyms` | Gym owner | Create gym |
-| GET | `/gyms/:gymId` | Gym owner/staff/admin/user if member | Gym detail |
-| PATCH | `/gyms/:gymId` | Gym owner/admin | Update gym info |
-| PATCH | `/admin/gyms/:gymId/status` | Admin | Verify, suspend, or reject gym |
-
----
-
-## Referral and memberships
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/gym-memberships/join` | User | Join gym by referral code |
-| GET | `/gym-memberships/me` | User | Current user's gym membership |
-| GET | `/gym-owner/members` | Gym owner/staff | Members for owner gym |
-| PATCH | `/gym-owner/members/:membershipId` | Gym owner/staff | Approve, pause, remove member |
-| GET | `/admin/memberships` | Admin | All memberships |
-
-Join payload:
-
-```json
-{
-  "referral_code": "BEFIT7-C9TE"
-}
-```
-
----
-
-## Leads
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/gym-leads` | Public/user | Create lead for a gym |
-| GET | `/gym-owner/leads` | Gym owner/staff | Leads for own gym |
-| PATCH | `/gym-owner/leads/:leadId` | Gym owner/staff | Update lead status |
-| GET | `/admin/leads` | Admin | All leads |
-
-Lead statuses:
+### Users and profiles
 
 ```text
-new, contacted, trial_booked, converted, lost
+GET    /profiles/me
+PUT    /profiles/me
+GET    /users/me/dashboard
+GET    /admin/users
+GET    /admin/users/:id
+PATCH  /admin/users/:id/status
+PATCH  /admin/users/:id/role
 ```
 
----
+### Gyms, gym owners, staff
 
-## Attendance/check-ins
+```text
+GET    /gym-owners/me
+PUT    /gym-owners/me
+POST   /gym-owners/onboarding
+GET    /gyms/me
+POST   /gyms
+GET    /gyms/:gymId
+PATCH  /gyms/:gymId
+GET    /gym-owner/staff
+POST   /gym-owner/staff
+PATCH  /gym-owner/staff/:staffId
+DELETE /gym-owner/staff/:staffId
+GET    /admin/gyms
+PATCH  /admin/gyms/:gymId/status
+GET    /admin/gym-owners
+PATCH  /admin/gym-owners/:id/status
+```
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/gym-attendance/check-in` | User | Check in to user's linked gym |
-| POST | `/gym-attendance/check-out` | User | Check out |
-| GET | `/gym-attendance/me` | User | User attendance logs |
-| GET | `/gym-owner/attendance` | Gym owner/staff | Own gym attendance |
-| GET | `/admin/attendance` | Admin | System attendance |
+### Referral, members, leads, attendance
 
----
+```text
+POST   /gym-memberships/join
+GET    /gym-memberships/me
+GET    /gym-owner/members
+PATCH  /gym-owner/members/:membershipId
+GET    /admin/memberships
+POST   /gym-leads
+GET    /gym-owner/leads
+PATCH  /gym-owner/leads/:leadId
+GET    /admin/leads
+POST   /gym-attendance/check-in
+POST   /gym-attendance/check-out
+GET    /gym-attendance/me
+GET    /gym-owner/attendance
+GET    /admin/attendance
+```
 
-## Gym equipment
+### Gym equipment and plans
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/gym-owner/equipment` | Gym owner/staff | List own gym equipment |
-| POST | `/gym-owner/equipment` | Gym owner/staff | Add equipment |
-| PATCH | `/gym-owner/equipment/:id` | Gym owner/staff | Update availability/details |
-| DELETE | `/gym-owner/equipment/:id` | Gym owner/staff | Delete equipment |
-| GET | `/users/my-gym/equipment` | User | Equipment available in user's gym |
+```text
+GET    /gym-owner/equipment
+POST   /gym-owner/equipment
+PATCH  /gym-owner/equipment/:id
+DELETE /gym-owner/equipment/:id
+GET    /users/my-gym/equipment
+GET    /gym-owner/plans
+POST   /gym-owner/plans
+PATCH  /gym-owner/plans/:planId
+DELETE /gym-owner/plans/:planId
+```
 
----
+### Tracking, workouts, nutrition
 
-## Tracking
+```text
+GET    /tracking/today
+GET    /tracking/history
+POST   /tracking/water
+POST   /tracking/steps
+POST   /tracking/sleep
+POST   /tracking/weight
+POST   /tracking/body-measurement
+POST   /tracking/cardio
+GET    /workouts/logs
+POST   /workouts/logs
+GET    /workouts/plans
+POST   /gym-owner/workout-plans
+POST   /gym-owner/workout-assignments
+GET    /nutrition/logs
+POST   /nutrition/logs
+POST   /gym-owner/diet-plans
+POST   /gym-owner/diet-assignments
+```
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/tracking/today` | User | Daily aggregate for dashboard |
-| POST | `/tracking/water` | User | Add water log |
-| POST | `/tracking/steps` | User | Add steps log |
-| POST | `/tracking/sleep` | User | Add sleep log |
-| POST | `/tracking/weight` | User | Add weight log |
-| POST | `/tracking/body-measurement` | User | Add body measurement |
-| POST | `/tracking/cardio` | User | Add cardio log |
-| GET | `/tracking/history` | User | Historical tracking |
+### AI and food scan
 
----
+```text
+POST   /ai/trainer
+GET    /ai/trainer/history
+DELETE /ai/trainer/history
+PATCH  /ai/trainer/messages/:id      -- user messages only
+DELETE /ai/trainer/messages/:id      -- user messages only
+POST   /ai/food-scan
+GET    /admin/ai/settings
+PATCH  /admin/ai/settings
+```
 
-## Workouts and nutrition
+### Community
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/workouts/logs` | User | User workout logs |
-| POST | `/workouts/logs` | User | Create workout log |
-| GET | `/workouts/plans` | User/gym owner | Workout plans |
-| POST | `/gym-owner/workout-plans` | Gym owner/staff | Create plan for members |
-| POST | `/gym-owner/workout-assignments` | Gym owner/staff | Assign workout plan |
-| GET | `/nutrition/logs` | User | Nutrition logs |
-| POST | `/nutrition/logs` | User | Add meal/nutrition log |
-| POST | `/gym-owner/diet-plans` | Gym owner/staff | Create diet plan |
-| POST | `/gym-owner/diet-assignments` | Gym owner/staff | Assign diet plan |
+```text
+GET    /community/posts
+POST   /community/posts
+PATCH  /community/posts/:id
+DELETE /community/posts/:id
+POST   /community/posts/:id/like
+GET    /community/posts/:id/comments
+POST   /community/posts/:id/comments
+GET    /admin/community/posts
+PATCH  /admin/community/posts/:id/moderate
+```
 
----
+Rules:
 
-## AI and food scan
+- Users can edit/delete their own posts.
+- Admin can moderate posts.
+- Images must be production storage URLs.
+- Videos must be 120 seconds or less.
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/ai/trainer` | User | AI trainer chat response |
-| GET | `/ai/trainer/history` | User | Load saved AI chat |
-| DELETE | `/ai/trainer/history` | User | Clear AI chat |
-| PATCH | `/ai/trainer/messages/:id` | User | Edit user message only |
-| DELETE | `/ai/trainer/messages/:id` | User | Delete user message only |
-| POST | `/ai/food-scan` | User | Analyze uploaded food image |
-| GET | `/admin/ai/settings` | Admin | AI config/status |
-| PATCH | `/admin/ai/settings` | Admin | Update AI config/status |
+### Ads and offers
 
----
-
-## Community
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/community/posts` | User/admin | Feed |
-| POST | `/community/posts` | User | Create post with text/image/video |
-| PATCH | `/community/posts/:id` | Owner/admin | Edit own post or admin moderation |
-| DELETE | `/community/posts/:id` | Owner/admin | Delete own post or remove as admin |
-| POST | `/community/posts/:id/like` | User | Like/unlike post |
-| GET | `/community/posts/:id/comments` | User | Comments |
-| POST | `/community/posts/:id/comments` | User | Add comment |
-| GET | `/admin/community/posts` | Admin | Moderation list |
-| PATCH | `/admin/community/posts/:id/moderate` | Admin | Hide/restore/report action |
-
-Media rule:
-
-- Images: recommended 1080p or higher
-- Videos: max 120 seconds
-- Store in Supabase Storage bucket `community-media`
-
----
-
-## Ads and offers
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/advertisements/feed` | User | User-visible ads, admin + own gym targeted |
-| POST | `/gym-owner/advertisements` | Gym owner | Create gym ad for referred users |
-| GET | `/gym-owner/advertisements` | Gym owner | Own ads |
-| PATCH | `/gym-owner/advertisements/:id` | Gym owner | Update own ad |
-| DELETE | `/gym-owner/advertisements/:id` | Gym owner | Delete own ad |
-| POST | `/admin/advertisements` | Admin | Create all-user ad |
-| GET | `/admin/advertisements` | Admin | All ads |
-| PATCH | `/admin/advertisements/:id` | Admin | Update any ad |
-| DELETE | `/admin/advertisements/:id` | Admin | Delete any ad |
-| POST | `/advertisements/:id/impression` | User/public | Track impression |
-| POST | `/advertisements/:id/click` | User/public | Track click |
+```text
+GET    /advertisements/feed
+POST   /gym-owner/advertisements
+GET    /gym-owner/advertisements
+PATCH  /gym-owner/advertisements/:id
+DELETE /gym-owner/advertisements/:id
+POST   /admin/advertisements
+GET    /admin/advertisements
+PATCH  /admin/advertisements/:id
+DELETE /admin/advertisements/:id
+POST   /advertisements/:id/impression
+POST   /advertisements/:id/click
+```
 
 Targeting:
 
@@ -267,45 +215,42 @@ Admin ad: target_scope = all
 Gym owner ad: target_scope = gym_members or referred_users, gym_id required
 ```
 
-Media rule:
+Rules:
 
-- Images: recommended 1080p or higher
-- Videos: max 120 seconds
-- Store in Supabase Storage bucket `ad-media`
+- Images should be 1080p or higher.
+- Videos must be 120 seconds or less.
+- Media lives in Supabase Storage bucket `ad-media`.
 
----
+### Challenges, leaderboard, rewards
 
-## Challenges, leaderboard, rewards
+```text
+GET    /challenges
+GET    /challenges/:id
+POST   /challenges/:id/join
+GET    /challenges/me
+PATCH  /challenges/:id/progress
+POST   /admin/challenges
+PATCH  /admin/challenges/:id
+DELETE /admin/challenges/:id
+GET    /leaderboard/my-gym
+GET    /gym-owner/leaderboard
+POST   /gym-owner/leaderboard/prizes
+GET    /admin/leaderboard
+POST   /admin/leaderboard/prizes
+GET    /rewards/wallet
+GET    /rewards/transactions
+POST   /admin/rewards/adjust
+```
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/challenges` | User | Visible challenges |
-| GET | `/challenges/:id` | User | Challenge detail |
-| POST | `/challenges/:id/join` | User | Join challenge |
-| GET | `/challenges/me` | User | My challenges |
-| PATCH | `/challenges/:id/progress` | User/system | Update progress |
-| POST | `/admin/challenges` | Admin | Create global challenge |
-| PATCH | `/admin/challenges/:id` | Admin | Update challenge |
-| GET | `/leaderboard/my-gym` | User | User gym leaderboard |
-| GET | `/gym-owner/leaderboard` | Gym owner/staff | Own gym leaderboard |
-| POST | `/gym-owner/leaderboard/prizes` | Gym owner/staff | Manage own gym prizes |
-| GET | `/admin/leaderboard` | Admin | System leaderboard |
-| POST | `/admin/leaderboard/prizes` | Admin | Global prizes |
-| GET | `/rewards/wallet` | User | Coins/wallet |
-| GET | `/rewards/transactions` | User | Reward transactions |
-| POST | `/admin/rewards/adjust` | Admin | Manual reward adjustment |
+### Support
 
----
-
-## Support
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/support/tickets` | Public/auth | Create support ticket from app/website/gym owner |
-| GET | `/support/tickets/me` | Auth | User/owner tickets |
-| POST | `/support/tickets/:id/messages` | Auth/admin | Reply to ticket |
-| GET | `/admin/support/tickets` | Admin | All support tickets |
-| PATCH | `/admin/support/tickets/:id` | Admin | Assign/status/priority |
+```text
+POST   /support/tickets
+GET    /support/tickets/me
+POST   /support/tickets/:id/messages
+GET    /admin/support/tickets
+PATCH  /admin/support/tickets/:id
+```
 
 Sources:
 
@@ -313,17 +258,15 @@ Sources:
 app, website, gym_owner, admin
 ```
 
----
+### Notifications
 
-## Notifications
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/notifications/push-token` | User | Register mobile push token |
-| GET | `/notifications/me` | User | User notifications |
-| PATCH | `/notifications/:id/read` | User | Mark as read |
-| POST | `/admin/notifications` | Admin | Create/send notification |
-| GET | `/admin/notifications` | Admin | Notification campaigns |
+```text
+POST   /notifications/push-token
+GET    /notifications/me
+PATCH  /notifications/:id/read
+POST   /admin/notifications
+GET    /admin/notifications
+```
 
 Audience examples:
 
@@ -334,16 +277,14 @@ Audience examples:
 { "type": "specific_users", "user_ids": ["uuid"] }
 ```
 
----
+### Uploads
 
-## Uploads
+```text
+POST   /uploads/media
+DELETE /uploads/media/:assetId
+```
 
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| POST | `/uploads/media` | Auth | Upload image/video to Supabase Storage |
-| DELETE | `/uploads/media/:assetId` | Owner/admin | Delete media asset |
-
-Upload must return:
+Upload must return a permanent media asset:
 
 ```json
 {
@@ -360,30 +301,17 @@ Upload must return:
 }
 ```
 
----
+### Admin system settings and logs
 
-## Admin system settings
-
-| Method | Path | Access | Purpose |
-|---|---|---|---|
-| GET | `/admin/dashboard` | Admin | System metrics |
-| GET | `/admin/settings` | Admin | App/website settings |
-| PATCH | `/admin/settings/:key` | Admin | Update setting |
-| GET | `/admin/logs` | Admin | Admin audit logs |
+```text
+GET    /admin/dashboard
+GET    /admin/settings
+PATCH  /admin/settings/:key
+GET    /admin/logs
+```
 
 ---
 
-## Migration strategy from current compatibility API
+## Production implementation rule
 
-Current app screens can continue using `/api/entities/:entity` temporarily, but production modules should move to typed endpoints in this order:
-
-1. Auth/profile/gym owner
-2. Membership/referral
-3. Tracking
-4. Ads/media
-5. Community
-6. Challenges/leaderboard/rewards
-7. Support/notifications
-8. Admin modules
-
-After all modules are typed, `entity_records` remains only as a legacy/import compatibility layer.
+Every route in this contract must map to a typed Supabase table from `server/supabase/migrations/002_production_schema.sql` and must enforce role checks in the backend.
