@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus } from 'lucide-react';
+import { Trophy, Flame, Zap, Droplets, Dumbbell, Footprints, Star, Users, Clock, Crown, ChevronRight, Check, Plus, ArrowLeft } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
 
 const BUILTIN_CHALLENGES = [
   {
@@ -63,18 +63,19 @@ function difficultyStyle(d) {
   if (d === 'Easy') return 'bg-accent/10 text-accent border-accent/20';
   if (d === 'Medium') return 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20';
   if (d === 'Hard') return 'bg-orange-400/10 text-orange-400 border-orange-400/20';
+  if (d === 'Gym') return 'bg-accent/10 text-accent border-accent/20';
   return 'bg-red-400/10 text-red-400 border-red-400/20';
 }
 
 export default function Challenges() {
   const navigate = useNavigate();
+  const { challengeId } = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [gymChallenges, setGymChallenges] = useState([]);
-  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [joiningId, setJoiningId] = useState(null);
   const [loggingId, setLoggingId] = useState(null);
@@ -82,6 +83,7 @@ export default function Challenges() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
+    setLoading(true);
     const u = await base44.auth.me();
     setUser(u);
     const [subs, parts, profiles] = await Promise.all([
@@ -90,14 +92,13 @@ export default function Challenges() {
       base44.entities.UserProfile.filter({ user_id: u.id }),
     ]);
     setSubscription(subs[0] || null);
-    setParticipants(parts);
-    const p = profiles[0] || null;
-    setProfile(p);
+    setParticipants(parts || []);
+    const p = profiles?.[0] || null;
 
     if (p?.primary_gym_id) {
       try {
         const gc = await base44.entities.Challenge.filter({ gym_id: p.primary_gym_id });
-        setGymChallenges(gc.filter(c => c.is_active));
+        setGymChallenges((gc || []).filter(c => c.is_active));
       } catch {}
     }
     setLoading(false);
@@ -126,6 +127,7 @@ export default function Challenges() {
 
   const allChallenges = [...gymChallengesMapped, ...BUILTIN_CHALLENGES];
   const joinedIds = participants.map(p => p.challenge_id);
+  const selectedChallenge = allChallenges.find(c => String(c.id) === String(challengeId));
 
   const filtered = activeTab === 'joined'
     ? allChallenges.filter(c => joinedIds.includes(c.id))
@@ -198,7 +200,7 @@ export default function Challenges() {
     setLoggingId(null);
   };
 
-  const getParticipant = (challengeId) => participants.find(p => p.challenge_id === challengeId);
+  const getParticipant = (id) => participants.find(p => p.challenge_id === id);
   const getProgress = (challenge) => {
     const p = getParticipant(challenge.id);
     if (!p) return 0;
@@ -206,6 +208,121 @@ export default function Challenges() {
   };
 
   if (loading) return <LoadingScreen />;
+
+  if (challengeId) {
+    if (!selectedChallenge) {
+      return (
+        <>
+          <TopBar title="Challenge" showBack backTo="/challenges" />
+          <div className="max-w-lg mx-auto px-4 py-10 text-center">
+            <Trophy size={34} className="text-muted-foreground mx-auto mb-3" />
+            <p className="font-heading font-semibold">Challenge not found</p>
+            <Button onClick={() => navigate('/challenges')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90">Back to Challenges</Button>
+          </div>
+        </>
+      );
+    }
+
+    const challenge = selectedChallenge;
+    const joined = joinedIds.includes(challenge.id);
+    const participant = getParticipant(challenge.id);
+    const progress = getProgress(challenge);
+    const alreadyLoggedToday = participant?.last_checkin === getToday();
+    const isCompleted = participant?.completed;
+    const Icon = challenge.icon;
+
+    return (
+      <>
+        <TopBar title="Challenge Details" showBack backTo="/challenges" />
+        <div className="max-w-lg mx-auto px-4 py-4 pb-24 space-y-4">
+          <button onClick={() => navigate('/challenges')} className="inline-flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <ArrowLeft size={14} /> All Challenges
+          </button>
+
+          <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-28 h-28 bg-accent/5 rounded-full -translate-y-8 translate-x-8" />
+            <div className="flex items-start gap-4 relative z-10">
+              <div className={`w-16 h-16 rounded-3xl ${challenge.bg} flex items-center justify-center text-3xl flex-shrink-0`}>
+                {challenge.emoji}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>{challenge.difficulty}</span>
+                  {challenge.premium && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium border bg-[#2A220F] border-[#3B3014] text-[#FBBF24]">Premium</span>}
+                  {challenge.isGymChallenge && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium border bg-accent/10 text-accent border-accent/20">Gym</span>}
+                </div>
+                <h2 className="font-heading font-black text-xl leading-tight">{challenge.title}</h2>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{challenge.description}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-card border border-border rounded-2xl p-3 text-center">
+              <Clock size={16} className="text-muted-foreground mx-auto mb-1" />
+              <p className="font-heading font-bold text-base">{challenge.days}</p>
+              <p className="text-[10px] text-muted-foreground">Days</p>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-3 text-center">
+              <Users size={16} className="text-muted-foreground mx-auto mb-1" />
+              <p className="font-heading font-bold text-base">{challenge.participants.toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground">Users</p>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-3 text-center">
+              <Trophy size={16} className="text-yellow-400 mx-auto mb-1" />
+              <p className="font-heading font-bold text-base text-yellow-400">{challenge.coins}</p>
+              <p className="text-[10px] text-muted-foreground">Coins</p>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-3xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon size={17} className={challenge.color || 'text-accent'} />
+              <p className="font-heading font-bold text-sm">Challenge Rules</p>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Complete this challenge for {challenge.target} {challenge.unit}. Track progress daily and finish the target to earn {challenge.coins} reward coins.
+            </p>
+          </div>
+
+          {joined && (
+            <div className="bg-card border border-border rounded-3xl p-5">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-heading font-semibold">Your Progress</span>
+                <span className="text-muted-foreground">{Math.round(progress)}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</p>
+            </div>
+          )}
+
+          {joined && !isCompleted ? (
+            <Button
+              onClick={() => handleLogProgress(challenge)}
+              disabled={loggingId === challenge.id || alreadyLoggedToday}
+              className="w-full h-12 rounded-xl text-base font-bold bg-white text-black hover:bg-white/90"
+            >
+              {loggingId === challenge.id ? 'Logging...' : alreadyLoggedToday ? <><Check size={16} className="mr-1.5" /> Logged Today</> : <><Plus size={16} className="mr-1.5" /> Log Today’s Progress</>}
+            </Button>
+          ) : joined && isCompleted ? (
+            <div className="w-full h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-base font-bold text-emerald-400">
+              <Check size={16} className="mr-1.5" /> Challenge Completed
+            </div>
+          ) : (
+            <Button
+              onClick={() => handleJoin(challenge)}
+              disabled={joiningId === challenge.id}
+              className="w-full h-12 rounded-xl text-base font-bold bg-white text-black hover:bg-white/90"
+            >
+              {joiningId === challenge.id ? 'Joining...' : <>Join Challenge <ChevronRight size={17} /></>}
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -248,27 +365,23 @@ export default function Challenges() {
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-heading font-semibold">No challenges joined yet</p>
             <p className="text-xs text-muted-foreground mt-1">Browse challenges and join to start earning!</p>
-            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-zinc-200 text-black hover:bg-zinc-100 text-base font-semibold">Browse Challenges</Button>
+            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90 text-base font-semibold">Browse Challenges</Button>
           </div>
         ) : (
           <div className="space-y-3">
             {filtered.map(challenge => {
-              const Icon = challenge.icon;
               const joined = joinedIds.includes(challenge.id);
               const progress = getProgress(challenge);
               const participant = getParticipant(challenge.id);
               const locked = challenge.premium && !isPremium;
-              const alreadyLoggedToday = participant?.last_checkin === getToday();
               const isCompleted = participant?.completed;
 
               return (
-                <div key={challenge.id}
-                  className={`bg-card border rounded-3xl p-4 relative overflow-hidden transition-all ${
-                    locked ? 'border-border opacity-90' :
-                    challenge.isGymChallenge ? 'border-accent/30' :
-                    joined ? 'border-accent/30' : 'border-border'
+                <button key={challenge.id}
+                  onClick={() => navigate(`/challenges/${challenge.id}`)}
+                  className={`w-full text-left bg-card border rounded-3xl p-4 relative overflow-hidden transition-all active:scale-[0.99] ${
+                    challenge.isGymChallenge ? 'border-accent/30' : joined ? 'border-accent/30' : 'border-border'
                   }`}>
-
                   {challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
                       <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">GYM</span>
@@ -297,9 +410,10 @@ export default function Challenges() {
                       <p className="font-heading font-bold text-sm">{challenge.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{challenge.description}</p>
                     </div>
+                    <ChevronRight size={17} className="text-muted-foreground mt-4 flex-shrink-0" />
                   </div>
 
-                  <div className="flex items-center gap-3 mb-3 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
                       {challenge.difficulty}
                     </span>
@@ -315,7 +429,7 @@ export default function Challenges() {
                   </div>
 
                   {joined && (
-                    <div className="mb-3">
+                    <div className="mt-3">
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                         <span>Progress — Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</span>
                         <span>{Math.round(progress)}%</span>
@@ -325,33 +439,7 @@ export default function Challenges() {
                       </div>
                     </div>
                   )}
-
-                  {joined && !isCompleted && !locked ? (
-                    <Button
-                      onClick={() => handleLogProgress(challenge)}
-                      disabled={loggingId === challenge.id || alreadyLoggedToday}
-                      className="w-full h-11 rounded-xl text-sm font-semibold bg-zinc-200 text-black hover:bg-zinc-100 border border-zinc-200"
-                    >
-                      {loggingId === challenge.id ? 'Logging...' :
-                       alreadyLoggedToday ? <><Check size={13} className="mr-1" /> Logged Today ✓</> :
-                       <><Plus size={13} className="mr-1" /> Log Today's Progress</>}
-                    </Button>
-                  ) : joined && isCompleted ? (
-                    <div className="w-full h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-semibold text-emerald-400">
-                      <Check size={14} className="mr-1.5" /> Challenge Completed! 🏆
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => handleJoin(challenge)}
-                      disabled={joiningId === challenge.id}
-                      className="w-full h-11 rounded-xl text-sm font-semibold transition-all bg-zinc-200 text-black hover:bg-zinc-100 border border-zinc-200"
-                    >
-                      {locked ? <><Crown size={13} className="mr-1" /> Unlock Premium</> :
-                       joiningId === challenge.id ? 'Joining...' :
-                       <>Join Challenge <ChevronRight size={14} /></>}
-                    </Button>
-                  )}
-                </div>
+                </button>
               );
             })}
           </div>
