@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Footprints, Moon, Dumbbell, Camera, Scale, Utensils, Trophy, TrendingUp, Zap, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
+import { Flame, Droplets, Dumbbell, Camera, Scale, Utensils, Trophy, TrendingUp, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
 
 const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
@@ -249,6 +249,23 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <button onClick={() => navigate('/my-gym')} className="bg-card border border-border rounded-2xl p-4 text-left hover:border-white/25 active:scale-[0.97] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#2A220F] border border-[#3B3014] flex items-center justify-center mb-3">
+              <Building2 size={19} className="text-[#FBBF24]" />
+            </div>
+            <p className="font-heading font-bold text-sm">My Gym</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{gymStatus.gym?.gym_name || 'Connect your gym'}</p>
+          </button>
+          <button onClick={() => navigate('/leaderboard')} className="bg-card border border-border rounded-2xl p-4 text-left hover:border-white/25 active:scale-[0.97] transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#2A220F] border border-[#3B3014] flex items-center justify-center mb-3">
+              <Trophy size={19} className="text-[#FBBF24]" />
+            </div>
+            <p className="font-heading font-bold text-sm">Leaderboard</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">Gym member scores & top 3 prizes</p>
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
