@@ -21,6 +21,16 @@ async function findAuthUserByEmail(email) {
   }
   return null;
 }
+
+async function saveGymOwnerRole(authUserId) {
+  try {
+    const result = await db.from('user_roles').upsert({ user_id: authUserId, role: 'gym_owner' }, { onConflict: 'user_id,role' });
+    if (result?.error) console.warn('user_roles upsert skipped:', result.error.message);
+  } catch (err) {
+    console.warn('user_roles upsert skipped:', err?.message || err);
+  }
+}
+
 async function upsertGymOwnerProfile(authUser, meta) {
   const profilePayload = {
     user_id: authUser.id,
@@ -35,9 +45,29 @@ async function upsertGymOwnerProfile(authUser, meta) {
   };
   const saved = await db.from('profiles').upsert(profilePayload, { onConflict: 'user_id' }).select('*').single();
   if (saved.error) throw fail(saved.error.message, 500);
-  await db.from('user_roles').upsert({ user_id: authUser.id, role: 'gym_owner' }, { onConflict: 'user_id,role' }).catch(() => null);
+  await saveGymOwnerRole(authUser.id);
   return saved.data;
 }
+
+function authResponse(session, user, profile) {
+  return {
+    access_token: session.access_token,
+    token: session.access_token,
+    refresh_token: session.refresh_token,
+    expires_at: session.expires_at,
+    user: {
+      id: user.id,
+      email: user.email,
+      full_name: profile.full_name,
+      name: profile.full_name,
+      phone: profile.phone,
+      mobile: profile.phone,
+      role: 'gym_owner',
+      status: profile.status || 'active',
+    },
+  };
+}
+
 async function fixedGymOwnerRegister(req, res, next) {
   try {
     if (roleOf(req.body?.role) !== 'gym_owner') return next();
@@ -60,7 +90,24 @@ async function fixedGymOwnerRegister(req, res, next) {
     const login = await authDb.auth.signInWithPassword({ email, password });
     if (login.error) throw fail(login.error.message || 'Could not create login session.', 400);
     const profile = await upsertGymOwnerProfile(login.data.user, meta);
-    return res.status(201).json({ access_token: login.data.session.access_token, token: login.data.session.access_token, refresh_token: login.data.session.refresh_token, expires_at: login.data.session.expires_at, user: { id: login.data.user.id, email, full_name: profile.full_name, phone: profile.phone, role: 'gym_owner', status: profile.status } });
+    return res.status(201).json(authResponse(login.data.session, login.data.user, profile));
+  } catch (err) {
+    return error(res, err);
+  }
+}
+
+async function fixedGymOwnerLogin(req, res, next) {
+  try {
+    if (roleOf(req.body?.role) !== 'gym_owner') return next();
+    const email = cleanEmail(req.body?.email);
+    const password = req.body?.password;
+    if (!email || !password) throw fail('Email and password are required', 400);
+    const login = await authDb.auth.signInWithPassword({ email, password });
+    if (login.error) throw fail(login.error.message || 'Invalid email or password', 401);
+    const meta = login.data.user?.user_metadata || {};
+    const profile = await upsertGymOwnerProfile(login.data.user, { ...meta, email, role: 'gym_owner' });
+    if (profile.status === 'blocked') throw fail('Account is blocked', 403);
+    return res.json(authResponse(login.data.session, login.data.user, profile));
   } catch (err) {
     return error(res, err);
   }
@@ -71,6 +118,10 @@ express.application.post = function patchedPost(path, ...handlers) {
   if (path === '/api/auth/register' && !this.__se7enfitGymOwnerRegisterFixed) {
     this.__se7enfitGymOwnerRegisterFixed = true;
     originalPost.call(this, path, fixedGymOwnerRegister);
+  }
+  if (path === '/api/auth/login' && !this.__se7enfitGymOwnerLoginFixed) {
+    this.__se7enfitGymOwnerLoginFixed = true;
+    originalPost.call(this, path, fixedGymOwnerLogin);
   }
   return originalPost.call(this, path, ...handlers);
 };
@@ -134,7 +185,7 @@ function register(app) {
 
   addCrud(app, 'plans', 'gym_plans', 'plan_id', { active: true });
   addCrud(app, 'classes', 'gym_classes', 'class_id', { status: 'active' });
-  addCrud(app, 'reviews', 'gym_reviews', 'review_id', { status: 'published', source: 'gym_owner' });
+  addCrud(app, 'reviews', 'gym_reviews', 'review_id', { status: 'published', source: 'website' });
   addCrud(app, 'workout-plans', 'workout_plans', 'plan_id', { visibility: 'gym' });
   addCrud(app, 'diet-plans', 'diet_plans', 'plan_id', { visibility: 'gym' });
   app.get('/api/gym-owner/reports', wrap(async (req, res) => {
