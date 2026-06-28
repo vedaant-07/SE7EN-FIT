@@ -239,62 +239,62 @@ export default function Challenges() {
             <ArrowLeft size={14} /> All Challenges
           </button>
 
-          <div className="bg-card border border-border rounded-3xl p-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-28 h-28 bg-accent/5 rounded-full -translate-y-8 translate-x-8" />
-            <div className="flex items-start gap-4 relative z-10">
-              <div className={`w-16 h-16 rounded-3xl ${challenge.bg} flex items-center justify-center text-3xl flex-shrink-0`}>
+          <div className="bg-card border border-border rounded-2xl p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full -translate-y-8 translate-x-8" />
+            <div className="flex items-start gap-3 relative z-10">
+              <div className={`w-14 h-14 rounded-2xl ${challenge.bg} flex items-center justify-center text-2xl flex-shrink-0`}>
                 {challenge.emoji}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>{challenge.difficulty}</span>
-                  {challenge.premium && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium border bg-[#2A220F] border-[#3B3014] text-[#FBBF24]">Premium</span>}
-                  {challenge.isGymChallenge && <span className="text-[11px] px-2 py-0.5 rounded-full font-medium border bg-accent/10 text-accent border-accent/20">Gym</span>}
+                <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>{challenge.difficulty}</span>
+                  {challenge.premium && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium border bg-[#2A220F] border-[#3B3014] text-[#FBBF24]">Premium</span>}
+                  {challenge.isGymChallenge && <span className="text-[10px] px-2 py-0.5 rounded-full font-medium border bg-accent/10 text-accent border-accent/20">Gym</span>}
                 </div>
-                <h2 className="font-heading font-black text-xl leading-tight">{challenge.title}</h2>
-                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{challenge.description}</p>
+                <h2 className="font-heading font-black text-lg leading-tight">{challenge.title}</h2>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{challenge.description}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2.5">
             <div className="bg-card border border-border rounded-2xl p-3 text-center">
-              <Clock size={16} className="text-muted-foreground mx-auto mb-1" />
-              <p className="font-heading font-bold text-base">{challenge.days}</p>
+              <Clock size={15} className="text-muted-foreground mx-auto mb-1" />
+              <p className="font-heading font-bold text-sm">{challenge.days}</p>
               <p className="text-[10px] text-muted-foreground">Days</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-3 text-center">
-              <Users size={16} className="text-muted-foreground mx-auto mb-1" />
-              <p className="font-heading font-bold text-base">{challenge.participants.toLocaleString()}</p>
+              <Users size={15} className="text-muted-foreground mx-auto mb-1" />
+              <p className="font-heading font-bold text-sm">{challenge.participants.toLocaleString()}</p>
               <p className="text-[10px] text-muted-foreground">Users</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-3 text-center">
-              <Trophy size={16} className="text-yellow-400 mx-auto mb-1" />
-              <p className="font-heading font-bold text-base text-yellow-400">{challenge.coins}</p>
+              <Trophy size={15} className="text-yellow-400 mx-auto mb-1" />
+              <p className="font-heading font-bold text-sm text-yellow-400">{challenge.coins}</p>
               <p className="text-[10px] text-muted-foreground">Coins</p>
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-3xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Icon size={17} className={challenge.color || 'text-accent'} />
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon size={16} className={challenge.color || 'text-accent'} />
               <p className="font-heading font-bold text-sm">Challenge Rules</p>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Complete this challenge for {challenge.target} {challenge.unit}. Track progress daily and finish the target to earn {challenge.coins} reward coins.
             </p>
           </div>
 
           {joined && (
-            <div className="bg-card border border-border rounded-3xl p-5">
-              <div className="flex items-center justify-between text-sm mb-2">
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-heading font-semibold">Your Progress</span>
                 <span className="text-muted-foreground">{Math.round(progress)}%</span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-white/60 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</p>
+              <p className="text-[11px] text-muted-foreground mt-2">Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</p>
             </div>
           )}
 
@@ -302,21 +302,21 @@ export default function Challenges() {
             <Button
               onClick={() => handleLogProgress(challenge)}
               disabled={loggingId === challenge.id || alreadyLoggedToday}
-              className="w-full h-12 rounded-xl text-base font-bold bg-white text-black hover:bg-white/90"
+              className="w-full h-11 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90"
             >
-              {loggingId === challenge.id ? 'Logging...' : alreadyLoggedToday ? <><Check size={16} className="mr-1.5" /> Logged Today</> : <><Plus size={16} className="mr-1.5" /> Log Today’s Progress</>}
+              {loggingId === challenge.id ? 'Logging...' : alreadyLoggedToday ? <><Check size={15} className="mr-1.5" /> Logged Today</> : <><Plus size={15} className="mr-1.5" /> Log Today’s Progress</>}
             </Button>
           ) : joined && isCompleted ? (
-            <div className="w-full h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-base font-bold text-emerald-400">
-              <Check size={16} className="mr-1.5" /> Challenge Completed
+            <div className="w-full h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm font-bold text-emerald-400">
+              <Check size={15} className="mr-1.5" /> Challenge Completed
             </div>
           ) : (
             <Button
               onClick={() => handleJoin(challenge)}
               disabled={joiningId === challenge.id}
-              className="w-full h-12 rounded-xl text-base font-bold bg-white text-black hover:bg-white/90"
+              className="w-full h-11 rounded-xl text-sm font-bold bg-white text-black hover:bg-white/90"
             >
-              {joiningId === challenge.id ? 'Joining...' : <>Join Challenge <ChevronRight size={17} /></>}
+              {joiningId === challenge.id ? 'Joining...' : <>Join Challenge <ChevronRight size={16} /></>}
             </Button>
           )}
         </div>
@@ -327,36 +327,36 @@ export default function Challenges() {
   return (
     <>
       <TopBar title="Challenges" showBack />
-      <div className="px-4 py-4 pb-24 space-y-4 max-w-lg mx-auto">
+      <div className="px-4 py-3 pb-24 space-y-3 max-w-lg mx-auto">
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-xl font-bold text-accent">{joinedIds.length}</p>
-            <p className="text-[10px] text-muted-foreground">Joined</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-bold text-accent">{joinedIds.length}</p>
+            <p className="text-[9px] text-muted-foreground">Joined</p>
           </div>
-          <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-xl font-bold text-yellow-400">{participants.filter(p => p.completed).length}</p>
-            <p className="text-[10px] text-muted-foreground">Completed</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-bold text-yellow-400">{participants.filter(p => p.completed).length}</p>
+            <p className="text-[9px] text-muted-foreground">Completed</p>
           </div>
-          <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-xl font-bold text-purple-400">{participants.reduce((s, p) => s + (p.coins_earned || 0), 0)}</p>
-            <p className="text-[10px] text-muted-foreground">Coins Earned</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-bold text-purple-400">{participants.reduce((s, p) => s + (p.coins_earned || 0), 0)}</p>
+            <p className="text-[9px] text-muted-foreground">Coins Earned</p>
           </div>
         </div>
 
         <div className="flex gap-2">
           {['all', 'joined'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-10 rounded-xl text-sm font-semibold transition-all ${activeTab === tab ? 'bg-white text-black hover:bg-white/90' : 'bg-muted text-muted-foreground'}`}>
+              className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all ${activeTab === tab ? 'bg-white text-black hover:bg-white/90' : 'bg-muted text-muted-foreground'}`}>
               {tab === 'all' ? `All Challenges (${allChallenges.length})` : `My Challenges (${joinedIds.length})`}
             </button>
           ))}
         </div>
 
         {gymChallengesMapped.length > 0 && activeTab === 'all' && (
-          <div className="bg-accent/8 border border-accent/20 rounded-xl px-3 py-2 flex items-center gap-2">
-            <Trophy size={13} className="text-accent flex-shrink-0" />
-            <p className="text-sm text-accent font-medium">{gymChallengesMapped.length} challenge{gymChallengesMapped.length > 1 ? 's' : ''} from your gym</p>
+          <div className="bg-card border border-border rounded-xl px-3 py-2 flex items-center gap-2">
+            <Trophy size={13} className="text-white flex-shrink-0" />
+            <p className="text-xs text-muted-foreground font-medium">{gymChallengesMapped.length} challenge{gymChallengesMapped.length > 1 ? 's' : ''} from your gym</p>
           </div>
         )}
 
@@ -365,10 +365,10 @@ export default function Challenges() {
             <Trophy size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-heading font-semibold">No challenges joined yet</p>
             <p className="text-xs text-muted-foreground mt-1">Browse challenges and join to start earning!</p>
-            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90 text-base font-semibold">Browse Challenges</Button>
+            <Button onClick={() => setActiveTab('all')} className="mt-4 h-11 rounded-xl bg-white text-black hover:bg-white/90 text-sm font-semibold">Browse Challenges</Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {filtered.map(challenge => {
               const joined = joinedIds.includes(challenge.id);
               const progress = getProgress(challenge);
@@ -379,12 +379,12 @@ export default function Challenges() {
               return (
                 <button key={challenge.id}
                   onClick={() => navigate(`/challenges/${challenge.id}`)}
-                  className={`w-full text-left bg-card border rounded-3xl p-4 relative overflow-hidden transition-all active:scale-[0.99] ${
+                  className={`w-full text-left bg-card border rounded-2xl p-3 relative overflow-hidden transition-all active:scale-[0.99] ${
                     challenge.isGymChallenge ? 'border-accent/30' : joined ? 'border-accent/30' : 'border-border'
                   }`}>
                   {challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">GYM</span>
+                      <span className="text-[9px] bg-white text-black px-2 py-0.5 rounded-full font-bold">GYM</span>
                     </div>
                   )}
                   {locked && !challenge.isGymChallenge && (
@@ -396,46 +396,45 @@ export default function Challenges() {
                   )}
                   {joined && !locked && !challenge.isGymChallenge && (
                     <div className="absolute top-3 right-3">
-                      <span className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-[9px] bg-white text-black px-2 py-0.5 rounded-full font-bold">
                         {isCompleted ? '✓ DONE' : 'JOINED'}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className={`w-12 h-12 rounded-2xl ${challenge.bg} flex items-center justify-center flex-shrink-0 text-xl`}>
+                  <div className="flex items-start gap-3 mb-2.5">
+                    <div className={`w-11 h-11 rounded-2xl ${challenge.bg} flex items-center justify-center flex-shrink-0 text-lg`}>
                       {challenge.emoji}
                     </div>
                     <div className="flex-1 min-w-0 pr-8">
-                      <p className="font-heading font-bold text-sm">{challenge.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{challenge.description}</p>
+                      <p className="font-heading font-bold text-[13px] leading-snug">{challenge.title}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">{challenge.description}</p>
                     </div>
-                    <ChevronRight size={17} className="text-muted-foreground mt-4 flex-shrink-0" />
                   </div>
 
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${difficultyStyle(challenge.difficulty)}`}>
                       {challenge.difficulty}
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Clock size={10} /> {challenge.days} days
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Clock size={9} /> {challenge.days} days
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Users size={10} /> {challenge.participants.toLocaleString()}
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Users size={9} /> {challenge.participants.toLocaleString()}
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-yellow-400 font-semibold">
+                    <span className="flex items-center gap-1 text-[10px] text-yellow-400 font-semibold">
                       🪙 {challenge.coins} coins
                     </span>
                   </div>
 
                   {joined && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-                        <span>Progress — Day {participant?.current_progress || 0} of {participant?.target || challenge.target}</span>
+                    <div className="mt-2.5">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                        <span>Day {participant?.current_progress || 0} / {participant?.target || challenge.target}</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-white/60 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
                   )}
