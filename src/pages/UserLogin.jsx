@@ -22,6 +22,7 @@ function getErrorMessage(error, fallback = 'Something went wrong') {
 export default function UserLogin() {
   const navigate = useNavigate();
   const { checkUserAuth } = useAuth();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -173,14 +174,18 @@ export default function UserLogin() {
           <p className="text-muted-foreground text-sm mt-1.5">Enter password, then verify email OTP</p>
         </div>
 
-        <div className="mb-6">
-          <GoogleSignInButton role="user" disabled={loading} onSuccess={handleGoogleSuccess} onError={(err) => setError(getErrorMessage(err, 'Google login failed'))} />
-        </div>
+        {googleClientId && (
+          <>
+            <div className="mb-6">
+              <GoogleSignInButton role="user" disabled={loading} onSuccess={handleGoogleSuccess} onError={(err) => setError(getErrorMessage(err, 'Google login failed'))} />
+            </div>
 
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div>
-        </div>
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div>
+            </div>
+          </>
+        )}
 
         {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
         {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
