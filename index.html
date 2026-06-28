@@ -14,9 +14,104 @@
     <meta property="og:description" content="Transform your body with AI-powered workouts, smart nutrition tracking, and real-time coaching." />
     <meta property="og:type" content="website" />
     <title>SE7EN FIT — AI Fitness Trainer</title>
+    <style>
+      html.dark, body.dark, body { background:#000; color:#fff; margin:0; min-height:100vh; font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+      #root:empty { min-height:100vh; background:#000; }
+      .s7-owner-safe { min-height:100vh; background:#000; color:#fff; padding:18px; box-sizing:border-box; }
+      .s7-owner-wrap { max-width:520px; margin:0 auto; padding-bottom:88px; }
+      .s7-top { display:flex; align-items:center; justify-content:space-between; padding:12px 0 18px; }
+      .s7-logo { font-size:24px; font-weight:900; letter-spacing:-.04em; }
+      .s7-logo span { color:#22c55e; }
+      .s7-btn { border:0; border-radius:14px; padding:13px 16px; font-weight:900; cursor:pointer; }
+      .s7-btn-green { background:#22c55e; color:#000; }
+      .s7-btn-dark { background:#09090b; color:#d4d4d8; border:1px solid #27272a; }
+      .s7-card { border:1px solid #27272a; background:#09090b; border-radius:24px; padding:18px; margin:12px 0; }
+      .s7-hero { border-color:rgba(34,197,94,.35); background:linear-gradient(135deg,rgba(34,197,94,.18),#09090b 64%); }
+      .s7-muted { color:#a1a1aa; font-size:12px; }
+      .s7-title { font-size:30px; font-weight:950; margin:4px 0 0; }
+      .s7-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+      .s7-stat { text-align:left; min-height:104px; }
+      .s7-stat strong { display:block; font-size:26px; color:#fff; }
+      .s7-stat span { display:block; color:#a1a1aa; font-size:12px; margin-top:4px; }
+      .s7-ref { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding:13px; background:rgba(0,0,0,.45); border-radius:18px; }
+      .s7-ref code { color:#22c55e; font-size:18px; font-weight:900; letter-spacing:.08em; }
+      .s7-nav { position:fixed; left:0; right:0; bottom:0; background:#09090b; border-top:1px solid #27272a; display:grid; grid-template-columns:repeat(4,1fr); height:68px; z-index:99999; }
+      .s7-nav button { background:transparent; border:0; color:#71717a; font-weight:800; font-size:12px; }
+      .s7-nav button.active { color:#22c55e; }
+      .s7-error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#fca5a5; border-radius:18px; padding:12px; font-size:12px; margin:12px 0; }
+      .s7-list-item { border:1px solid #27272a; background:#09090b; border-radius:18px; padding:14px; margin:10px 0; }
+      .s7-list-item b { display:block; font-size:14px; }
+      .s7-list-item small { color:#a1a1aa; }
+    </style>
   </head>
   <body class="dark">
     <div id="root"></div>
+    <script>
+      (function () {
+        if (window.location.pathname !== '/gym-owner/dashboard') return;
+        var root = document.getElementById('root');
+        if (!root) return;
+        var API = (window.__S7_API_BASE_URL__ || 'https://se7en-fit-api.onrender.com/api').replace(/\/+$/, '');
+        var token = '';
+        var cachedUser = null;
+        try { token = localStorage.getItem('se7enfit_auth_token') || ''; cachedUser = JSON.parse(localStorage.getItem('se7enfit_user') || 'null'); } catch (e) {}
+        var state = { tab: 'home', owner: null, members: [], leads: [], attendance: [], error: '' };
+        function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+        function request(path){
+          return fetch(API + path, { headers: { Accept:'application/json', Authorization:'Bearer ' + token } })
+            .then(function(r){ return r.json().catch(function(){return null;}).then(function(p){ if(!r.ok) throw new Error((p && (p.error || p.message)) || ('Request failed ' + r.status)); return p && (p.item || p.items || p.data || p); }); });
+        }
+        function ownerFrom(raw){
+          var item = raw && raw.item ? raw.item : (raw || {});
+          var owner = item.owner || item.gym_owner || item;
+          var gym = item.gym || (item.gyms && item.gyms[0]) || owner.gym || (owner.gyms && owner.gyms[0]) || {};
+          var user = cachedUser || item.user || {};
+          return { gymName: gym.name || gym.gym_name || owner.gym_name || 'My Gym', ownerName: owner.owner_name || user.full_name || user.name || 'Gym Owner', email: gym.email || owner.email || user.email || '', referralCode: gym.referral_code || owner.referral_code || '', monthlyFee: Number(gym.monthly_fee || gym.price_monthly || owner.monthly_fee || 999), onboardingComplete: !!(owner.onboarding_complete || gym.gym_id || gym.id) };
+        }
+        function render(){
+          if (!state.owner && !token) {
+            root.innerHTML = '<div class="s7-owner-safe"><div class="s7-owner-wrap"><div class="s7-top"><div class="s7-logo">SE<span>7</span>EN <span>FIT</span></div></div><div class="s7-card"><h2>Login required</h2><p class="s7-muted">Your gym owner session is missing.</p><button class="s7-btn s7-btn-green" onclick="location.href=\'/login/gym-owner\'">Login Again</button></div></div></div>';
+            return;
+          }
+          if (!state.owner) {
+            root.innerHTML = '<div class="s7-owner-safe"><div class="s7-owner-wrap"><div class="s7-top"><div class="s7-logo">SE<span>7</span>EN <span>FIT</span></div></div><div class="s7-card"><h2>Loading gym dashboard...</h2><div style="margin-top:18px;width:34px;height:34px;border:4px solid #27272a;border-top-color:#22c55e;border-radius:50%;animation:s7spin 1s linear infinite"></div></div></div></div><style>@keyframes s7spin{to{transform:rotate(360deg)}}</style>';
+            return;
+          }
+          var revenue = (state.members.length * Number(state.owner.monthlyFee || 999)).toLocaleString('en-IN');
+          var body = '';
+          if (state.tab === 'home') {
+            body = '<div class="s7-card s7-hero"><p class="s7-muted">Monthly Revenue</p><div class="s7-title">₹' + revenue + '</div><p class="s7-muted">' + state.members.length + ' members • ' + state.leads.length + ' leads</p>' + (state.owner.referralCode ? '<div class="s7-ref"><div><p class="s7-muted">Referral Code</p><code>' + esc(state.owner.referralCode) + '</code></div><button class="s7-btn s7-btn-green" id="s7-copy">Copy</button></div>' : '') + '</div><div class="s7-grid"><button class="s7-card s7-stat" id="tab-members"><strong>' + state.members.length + '</strong>Members<span>Gym users</span></button><button class="s7-card s7-stat" id="tab-leads"><strong>' + state.leads.length + '</strong>Leads<span>Follow ups</span></button><button class="s7-card s7-stat" id="tab-attendance"><strong>' + state.attendance.length + '</strong>Check-ins<span>Attendance</span></button><button class="s7-card s7-stat" id="tab-settings"><strong>Open</strong>Settings<span>Profile</span></button></div>';
+          } else if (state.tab === 'settings') {
+            body = '<div class="s7-card"><h2>Settings</h2><button class="s7-btn s7-btn-dark" style="width:100%;margin:8px 0" onclick="location.href=\'/gym-owner/onboarding\'">Edit Gym Profile</button><button class="s7-btn s7-btn-dark" style="width:100%;margin:8px 0" id="s7-refresh">Refresh Dashboard</button><button class="s7-btn" style="width:100%;margin:8px 0;background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.25)" id="s7-logout">Sign Out</button></div>';
+          } else {
+            var rows = state[state.tab] || [];
+            body = '<h2 style="margin:8px 0 4px;text-transform:capitalize">' + state.tab + '</h2>' + (rows.length ? rows.map(function(row){ return '<div class="s7-list-item"><b>' + esc(row.name || row.user_name || row.full_name || row.email || row.phone || state.tab) + '</b><small>' + esc(row.email || row.phone || row.status || row.date || row.created_at || 'Production record') + '</small></div>'; }).join('') : '<div class="s7-card"><b>No ' + esc(state.tab) + ' yet</b><p class="s7-muted">Production data will appear here automatically.</p></div>');
+          }
+          root.innerHTML = '<div class="s7-owner-safe"><div class="s7-owner-wrap"><div class="s7-top"><div><div class="s7-logo">SE<span>7</span>EN <span>FIT</span></div><p class="s7-muted">' + esc(state.owner.gymName) + '</p></div><button class="s7-btn s7-btn-dark" id="s7-top-logout">Logout</button></div>' + (state.error ? '<div class="s7-error">' + esc(state.error) + '</div>' : '') + body + '</div><div class="s7-nav"><button data-tab="home" class="' + (state.tab==='home'?'active':'') + '">Home</button><button data-tab="members" class="' + (state.tab==='members'?'active':'') + '">Members</button><button data-tab="leads" class="' + (state.tab==='leads'?'active':'') + '">Leads</button><button data-tab="settings" class="' + (state.tab==='settings'?'active':'') + '">More</button></div></div>';
+          Array.prototype.forEach.call(document.querySelectorAll('.s7-nav button'), function(btn){ btn.onclick = function(){ state.tab = btn.getAttribute('data-tab'); render(); }; });
+          var tm = document.getElementById('tab-members'); if (tm) tm.onclick = function(){ state.tab='members'; render(); };
+          var tl = document.getElementById('tab-leads'); if (tl) tl.onclick = function(){ state.tab='leads'; render(); };
+          var ta = document.getElementById('tab-attendance'); if (ta) ta.onclick = function(){ state.tab='attendance'; render(); };
+          var ts = document.getElementById('tab-settings'); if (ts) ts.onclick = function(){ state.tab='settings'; render(); };
+          var rf = document.getElementById('s7-refresh'); if (rf) rf.onclick = load;
+          function logout(){ try{localStorage.removeItem('se7enfit_auth_token');localStorage.removeItem('se7enfit_user');localStorage.removeItem('se7enfit_auth');}catch(e){} location.href='/welcome'; }
+          var lo = document.getElementById('s7-logout'); if (lo) lo.onclick = logout;
+          var tlo = document.getElementById('s7-top-logout'); if (tlo) tlo.onclick = logout;
+          var cp = document.getElementById('s7-copy'); if (cp) cp.onclick = function(){ navigator.clipboard && navigator.clipboard.writeText(state.owner.referralCode || ''); cp.textContent='Copied'; };
+        }
+        function load(){
+          render();
+          if (!token) return;
+          request('/gym-owners/me').then(function(ownerRaw){
+            state.owner = ownerFrom(ownerRaw);
+            if (!state.owner.onboardingComplete) { location.href = '/gym-owner/onboarding'; return; }
+            render();
+            return Promise.all([request('/gym-owner/members').catch(function(){return [];}), request('/gym-owner/leads').catch(function(){return [];}), request('/gym-owner/attendance').catch(function(){return [];})]);
+          }).then(function(all){ if (!all) return; state.members = Array.isArray(all[0]) ? all[0] : []; state.leads = Array.isArray(all[1]) ? all[1] : []; state.attendance = Array.isArray(all[2]) ? all[2] : []; render(); }).catch(function(err){ state.owner = state.owner || ownerFrom({ owner:{ onboarding_complete:true }, gym:{ name:'My Gym' } }); state.error = err && err.message ? err.message : 'Dashboard data could not load.'; render(); });
+        }
+        load();
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
