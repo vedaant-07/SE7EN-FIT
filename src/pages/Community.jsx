@@ -4,17 +4,23 @@ import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import EmptyState from '@/components/se7enfit/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Plus, X, Image, Send, Users, Trophy, Dumbbell, Utensils, Zap } from 'lucide-react';
+import { Heart, MessageCircle, Plus, X, Send, Users, Edit2, Trash2, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getToday } from '@/lib/fitnessUtils';
 
 const POST_TYPES = [
   { key: 'general', label: 'General', icon: '💬', color: 'bg-muted text-muted-foreground' },
-  { key: 'workout', label: 'Workout', icon: '💪', color: 'bg-accent/10 text-accent' },
-  { key: 'meal', label: 'Meal', icon: '🥗', color: 'bg-orange-400/10 text-orange-400' },
-  { key: 'transformation', label: 'Transform', icon: '🔥', color: 'bg-red-400/10 text-red-400' },
-  { key: 'achievement', label: 'Achievement', icon: '🏆', color: 'bg-yellow-400/10 text-yellow-400' },
+  { key: 'workout', label: 'Workout', icon: '💪', color: 'bg-muted text-muted-foreground' },
+  { key: 'meal', label: 'Meal', icon: '🥗', color: 'bg-muted text-muted-foreground' },
+  { key: 'transformation', label: 'Transform', icon: '🔥', color: 'bg-muted text-muted-foreground' },
+  { key: 'achievement', label: 'Achievement', icon: '🏆', color: 'bg-muted text-muted-foreground' },
 ];
+
+function canManagePost(post, user, profile) {
+  if (!post || !user) return false;
+  const isOwner = String(post.user_id) === String(user.id);
+  const isAdmin = ['admin', 'super_admin'].includes(user.role) || ['admin', 'super_admin'].includes(profile?.role);
+  return isOwner || isAdmin;
+}
 
 export default function Community() {
   const { toast } = useToast();
@@ -26,6 +32,10 @@ export default function Community() {
   const [newPost, setNewPost] = useState({ content: '', type: 'general' });
   const [submitting, setSubmitting] = useState(false);
   const [likedIds, setLikedIds] = useState(new Set());
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -36,7 +46,7 @@ export default function Community() {
       base44.entities.CommunityPost.list('-created_date', 30),
       base44.entities.UserProfile.filter({ user_id: u.id }),
     ]);
-    setPosts(allPosts.filter(p => !p.is_reported));
+    setPosts(allPosts.filter(p => !p.is_reported && !p.deleted && p.status !== 'deleted'));
     setProfile(profiles[0] || null);
     setLoading(false);
   };
@@ -52,11 +62,72 @@ export default function Community() {
       likes_count: 0,
       comments_count: 0,
     });
-    toast({ title: '✓ Post shared!', description: 'Your post is live in the community.' });
+    toast({ title: 'Post shared', description: 'Your post is live in the community.' });
     setNewPost({ content: '', type: 'general' });
     setShowCreate(false);
     setSubmitting(false);
     loadData();
+  };
+
+  const startEdit = (post) => {
+    setEditingPostId(post.id);
+    setEditingContent(post.content || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingPostId(null);
+    setEditingContent('');
+  };
+
+  const saveEdit = async (post) => {
+    if (!editingContent.trim()) return;
+    setSavingEdit(true);
+    try {
+      await base44.entities.CommunityPost.update(post.id, {
+        content: editingContent.trim(),
+        edited_at: new Date().toISOString(),
+      });
+      setPosts(prev => prev.map(p => p.id === post.id ? { ...p, content: editingContent.trim(), edited_at: new Date().toISOString() } : p));
+      toast({ title: 'Post updated' });
+      cancelEdit();
+    } catch (error) {
+      toast({ title: 'Could not update post', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const deletePost = async (post) => {
+    setDeletingId(post.id);
+    try {
+      if (typeof base44.entities.CommunityPost.delete === 'function') {
+        await base44.entities.CommunityPost.delete(post.id);
+      } else {
+        await base44.entities.CommunityPost.update(post.id, {
+          deleted: true,
+          status: 'deleted',
+          is_reported: true,
+          deleted_at: new Date().toISOString(),
+        });
+      }
+      setPosts(prev => prev.filter(p => p.id !== post.id));
+      toast({ title: 'Post deleted' });
+    } catch {
+      try {
+        await base44.entities.CommunityPost.update(post.id, {
+          deleted: true,
+          status: 'deleted',
+          is_reported: true,
+          deleted_at: new Date().toISOString(),
+        });
+        setPosts(prev => prev.filter(p => p.id !== post.id));
+        toast({ title: 'Post deleted' });
+      } catch (error) {
+        toast({ title: 'Could not delete post', description: error.message, variant: 'destructive' });
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleLike = async (post) => {
@@ -71,15 +142,15 @@ export default function Community() {
   return (
     <>
       <TopBar title="Community" showBack />
-      <div className="px-4 py-4 pb-6 space-y-4">
+      <div className="px-4 py-3 pb-6 space-y-3 max-w-lg mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-heading font-bold text-base">SE7ENFIT Community</h2>
+            <h2 className="font-heading font-bold text-base">SE7EN FIT Community</h2>
             <p className="text-xs text-muted-foreground mt-0.5">{posts.length} posts from fitness warriors</p>
           </div>
-          <Button onClick={() => setShowCreate(v => !v)} size="sm" className="rounded-xl bg-accent text-accent-foreground h-9 gap-1.5 px-3">
+          <Button onClick={() => setShowCreate(v => !v)} size="sm" className="rounded-xl bg-white text-black hover:bg-white/90 h-9 gap-1.5 px-3 text-xs font-bold">
             {showCreate ? <X size={14} /> : <Plus size={14} />}
             {showCreate ? 'Cancel' : 'Post'}
           </Button>
@@ -87,15 +158,15 @@ export default function Community() {
 
         {/* Create Post */}
         {showCreate && (
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="bg-card border border-border rounded-2xl p-3.5 space-y-3">
             <h3 className="font-heading font-semibold text-sm">Share with the community</h3>
             <div className="flex gap-2 flex-wrap">
               {POST_TYPES.map(t => (
                 <button
                   key={t.key}
                   onClick={() => setNewPost(p => ({ ...p, type: t.key }))}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                    newPost.type === t.key ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-muted/50'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                    newPost.type === t.key ? 'border-white bg-white text-black' : 'border-border bg-muted/50 text-muted-foreground'
                   }`}
                 >
                   {t.icon} {t.label}
@@ -107,9 +178,9 @@ export default function Community() {
               onChange={e => setNewPost(p => ({ ...p, content: e.target.value }))}
               placeholder="What's on your fitness mind? Share a workout, meal, or motivation! 💪"
               rows={3}
-              className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white"
             />
-            <Button onClick={handlePost} disabled={submitting || !newPost.content.trim()} className="w-full h-10 rounded-xl bg-accent text-accent-foreground">
+            <Button onClick={handlePost} disabled={submitting || !newPost.content.trim()} className="w-full h-10 rounded-xl bg-white text-black hover:bg-white/90 text-sm font-bold">
               {submitting ? 'Sharing...' : <><Send size={14} className="mr-2" /> Share Post</>}
             </Button>
           </div>
@@ -130,23 +201,51 @@ export default function Community() {
               const typeInfo = POST_TYPES.find(t => t.key === post.type) || POST_TYPES[0];
               const isLiked = likedIds.has(post.id);
               const timeAgo = getTimeAgo(post.created_date);
+              const canManage = canManagePost(post, user, profile);
+              const isEditing = editingPostId === post.id;
               return (
-                <div key={post.id} className="bg-card border border-border rounded-2xl p-4">
+                <div key={post.id} className="bg-card border border-border rounded-2xl p-3.5">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm">{post.user_name?.[0]?.toUpperCase() || '?'}</span>
+                    <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold">{post.user_name?.[0]?.toUpperCase() || '?'}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-heading font-semibold text-sm">{post.user_name || 'Anonymous'}</p>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeInfo.color}`}>
                           {typeInfo.icon} {typeInfo.label}
                         </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{timeAgo}</p>
+                      <p className="text-[10px] text-muted-foreground">{timeAgo}{post.edited_at ? ' • edited' : ''}</p>
                     </div>
+                    {canManage && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => isEditing ? cancelEdit() : startEdit(post)} className="h-8 px-2 rounded-lg bg-muted text-muted-foreground hover:text-white text-[10px] font-semibold flex items-center gap-1">
+                          <Edit2 size={12} /> {isEditing ? 'Cancel' : 'Edit'}
+                        </button>
+                        <button onClick={() => deletePost(post)} disabled={deletingId === post.id} className="h-8 px-2 rounded-lg bg-muted text-red-400 text-[10px] font-semibold flex items-center gap-1 disabled:opacity-50">
+                          <Trash2 size={12} /> {deletingId === post.id ? 'Deleting' : 'Delete'}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm leading-relaxed mb-3">{post.content}</p>
+
+                  {isEditing ? (
+                    <div className="space-y-2 mb-3">
+                      <textarea
+                        value={editingContent}
+                        onChange={e => setEditingContent(e.target.value)}
+                        rows={3}
+                        className="w-full bg-background border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-white"
+                      />
+                      <button onClick={() => saveEdit(post)} disabled={savingEdit || !editingContent.trim()} className="w-full h-9 rounded-xl bg-white text-black text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                        <Check size={13} /> {savingEdit ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed mb-3">{post.content}</p>
+                  )}
+
                   {post.image_url && (
                     <div className="mb-3 rounded-xl overflow-hidden">
                       <img src={post.image_url} alt="Post" className="w-full max-h-48 object-cover" />
@@ -158,7 +257,7 @@ export default function Community() {
                       className={`flex items-center gap-1.5 text-xs transition-all active:scale-90 ${isLiked ? 'text-red-400' : 'text-muted-foreground hover:text-red-400'}`}
                     >
                       <Heart size={15} fill={isLiked ? 'currentColor' : 'none'} />
-                      <span>{(post.likes_count || 0) + (isLiked && !post.liked ? 0 : 0)}</span>
+                      <span>{post.likes_count || 0}</span>
                     </button>
                     <button className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MessageCircle size={15} />
