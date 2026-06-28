@@ -19,11 +19,20 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const completeStartup = async () => {
-    const authed = await base44.auth.isAuthenticated();
-    const currentUser = authed ? await base44.auth.me() : null;
+    let currentUser = null;
+
+    if (base44.auth.getToken()) {
+      try {
+        currentUser = await base44.auth.me();
+      } catch (error) {
+        console.warn('[Auth] startup auth check failed:', error?.message || error);
+        base44.auth.logout();
+        currentUser = null;
+      }
+    }
 
     setUser(currentUser);
-    setIsAuthenticated(Boolean(authed && currentUser));
+    setIsAuthenticated(Boolean(currentUser));
     setAuthChecked(true);
     setAuthError(null);
     setAppPublicSettings({ id: 'se7enfit-local', public_settings: {} });
@@ -49,11 +58,20 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      const authed = await base44.auth.isAuthenticated();
-      const currentUser = authed ? await base44.auth.me() : null;
+      let currentUser = null;
+
+      if (base44.auth.getToken()) {
+        try {
+          currentUser = await base44.auth.me();
+        } catch (error) {
+          console.warn('[Auth] user auth check failed:', error?.message || error);
+          base44.auth.logout();
+          currentUser = null;
+        }
+      }
 
       setUser(currentUser);
-      setIsAuthenticated(Boolean(authed && currentUser));
+      setIsAuthenticated(Boolean(currentUser));
       setAuthError(null);
     } catch (error) {
       console.error('User auth check failed:', error);
