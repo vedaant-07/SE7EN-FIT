@@ -520,6 +520,9 @@ const auth = {
 
   setToken,
   getToken,
+  getCachedUser() {
+    return readCachedUser();
+  },
 
   logout() {
     clearToken();
