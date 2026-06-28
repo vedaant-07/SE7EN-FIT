@@ -4,6 +4,7 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit.onrender.com/api'
 ).replace(/\/+$/, '');
 
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 15000);
 const TOKEN_KEY = `${STORAGE_PREFIX}auth_token`;
 const USER_KEY = `${STORAGE_PREFIX}user`;
 const LEGACY_AUTH_KEY = `${STORAGE_PREFIX}auth`;
@@ -83,12 +84,20 @@ const makeQueryString = (params = {}) => {
   return query ? `?${query}` : '';
 };
 
+function makeTimeoutError() {
+  const error = new Error('Server is taking too long to respond. Please try again in a few seconds.');
+  error.isTimeout = true;
+  error.isNetworkError = true;
+  return error;
+}
+
 async function apiRequest(path, options = {}) {
   const {
     method = 'GET',
     body,
     auth = true,
     headers: extraHeaders = {},
+    timeoutMs = REQUEST_TIMEOUT_MS,
   } = options;
 
   const headers = {
@@ -101,17 +110,26 @@ async function apiRequest(path, options = {}) {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller && timeoutMs > 0
+    ? window.setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+
   let response;
   try {
     response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller?.signal,
     });
-  } catch {
-    const error = new Error('Network error. Backend is not reachable.');
-    error.isNetworkError = true;
-    throw error;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw makeTimeoutError();
+    const networkError = new Error('Network error. Backend is not reachable.');
+    networkError.isNetworkError = true;
+    throw networkError;
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
   }
 
   const isJson = response.headers.get('content-type')?.includes('application/json');
