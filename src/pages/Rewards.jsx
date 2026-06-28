@@ -30,7 +30,7 @@ const REWARDS_STORE = [
   { id: 'r1', label: 'Gym Discount Coupon', cost: 500, type: 'coupon', emoji: '🎫', available: true },
   { id: 'r2', label: 'Premium Extension (7 days)', cost: 1000, type: 'premium', emoji: '👑', available: true },
   { id: 'r3', label: 'Trainer Consultation', cost: 800, type: 'consultation', emoji: '🎯', available: false },
-  { id: 'r4', label: 'SE7ENFIT Merchandise', cost: 2000, type: 'merch', emoji: '👕', available: false },
+  { id: 'r4', label: 'SE7EN FIT Merchandise', cost: 2000, type: 'merch', emoji: '👕', available: false },
   { id: 'r5', label: 'Partner Gym Pass', cost: 1500, type: 'gym', emoji: '🏋️', available: false },
 ];
 
@@ -74,7 +74,7 @@ export default function Rewards() {
               <span className="text-3xl">🪙</span>
             </div>
             <div>
-              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">SE7ENFIT Coins</p>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">SE7EN FIT Coins</p>
               <p className="font-heading font-black text-4xl text-yellow-400">{wallet?.coins_balance || 0}</p>
               <p className="text-xs text-muted-foreground">Total earned: {wallet?.total_earned || 0} coins</p>
             </div>
@@ -91,7 +91,7 @@ export default function Rewards() {
         <div className="flex gap-2">
           {['wallet', 'earn', 'badges', 'store'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 h-9 rounded-xl text-[11px] font-semibold capitalize transition-all ${activeTab === tab ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+              className={`flex-1 h-9 rounded-xl text-[11px] font-semibold capitalize transition-all ${activeTab === tab ? 'bg-white text-black hover:bg-white/90' : 'bg-muted text-muted-foreground'}`}>
               {tab}
             </button>
           ))}
