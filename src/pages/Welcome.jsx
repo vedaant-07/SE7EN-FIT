@@ -66,7 +66,7 @@ export default function Welcome() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span></div>
+          <div className="font-display font-bold text-2xl mb-4">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
           <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto" />
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function Welcome() {
             <Zap size={36} className="text-accent" />
           </div>
           <h1 className="font-display font-black text-4xl tracking-tight">
-            SE<span className="text-accent">7</span>EN<span className="text-accent">FIT</span>
+            SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-2 font-medium">India's #1 AI Fitness App</p>
         </div>
