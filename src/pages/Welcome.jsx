@@ -4,6 +4,8 @@ import { Capacitor } from '@capacitor/core';
 import { base44 } from '@/api/base44Client';
 import { Dumbbell, Building2, Zap, ChevronRight, Loader2 } from 'lucide-react';
 
+const ACTIVE_ROLE_KEY = 'se7enfit_active_role';
+
 const isCapacitorNativeShell = () => {
   if (Capacitor.isNativePlatform()) return true;
   if (import.meta.env.MODE === 'capacitor') return true;
@@ -11,8 +13,13 @@ const isCapacitorNativeShell = () => {
   return window.location.hostname === 'localhost' && !window.location.port;
 };
 
+const selectedRole = () => String(localStorage.getItem(ACTIVE_ROLE_KEY) || '').trim();
+const chooseRole = (role) => localStorage.setItem(ACTIVE_ROLE_KEY, role);
+
 const routeForRole = async (user) => {
-  if (['gym_owner', 'super_admin'].includes(user?.role)) {
+  const activeRole = selectedRole() || user?.active_role || user?.role;
+
+  if (activeRole === 'gym_owner') {
     try {
       const owner = await base44.gymOwner.getMine();
       return owner?.onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding';
@@ -21,7 +28,7 @@ const routeForRole = async (user) => {
     }
   }
 
-  if (user?.role === 'nagarsevak') return '/admin';
+  if (activeRole === 'super_admin' || activeRole === 'nagarsevak') return '/admin';
 
   return '/user-dashboard';
 };
@@ -100,7 +107,7 @@ export default function Welcome() {
 
         <div className="space-y-4 mb-6">
           <button
-            onClick={() => navigate('/login/user')}
+            onClick={() => { chooseRole('user'); navigate('/login/user'); }}
             className="w-full h-16 bg-white text-black rounded-2xl font-heading font-bold text-lg flex items-center px-5 gap-4 shadow-lg shadow-white/10 active:scale-[0.98] transition-all hover:bg-white/90"
           >
             <div className="w-10 h-10 rounded-xl bg-black/5 flex items-center justify-center flex-shrink-0">
@@ -114,7 +121,7 @@ export default function Welcome() {
           </button>
 
           <button
-            onClick={() => navigate('/login/gym-owner')}
+            onClick={() => { chooseRole('gym_owner'); navigate('/login/gym-owner'); }}
             className="w-full min-h-[64px] bg-card border-2 border-accent/40 rounded-2xl font-heading font-bold flex items-center px-5 gap-4 active:scale-[0.98] transition-all hover:border-accent hover:bg-accent/5"
           >
             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
