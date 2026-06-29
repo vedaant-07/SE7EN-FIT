@@ -92,37 +92,54 @@ async function requireAdmin(req) {
   req.userProfile = profile.data;
 }
 
+async function listGymOwners() {
+  const [profiles, owners, gyms] = await Promise.all([
+    db.from('profiles').select('*').eq('role', 'gym_owner').order('created_at', { ascending: false }),
+    db.from('gym_owners').select('*'),
+    db.from('gyms').select('*'),
+  ]);
+  if (profiles.error) throw fail(profiles.error.message, 500);
+  const ownerMap = new Map((owners.data || []).map((row) => [row.user_id, row]));
+  const gymMap = new Map((gyms.data || []).map((row) => [row.gym_id, row]));
+  return (profiles.data || []).map((profile) => {
+    const owner = ownerMap.get(profile.user_id) || null;
+    const gym = owner?.gym_id ? gymMap.get(owner.gym_id) || null : (gyms.data || []).find((g) => g.owner_user_id === profile.user_id) || null;
+    return { ...profile, account_status: normalizeStatus(profile.status, profile.role), owner, gym };
+  });
+}
+
+async function updateGymOwnerStatus(req, res, userId) {
+  const status = normalizeStatus(req.body?.status, 'gym_owner');
+  const profileUpdate = await db.from('profiles').update({ status, updated_at: new Date().toISOString() }).eq('user_id', userId).select('*').maybeSingle();
+  if (profileUpdate.error) throw fail(profileUpdate.error.message, 500);
+  await db.from('gyms').update({ status: status === 'active' ? 'active' : status }).eq('owner_user_id', userId).catch(() => null);
+  await db.from('gym_owners').update({ status }).eq('user_id', userId).catch(() => null);
+  await db.from('admin_logs').insert({ actor_id: req.user.id, action: `gym_owner.${status}`, entity: 'profiles', entity_id: userId, details: { status } }).catch(() => null);
+  res.json({ item: profileUpdate.data, success: true });
+}
+
 function registerAdminRoutes(app) {
   if (app.__se7enfitRoleApprovalRoutes) return;
   app.__se7enfitRoleApprovalRoutes = true;
 
   app.get('/api/admin/gym-owners', wrap(async (req, res) => {
     await requireAdmin(req);
-    const [profiles, owners, gyms] = await Promise.all([
-      db.from('profiles').select('*').eq('role', 'gym_owner').order('created_at', { ascending: false }),
-      db.from('gym_owners').select('*'),
-      db.from('gyms').select('*'),
-    ]);
-    if (profiles.error) throw fail(profiles.error.message, 500);
-    const ownerMap = new Map((owners.data || []).map((row) => [row.user_id, row]));
-    const gymMap = new Map((gyms.data || []).map((row) => [row.gym_id, row]));
-    const items = (profiles.data || []).map((profile) => {
-      const owner = ownerMap.get(profile.user_id) || null;
-      const gym = owner?.gym_id ? gymMap.get(owner.gym_id) || null : (gyms.data || []).find((g) => g.owner_user_id === profile.user_id) || null;
-      return { ...profile, account_status: normalizeStatus(profile.status, profile.role), owner, gym };
-    });
-    res.json({ items });
+    res.json({ items: await listGymOwners() });
+  }));
+
+  app.get('/api/admin/gyms', wrap(async (req, res) => {
+    await requireAdmin(req);
+    res.json({ items: await listGymOwners() });
   }));
 
   app.patch('/api/admin/gym-owners/:userId/status', wrap(async (req, res) => {
     await requireAdmin(req);
-    const status = normalizeStatus(req.body?.status, 'gym_owner');
-    const userId = req.params.userId;
-    const profileUpdate = await db.from('profiles').update({ status, updated_at: new Date().toISOString() }).eq('user_id', userId).select('*').maybeSingle();
-    if (profileUpdate.error) throw fail(profileUpdate.error.message, 500);
-    await db.from('gyms').update({ status: status === 'active' ? 'active' : status }).eq('owner_user_id', userId).catch(() => null);
-    await db.from('admin_logs').insert({ actor_id: req.user.id, action: `gym_owner.${status}`, entity: 'profiles', entity_id: userId, details: { status } }).catch(() => null);
-    res.json({ item: profileUpdate.data, success: true });
+    await updateGymOwnerStatus(req, res, req.params.userId);
+  }));
+
+  app.patch('/api/admin/gyms/:userId/status', wrap(async (req, res) => {
+    await requireAdmin(req);
+    await updateGymOwnerStatus(req, res, req.params.userId);
   }));
 }
 
