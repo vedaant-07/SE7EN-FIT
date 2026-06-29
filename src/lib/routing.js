@@ -36,8 +36,7 @@ export function getPostAuthRoute(user = {}) {
   const status = normalizeRouteStatus(user);
   if (role === 'admin') return '/admin';
   if (role === 'gym_owner') {
-    if (status === 'blocked' || status === 'deactivated') return '/account-deactivated';
-    if (status === 'pending') return '/gym-owner/pending-approval';
+    if (status === 'blocked' || status === 'deactivated') return '/gym-owner/dashboard';
     return '/gym-owner/dashboard';
   }
   return '/user-dashboard';
