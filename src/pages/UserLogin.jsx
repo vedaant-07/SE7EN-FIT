@@ -9,6 +9,27 @@ import { Dumbbell, Mail, Lock, Loader2, ChevronLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 
+const ACTIVE_ROLE_KEY = 'se7enfit_active_role';
+const USER_KEY = 'se7enfit_user';
+
+function setRoleContext(role) {
+  localStorage.setItem(ACTIVE_ROLE_KEY, role);
+  try {
+    const cached = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+    if (cached?.email || cached?.id || cached?.user_id) {
+      localStorage.setItem(USER_KEY, JSON.stringify({ ...cached, dbRole: cached.dbRole || cached.role, active_role: role, role }));
+    }
+  } catch {}
+}
+
+function forceUserRole(user) {
+  setRoleContext('user');
+  if (!user) return user;
+  const normalized = { ...user, dbRole: user.dbRole || user.role, active_role: 'user', role: 'user' };
+  localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
 function getErrorMessage(error, fallback = 'Something went wrong') {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
   const bodyError = typeof error?.body?.error === 'string' ? error.body.error.trim() : '';
@@ -33,13 +54,19 @@ export default function UserLogin() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
+    setRoleContext('user');
+  }, []);
+
+  useEffect(() => {
     if (!showOtp || resendCooldown <= 0) return undefined;
     const timer = window.setInterval(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [showOtp, resendCooldown]);
 
   const goToDashboard = useCallback(async () => {
+    forceUserRole(base44.auth.getCachedUser?.());
     await checkUserAuth().catch(() => null);
+    forceUserRole(base44.auth.getCachedUser?.());
     navigate('/user-dashboard', { replace: true });
   }, [checkUserAuth, navigate]);
 
@@ -48,7 +75,7 @@ export default function UserLogin() {
     setSuccess('');
     setLoading(true);
     try {
-      if (user?.role !== 'user') throw new Error('This Google account is not registered as a user');
+      forceUserRole(user);
       await goToDashboard();
     } catch (err) {
       setError(getErrorMessage(err, 'Google login failed'));
@@ -63,14 +90,16 @@ export default function UserLogin() {
     setSuccess('');
     setLoading(true);
     try {
+      setRoleContext('user');
       const result = await base44.auth.loginViaEmailPassword(email, password, 'user');
       if (result?.requires_otp) {
+        setRoleContext('user');
         setShowOtp(true);
         setResendCooldown(60);
         setSuccess(result.message || 'Login verification code sent to your email.');
         return;
       }
-      if (result.role !== 'user') throw new Error('This account is not registered as a user');
+      forceUserRole(result);
       await goToDashboard();
     } catch (err) {
       setError(getErrorMessage(err, 'Invalid email or password'));
@@ -84,8 +113,9 @@ export default function UserLogin() {
     setSuccess('');
     setLoading(true);
     try {
+      setRoleContext('user');
       const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result.user?.role !== 'user') throw new Error('This account is not registered as a user');
+      forceUserRole(result.user || result);
       await goToDashboard();
     } catch (err) {
       setError(getErrorMessage(err, 'Invalid verification code'));
@@ -100,6 +130,7 @@ export default function UserLogin() {
     setSuccess('');
     setLoading(true);
     try {
+      setRoleContext('user');
       await base44.auth.resendOtp(email);
       setResendCooldown(60);
       setSuccess('New verification code sent.');
