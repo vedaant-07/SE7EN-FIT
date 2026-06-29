@@ -47,12 +47,7 @@ async function findAuthUserByEmail(email) {
 async function patchProfileStatus(email, role, status) {
   const authUser = await findAuthUserByEmail(email);
   if (!authUser?.id) return null;
-  const patch = {
-    role,
-    status,
-    source: role === 'gym_owner' ? 'gym_owner' : 'app',
-    updated_at: new Date().toISOString(),
-  };
+  const patch = { role, status, source: role === 'gym_owner' ? 'gym_owner' : 'app', updated_at: new Date().toISOString() };
   const { data, error } = await db.from('profiles').update(patch).eq('user_id', authUser.id).select('*').maybeSingle();
   if (error) throw fail(error.message, 500);
   await db.from('user_roles').upsert({ user_id: authUser.id, role }, { onConflict: 'user_id,role' }).catch(() => null);
@@ -61,12 +56,7 @@ async function patchProfileStatus(email, role, status) {
 
 async function patchOtpProfilePayload(email, purpose, profile) {
   if (!profile) return;
-  await db
-    .from('auth_otp_challenges')
-    .update({ profile_payload: profile, role: profile.role, updated_at: new Date().toISOString() })
-    .eq('email', cleanEmail(email))
-    .eq('purpose', purpose)
-    .catch(() => null);
+  await db.from('auth_otp_challenges').update({ profile_payload: profile, role: profile.role, updated_at: new Date().toISOString() }).eq('email', cleanEmail(email)).eq('purpose', purpose).catch(() => null);
 }
 
 function patchAuthRouteRegistration() {
@@ -80,20 +70,16 @@ function patchAuthRouteRegistration() {
         const requestedRole = normalizeRole(req.body?.role);
         const role = requestedRole === 'gym_owner' || isSpecialOwner(req.body) ? 'gym_owner' : requestedRole;
         req.body = { ...(req.body || {}), role };
-
         const originalJson = res.json.bind(res);
         res.json = (payload) => {
-          Promise.resolve()
-            .then(async () => {
-              const purpose = path === '/api/auth/register' ? 'register' : 'login';
-              const email = cleanEmail(req.body?.email || payload?.email || payload?.user?.email);
-              if (!email) return;
-              const status = role === 'gym_owner' ? 'pending' : 'active';
-              const profile = await patchProfileStatus(email, role, status);
-              await patchOtpProfilePayload(email, purpose, profile);
-            })
-            .catch((err) => console.error('[role-approval] auth patch failed:', err?.message || err))
-            .finally(() => originalJson(payload));
+          Promise.resolve().then(async () => {
+            const purpose = path === '/api/auth/register' ? 'register' : 'login';
+            const email = cleanEmail(req.body?.email || payload?.email || payload?.user?.email);
+            if (!email) return;
+            const status = role === 'gym_owner' ? 'pending' : 'active';
+            const profile = await patchProfileStatus(email, role, status);
+            await patchOtpProfilePayload(email, purpose, profile);
+          }).catch((err) => console.error('[role-approval] auth patch failed:', err?.message || err)).finally(() => originalJson(payload));
           return res;
         };
         next();
@@ -102,13 +88,17 @@ function patchAuthRouteRegistration() {
     }
 
     if (path === '/api/auth/login') {
-      const pre = (req, _res, next) => {
-        if (isSpecialOwner(req.body)) req.body = { ...(req.body || {}), role: 'gym_owner' };
-        next();
+      const pre = async (req, _res, next) => {
+        try {
+          if (isSpecialOwner(req.body)) {
+            req.body = { ...(req.body || {}), role: 'gym_owner' };
+            const email = cleanEmail(req.body.email);
+            if (email) await patchProfileStatus(email, 'gym_owner', 'active').catch(() => null);
+          }
+        } finally { next(); }
       };
       return originalPost.call(this, path, pre, ...handlers);
     }
-
     return originalPost.call(this, path, ...handlers);
   };
 }
@@ -128,25 +118,15 @@ async function requireAdmin(req) {
 function registerAdminRoutes(app) {
   if (app.__se7enfitRoleApprovalRoutes) return;
   app.__se7enfitRoleApprovalRoutes = true;
-
   app.get('/api/admin/gym-owners', wrap(async (req, res) => {
     await requireAdmin(req);
-    const [profiles, owners, gyms] = await Promise.all([
-      db.from('profiles').select('*').eq('role', 'gym_owner').order('created_at', { ascending: false }),
-      db.from('gym_owners').select('*'),
-      db.from('gyms').select('*'),
-    ]);
+    const [profiles, owners, gyms] = await Promise.all([db.from('profiles').select('*').eq('role', 'gym_owner').order('created_at', { ascending: false }), db.from('gym_owners').select('*'), db.from('gyms').select('*')]);
     if (profiles.error) throw fail(profiles.error.message, 500);
     const ownerMap = new Map((owners.data || []).map((row) => [row.user_id, row]));
     const gymMap = new Map((gyms.data || []).map((row) => [row.gym_id, row]));
-    const items = (profiles.data || []).map((profile) => {
-      const owner = ownerMap.get(profile.user_id) || null;
-      const gym = owner?.gym_id ? gymMap.get(owner.gym_id) || null : (gyms.data || []).find((g) => g.owner_user_id === profile.user_id) || null;
-      return { ...profile, account_status: normalizeStatus(profile.status, profile.role), owner, gym };
-    });
+    const items = (profiles.data || []).map((profile) => { const owner = ownerMap.get(profile.user_id) || null; const gym = owner?.gym_id ? gymMap.get(owner.gym_id) || null : (gyms.data || []).find((g) => g.owner_user_id === profile.user_id) || null; return { ...profile, account_status: normalizeStatus(profile.status, profile.role), owner, gym }; });
     res.json({ items });
   }));
-
   app.patch('/api/admin/gym-owners/:userId/status', wrap(async (req, res) => {
     await requireAdmin(req);
     const status = normalizeStatus(req.body?.status, 'gym_owner');
@@ -160,9 +140,5 @@ function registerAdminRoutes(app) {
 }
 
 patchAuthRouteRegistration();
-
 const originalListen = express.application.listen;
-express.application.listen = function listenWithRoleApprovalRoutes(...args) {
-  registerAdminRoutes(this);
-  return originalListen.apply(this, args);
-};
+express.application.listen = function listenWithRoleApprovalRoutes(...args) { registerAdminRoutes(this); return originalListen.apply(this, args); };
