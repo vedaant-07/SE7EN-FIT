@@ -34,9 +34,7 @@ export default function UserLogin() {
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  useEffect(() => {
-    localStorage.setItem('se7enfit_active_role', 'user');
-  }, []);
+  useEffect(() => { localStorage.setItem('se7enfit_active_role', 'user'); }, []);
 
   useEffect(() => {
     if (!showOtp || resendCooldown <= 0) return undefined;
@@ -50,6 +48,12 @@ export default function UserLogin() {
     navigate(getPostAuthRoute(resolved), { replace: true });
   }, [checkUserAuth, navigate]);
 
+  const beginOtp = (result) => {
+    setShowOtp(true);
+    setResendCooldown(60);
+    setSuccess(result.message || 'Login verification code sent to your email.');
+  };
+
   const handleGoogleSuccess = useCallback(async (user) => {
     setError(''); setSuccess(''); setLoading(true);
     try { await routeByDatabaseRole(user); }
@@ -62,15 +66,22 @@ export default function UserLogin() {
     setError(''); setSuccess(''); setLoading(true);
     try {
       const result = await base44.auth.loginViaEmailPassword(email, password, 'user');
-      if (result?.requires_otp) {
-        setShowOtp(true);
-        setResendCooldown(60);
-        setSuccess(result.message || 'Login verification code sent to your email.');
-        return;
-      }
+      if (result?.requires_otp) { beginOtp(result); return; }
       await routeByDatabaseRole(result);
     } catch (err) {
-      setError(getErrorMessage(err, 'Invalid email or password'));
+      const message = getErrorMessage(err, 'Invalid email or password');
+      if (err?.status === 403 && /gym owner/i.test(message)) {
+        try {
+          const ownerResult = await base44.auth.loginViaEmailPassword(email, password, 'gym_owner');
+          if (ownerResult?.requires_otp) { beginOtp(ownerResult); return; }
+          await routeByDatabaseRole(ownerResult);
+          return;
+        } catch (ownerErr) {
+          setError(getErrorMessage(ownerErr, message));
+          return;
+        }
+      }
+      setError(message);
     } finally { setLoading(false); }
   };
 
@@ -79,19 +90,15 @@ export default function UserLogin() {
     try {
       const result = await verifyOtpWithPurpose({ email, otpCode, purpose: 'login' });
       await routeByDatabaseRole(result.user || result);
-    } catch (err) {
-      setError(getErrorMessage(err, 'Invalid verification code'));
-    } finally { setLoading(false); }
+    } catch (err) { setError(getErrorMessage(err, 'Invalid verification code')); }
+    finally { setLoading(false); }
   };
 
   const handleResend = async () => {
     if (resendCooldown > 0 || loading) return;
     setError(''); setSuccess(''); setLoading(true);
-    try {
-      await resendOtpWithPurpose(email, 'login');
-      setResendCooldown(60);
-      setSuccess('New verification code sent.');
-    } catch (err) { setError(getErrorMessage(err, 'Failed to resend code')); }
+    try { await resendOtpWithPurpose(email, 'login'); setResendCooldown(60); setSuccess('New verification code sent.'); }
+    catch (err) { setError(getErrorMessage(err, 'Failed to resend code')); }
     finally { setLoading(false); }
   };
 
