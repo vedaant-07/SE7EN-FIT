@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import './lib/renderCorsDefaults.js';
 import './lib/supabaseQueryCatchPatch.js';
+import './routes/roleApprovalPreload.js';
 import './routes/gymOwnerPreload.js';
 import './routes/gymOwnerEmailPreload.js';
 import './routes/healthEntityPreload.js';
