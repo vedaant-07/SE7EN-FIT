@@ -5,6 +5,7 @@ import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { getToday } from '@/lib/fitnessUtils';
 import { Footprints, Flame, Droplets, Moon, Scale, Ruler, Dumbbell, Heart, CheckSquare, Smile, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import LiveTrackingPanel from '@/components/se7enfit/tracking/LiveTrackingPanel';
 
 import StepsTab from '@/components/se7enfit/tracking/tabs/StepsTab';
 import CaloriesTab from '@/components/se7enfit/tracking/tabs/CaloriesTab';
@@ -142,6 +143,7 @@ export default function Tracking() {
       )}
 
       <div className="px-4 pt-3 pb-1">
+        <LiveTrackingPanel />
         <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2">
           <span className="text-[11px] text-muted-foreground font-medium">Today:</span>
           <div className="flex gap-1.5 flex-wrap">
@@ -149,9 +151,7 @@ export default function Tracking() {
             {todaySummary.water > 0 && <span className="text-[10px] bg-blue-400/15 text-blue-400 px-1.5 py-0.5 rounded-full">💧 {todaySummary.water}ml</span>}
             {todaySummary.sleep > 0 && <span className="text-[10px] bg-purple-500/15 text-purple-400 px-1.5 py-0.5 rounded-full">😴 {todaySummary.sleep}h</span>}
             {todaySummary.workout && <span className="text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">💪 Done</span>}
-            {!todaySummary.steps && !todaySummary.water && !todaySummary.sleep && !todaySummary.workout && (
-              <span className="text-[11px] text-muted-foreground">Start logging to see your stats →</span>
-            )}
+            {!todaySummary.steps && !todaySummary.water && !todaySummary.sleep && !todaySummary.workout && <span className="text-[11px] text-muted-foreground">Start logging to see your stats →</span>}
           </div>
         </div>
       </div>
