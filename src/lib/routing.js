@@ -1,20 +1,4 @@
-export function cleanEmail(value = '') {
-  return String(value || '').trim().toLowerCase();
-}
-
-export function cleanPhone(value = '') {
-  const digits = String(value || '').replace(/\D/g, '');
-  return digits.length > 10 ? digits.slice(-10) : digits;
-}
-
-export function isOwnerIdentifier(value = '', phone = '') {
-  const expectedEmail = cleanEmail(import.meta.env.VITE_SPECIAL_GYM_OWNER_EMAIL || '');
-  const expectedPhone = cleanPhone(import.meta.env.VITE_SPECIAL_GYM_OWNER_PHONE || '');
-  return Boolean((expectedEmail && cleanEmail(value) === expectedEmail) || (expectedPhone && cleanPhone(phone || value) === expectedPhone));
-}
-
 export function normalizeRouteRole(role, user = {}) {
-  if (isOwnerIdentifier(user.email, user.phone || user.mobile)) return 'gym_owner';
   const value = String(role || user.role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
   if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'admin';
@@ -33,19 +17,15 @@ export function normalizeRouteStatus(user = {}) {
 
 export function getPostAuthRoute(user = {}) {
   const role = normalizeRouteRole(user.role, user);
-  const status = normalizeRouteStatus(user);
   if (role === 'admin') return '/admin';
-  if (role === 'gym_owner') {
-    if (status === 'blocked' || status === 'deactivated') return '/gym-owner/dashboard';
-    return '/gym-owner/dashboard';
-  }
+  if (role === 'gym_owner') return '/gym-owner/dashboard';
   return '/user-dashboard';
 }
 
 export function cacheRouteUser(user = {}) {
   const role = normalizeRouteRole(user.role, user);
   const status = normalizeRouteStatus({ ...user, role });
-  const cached = { ...user, dbRole: user.dbRole || user.role || role, role, active_role: role, status, account_status: status };
+  const cached = { ...user, role, active_role: role, status, account_status: status };
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('se7enfit_active_role', role);
     if (cached.email || cached.id || cached.user_id) localStorage.setItem('se7enfit_user', JSON.stringify(cached));
