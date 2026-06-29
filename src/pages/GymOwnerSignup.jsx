@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, Mail, Lock, Loader2, ChevronLeft, User, Phone } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
 
 export default function GymOwnerSignup() {
   const navigate = useNavigate();
@@ -32,27 +33,19 @@ export default function GymOwnerSignup() {
         mobile: form.mobile,
         role: 'gym_owner',
       });
-
-      if (result?.requires_otp) {
-        setStep(2);
-        return;
-      }
-
-      navigate('/gym-owner/onboarding', { replace: true });
-    } catch (err) {
-      setError(err.message || 'Registration failed');
-    } finally { setLoading(false); }
+      if (result?.requires_otp) { setStep(2); return; }
+      navigate('/gym-owner/dashboard', { replace: true });
+    } catch (err) { setError(err.message || 'Registration failed'); }
+    finally { setLoading(false); }
   };
 
   const handleVerify = async () => {
-    setError('');
-    setLoading(true);
+    setError(''); setLoading(true);
     try {
-      await base44.auth.verifyOtp({ email: form.email, otpCode: otp });
-      navigate('/gym-owner/onboarding', { replace: true });
-    } catch (err) {
-      setError(err.message || 'Invalid code');
-    } finally { setLoading(false); }
+      await verifyOtpWithPurpose({ email: form.email, otpCode: otp, purpose: 'register' });
+      navigate('/gym-owner/dashboard', { replace: true });
+    } catch (err) { setError(err.message || 'Invalid code'); }
+    finally { setLoading(false); }
   };
 
   if (step === 2) {
@@ -77,10 +70,7 @@ export default function GymOwnerSignup() {
           <Button className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground" onClick={handleVerify} disabled={loading || otp.length < 6}>
             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Continue'}
           </Button>
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            Didn't get code?{' '}
-            <button onClick={() => base44.auth.resendOtp(form.email)} className="text-accent font-medium">Resend</button>
-          </p>
+          <p className="text-center text-sm text-muted-foreground mt-4">Didn't get code? <button onClick={() => resendOtpWithPurpose(form.email, 'register')} className="text-accent font-medium">Resend</button></p>
         </div>
       </div>
     );
@@ -101,49 +91,14 @@ export default function GymOwnerSignup() {
         </div>
         {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
         <form onSubmit={handleRegister} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Owner Name</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Your full name" value={form.ownerName} onChange={set('ownerName')} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Mobile Number</Label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="+91 9876543210" value={form.mobile} onChange={set('mobile')} className="pl-10 h-12 rounded-xl" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="email" placeholder="gym@example.com" value={form.email} onChange={set('email')} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="••••••••" value={form.password} onChange={set('password')} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Confirm Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="••••••••" value={form.confirm} onChange={set('confirm')} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : 'Create Gym Account'}
-          </Button>
+          <div className="space-y-2"><Label>Owner Name</Label><div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Your full name" value={form.ownerName} onChange={set('ownerName')} className="pl-10 h-12 rounded-xl" required /></div></div>
+          <div className="space-y-2"><Label>Mobile Number</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Mobile number" value={form.mobile} onChange={set('mobile')} className="pl-10 h-12 rounded-xl" /></div></div>
+          <div className="space-y-2"><Label>Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input type="email" placeholder="gym@example.com" value={form.email} onChange={set('email')} className="pl-10 h-12 rounded-xl" required /></div></div>
+          <div className="space-y-2"><Label>Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input type="password" placeholder="Password" value={form.password} onChange={set('password')} className="pl-10 h-12 rounded-xl" required /></div></div>
+          <div className="space-y-2"><Label>Confirm Password</Label><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input type="password" placeholder="Password" value={form.confirm} onChange={set('confirm')} className="pl-10 h-12 rounded-xl" required /></div></div>
+          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</> : 'Create Gym Account'}</Button>
         </form>
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          Already have an account?{' '}
-          <button onClick={() => navigate('/login/gym-owner')} className="text-accent font-medium hover:underline">Login</button>
-        </p>
+        <p className="text-center text-sm text-muted-foreground mt-6">Already have an account? <button onClick={() => navigate('/login/gym-owner')} className="text-accent font-medium hover:underline">Login</button></p>
       </div>
     </div>
   );

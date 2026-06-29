@@ -8,27 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Dumbbell, Mail, Lock, Loader2, ChevronLeft } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
-
-const ACTIVE_ROLE_KEY = 'se7enfit_active_role';
-const USER_KEY = 'se7enfit_user';
-
-function setRoleContext(role) {
-  localStorage.setItem(ACTIVE_ROLE_KEY, role);
-  try {
-    const cached = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
-    if (cached?.email || cached?.id || cached?.user_id) {
-      localStorage.setItem(USER_KEY, JSON.stringify({ ...cached, dbRole: cached.dbRole || cached.role, active_role: role, role }));
-    }
-  } catch {}
-}
-
-function forceUserRole(user) {
-  setRoleContext('user');
-  if (!user) return user;
-  const normalized = { ...user, dbRole: user.dbRole || user.role, active_role: 'user', role: 'user' };
-  localStorage.setItem(USER_KEY, JSON.stringify(normalized));
-  return normalized;
-}
+import { cacheRouteUser, getPostAuthRoute } from '@/lib/routing';
+import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
 
 function getErrorMessage(error, fallback = 'Something went wrong') {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
@@ -53,9 +34,7 @@ export default function UserLogin() {
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  useEffect(() => {
-    setRoleContext('user');
-  }, []);
+  useEffect(() => { localStorage.setItem('se7enfit_active_role', 'user'); }, []);
 
   useEffect(() => {
     if (!showOtp || resendCooldown <= 0) return undefined;
@@ -63,189 +42,96 @@ export default function UserLogin() {
     return () => window.clearInterval(timer);
   }, [showOtp, resendCooldown]);
 
-  const goToDashboard = useCallback(async () => {
-    forceUserRole(base44.auth.getCachedUser?.());
-    await checkUserAuth().catch(() => null);
-    forceUserRole(base44.auth.getCachedUser?.());
-    navigate('/user-dashboard', { replace: true });
+  const routeByDatabaseRole = useCallback(async (candidateUser) => {
+    const fresh = await checkUserAuth().catch(() => null);
+    const resolved = cacheRouteUser(fresh || candidateUser || base44.auth.getCachedUser?.() || {});
+    navigate(getPostAuthRoute(resolved), { replace: true });
   }, [checkUserAuth, navigate]);
 
+  const beginOtp = (result) => {
+    setShowOtp(true);
+    setResendCooldown(60);
+    setSuccess(result.message || 'Login verification code sent to your email.');
+  };
+
   const handleGoogleSuccess = useCallback(async (user) => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      forceUserRole(user);
-      await goToDashboard();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Google login failed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [goToDashboard]);
+    setError(''); setSuccess(''); setLoading(true);
+    try { await routeByDatabaseRole(user); }
+    catch (err) { setError(getErrorMessage(err, 'Google login failed')); }
+    finally { setLoading(false); }
+  }, [routeByDatabaseRole]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    setError(''); setSuccess(''); setLoading(true);
     try {
-      setRoleContext('user');
       const result = await base44.auth.loginViaEmailPassword(email, password, 'user');
-      if (result?.requires_otp) {
-        setRoleContext('user');
-        setShowOtp(true);
-        setResendCooldown(60);
-        setSuccess(result.message || 'Login verification code sent to your email.');
-        return;
-      }
-      forceUserRole(result);
-      await goToDashboard();
+      if (result?.requires_otp) { beginOtp(result); return; }
+      await routeByDatabaseRole(result);
     } catch (err) {
-      setError(getErrorMessage(err, 'Invalid email or password'));
-    } finally {
-      setLoading(false);
-    }
+      const message = getErrorMessage(err, 'Invalid email or password');
+      if (err?.status === 403 && /gym owner/i.test(message)) {
+        try {
+          const ownerResult = await base44.auth.loginViaEmailPassword(email, password, 'gym_owner');
+          if (ownerResult?.requires_otp) { beginOtp(ownerResult); return; }
+          await routeByDatabaseRole(ownerResult);
+          return;
+        } catch (ownerErr) {
+          setError(getErrorMessage(ownerErr, message));
+          return;
+        }
+      }
+      setError(message);
+    } finally { setLoading(false); }
   };
 
   const handleVerify = async () => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    setError(''); setSuccess(''); setLoading(true);
     try {
-      setRoleContext('user');
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      forceUserRole(result.user || result);
-      await goToDashboard();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Invalid verification code'));
-    } finally {
-      setLoading(false);
-    }
+      const result = await verifyOtpWithPurpose({ email, otpCode, purpose: 'login' });
+      await routeByDatabaseRole(result.user || result);
+    } catch (err) { setError(getErrorMessage(err, 'Invalid verification code')); }
+    finally { setLoading(false); }
   };
 
   const handleResend = async () => {
     if (resendCooldown > 0 || loading) return;
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      setRoleContext('user');
-      await base44.auth.resendOtp(email);
-      setResendCooldown(60);
-      setSuccess('New verification code sent.');
-    } catch (err) {
-      setError(getErrorMessage(err, 'Failed to resend code'));
-    } finally {
-      setLoading(false);
-    }
+    setError(''); setSuccess(''); setLoading(true);
+    try { await resendOtpWithPurpose(email, 'login'); setResendCooldown(60); setSuccess('New verification code sent.'); }
+    catch (err) { setError(getErrorMessage(err, 'Failed to resend code')); }
+    finally { setLoading(false); }
   };
 
-  if (showOtp) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col px-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex items-center gap-3 pt-14 mb-8">
-          <button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
-            <ChevronLeft size={18} />
-          </button>
-          <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
-        </div>
-
-        <div className="flex-1 max-w-sm w-full mx-auto">
-          <div className="mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
-              <Mail size={26} className="text-accent" />
-            </div>
-            <h1 className="font-heading font-bold text-2xl">Verify Login</h1>
-            <p className="text-muted-foreground text-sm mt-1.5">Code sent to {email}</p>
-          </div>
-
-          {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
-          {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
-
-          <div className="flex justify-center mb-6">
-            <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
-              <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
-            </InputOTP>
-          </div>
-
-          <Button onClick={handleVerify} className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading || otpCode.length < 6}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Login'}
-          </Button>
-
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            Didn't get code?{' '}
-            <button onClick={handleResend} disabled={resendCooldown > 0 || loading} className="text-accent font-medium hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed disabled:no-underline">
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
-            </button>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const shell = (children) => (
     <div className="min-h-screen bg-background flex flex-col px-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="flex items-center gap-3 pt-14 mb-8">
-        <button onClick={() => navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all">
-          <ChevronLeft size={18} />
-        </button>
+        <button onClick={() => showOtp ? setShowOtp(false) : navigate('/welcome')} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center active:scale-95 transition-all"><ChevronLeft size={18} /></button>
         <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
       </div>
-
-      <div className="flex-1 max-w-sm w-full mx-auto">
-        <div className="mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
-            <Dumbbell size={26} className="text-accent" />
-          </div>
-          <h1 className="font-heading font-bold text-2xl">User Login</h1>
-          <p className="text-muted-foreground text-sm mt-1.5">Enter password, then verify email OTP</p>
-        </div>
-
-        {googleClientId && (
-          <>
-            <div className="mb-6">
-              <GoogleSignInButton role="user" disabled={loading} onSuccess={handleGoogleSuccess} onError={(err) => setError(getErrorMessage(err, 'Google login failed'))} />
-            </div>
-
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div>
-            </div>
-          </>
-        )}
-
-        {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
-        {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link to="/forgot-password" className="text-xs text-accent hover:underline">Forgot?</Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input id="password" type="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required />
-            </div>
-          </div>
-          <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending code...</> : 'Continue with Email OTP'}
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">Don't have an account? <Link to="/signup/user" className="text-accent font-medium hover:underline">Sign up</Link></p>
-      </div>
+      <div className="flex-1 max-w-sm w-full mx-auto">{children}</div>
     </div>
   );
+
+  if (showOtp) return shell(<>
+    <div className="mb-8"><div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4"><Mail size={26} className="text-accent" /></div><h1 className="font-heading font-bold text-2xl">Verify Login</h1><p className="text-muted-foreground text-sm mt-1.5">Code sent to {email}</p></div>
+    {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
+    {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
+    <div className="flex justify-center mb-6"><InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code"><InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup></InputOTP></div>
+    <Button onClick={handleVerify} className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading || otpCode.length < 6}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Login'}</Button>
+    <p className="text-center text-sm text-muted-foreground mt-4">Didn't get code? <button onClick={handleResend} disabled={resendCooldown > 0 || loading} className="text-accent font-medium hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed disabled:no-underline">{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}</button></p>
+  </>);
+
+  return shell(<>
+    <div className="mb-8"><div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4"><Dumbbell size={26} className="text-accent" /></div><h1 className="font-heading font-bold text-2xl">User Login</h1><p className="text-muted-foreground text-sm mt-1.5">Enter password, then verify email OTP</p></div>
+    {googleClientId && <><div className="mb-6"><GoogleSignInButton role="user" disabled={loading} onSuccess={handleGoogleSuccess} onError={(err) => setError(getErrorMessage(err, 'Google login failed'))} /></div><div className="relative mb-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-3 text-muted-foreground">or</span></div></div></>}
+    {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
+    {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2"><Label htmlFor="email">Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input id="email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl" required /></div></div>
+      <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="password">Password</Label><Link to="/forgot-password" className="text-xs text-accent hover:underline">Forgot?</Link></div><div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input id="password" type="password" autoComplete="current-password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12 rounded-xl" required /></div></div>
+      <Button type="submit" className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" disabled={loading}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending code...</> : 'Continue with Email OTP'}</Button>
+    </form>
+    <p className="text-center text-sm text-muted-foreground mt-6">Don't have an account? <Link to="/signup/user" className="text-accent font-medium hover:underline">Sign up</Link></p>
+  </>);
 }
