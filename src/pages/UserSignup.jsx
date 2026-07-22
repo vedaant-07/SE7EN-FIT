@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dumbbell, Mail, Lock, Loader2, ChevronLeft, Hash, Building2 } from 'lucide-react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import AnimatedOtpVerification from '@/components/auth/AnimatedOtpVerification';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { cacheRouteUser, getPostAuthRoute } from '@/lib/routing';
 import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
@@ -90,14 +90,14 @@ export default function UserSignup() {
     }
   };
 
-  const handleVerify = async () => {
-    setError(''); setSuccess(''); setLoading(true);
-    try {
-      const result = await verifyOtpWithPurpose({ email, otpCode: otp, purpose: 'register' });
-      if (gymCode.trim()) localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
-      await routeByDatabaseRole(result.user || result);
-    } catch (err) { setError(getErrorMessage(err, 'Invalid verification code')); }
-    finally { setLoading(false); }
+  const verifySignupCode = async (code) => {
+    setError(''); setSuccess('');
+    return verifyOtpWithPurpose({ email, otpCode: code, purpose: 'register' });
+  };
+
+  const finishVerifiedSignup = async (result) => {
+    if (gymCode.trim()) localStorage.setItem('pending_gym_code', gymCode.trim().toUpperCase());
+    await routeByDatabaseRole(result.user || result);
   };
 
   const handleResend = async () => {
@@ -112,12 +112,20 @@ export default function UserSignup() {
     <div className="min-h-screen bg-background flex flex-col px-6">
       <div className="flex items-center gap-3 pt-14 mb-8"><button onClick={() => setShowOtp(false)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center"><ChevronLeft size={18} /></button><div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div></div>
       <div className="max-w-sm w-full mx-auto">
-        <div className="mb-8"><div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4"><Mail size={26} className="text-accent" /></div><h1 className="font-heading font-bold text-2xl">Verify Email</h1><p className="text-muted-foreground text-sm mt-1">Code sent to {email}</p></div>
-        {success && <div className="mb-4 p-3 rounded-xl bg-accent/10 border border-accent/20 text-accent text-sm">{success}</div>}
         {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
-        <div className="flex justify-center mb-6"><InputOTP maxLength={6} value={otp} onChange={setOtp} autoFocus autoComplete="one-time-code"><InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup></InputOTP></div>
-        <Button className="w-full h-12 rounded-xl font-semibold bg-white text-black hover:bg-white/90" onClick={handleVerify} disabled={loading || otp.length < 6}>{loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Continue'}</Button>
-        <p className="text-center text-sm text-muted-foreground mt-4">Didn't get code? <button onClick={handleResend} disabled={resendCooldown > 0 || loading} className="text-accent font-medium disabled:text-muted-foreground disabled:cursor-not-allowed">{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}</button></p>
+        <AnimatedOtpVerification
+          value={otp}
+          onChange={setOtp}
+          onVerify={verifySignupCode}
+          onVerified={finishVerifiedSignup}
+          onError={(err) => setError(getErrorMessage(err, 'Invalid verification code'))}
+          onResend={handleResend}
+          resendDisabled={resendCooldown > 0 || loading}
+          resendLabel={resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
+          destination={email}
+          notice={success}
+          successDescription="Your SE7EN FIT account is ready."
+        />
       </div>
     </div>
   );
