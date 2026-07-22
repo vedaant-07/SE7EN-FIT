@@ -1,0 +1,48 @@
+name: Engagement Quality Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/engagement-quality.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Check backend syntax
+        run: |
+          node --check server/start.js
+          node --check server/routes/engagementPreload.js
+          node --check server/routes/entityCompatPreload.js
+
+      - name: Lint changed engagement files
+        run: >-
+          npx eslint
+          src/api/engagementClient.js
+          src/pages/Challenges.jsx
+          src/pages/Leaderboard.jsx
+          src/pages/Rewards.jsx
+          src/pages/admin/AdminLeaderboardPrizes.jsx
+          src/pages/GymOwnerDashboardProduction.jsx
+
+      - name: Build production web app
+        run: npm run build
