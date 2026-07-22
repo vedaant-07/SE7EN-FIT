@@ -53,12 +53,26 @@ function normalizeOwner(raw = {}, user = {}) {
   });
 }
 
+function normalizeChallenge(row = {}) {
+  const rules = row.rules && typeof row.rules === 'object' ? row.rules : {};
+  return {
+    ...row,
+    id: row.id || row.challenge_id,
+    title: row.title || row.name || 'Gym Challenge',
+    target: row.target || rules.target_label || `${rules.target_days || row.duration_days || 7} verified days`,
+    reward: row.reward || rules.reward_text || `${row.reward_coins || 0} coins`,
+    duration_days: Number(row.duration_days || rules.target_days || 7),
+    status: row.status || 'active',
+  };
+}
+
 function patchGymOwnerDashboardDataBridge() {
   if (base44.__se7enfitExistingGymOwnerDashboardBridge) return;
   base44.__se7enfitExistingGymOwnerDashboardBridge = true;
 
   const originalGetMine = base44.gymOwner.getMine.bind(base44.gymOwner);
   const originalUpsert = base44.gymOwner.upsert?.bind(base44.gymOwner);
+  const challengeEntity = base44.entities.Challenge;
 
   base44.gymOwner.getMine = async () => {
     const cachedUser = base44.auth.getCachedUser?.() || {};
@@ -101,6 +115,51 @@ function patchGymOwnerDashboardDataBridge() {
     },
     async update(_id, data = {}) {
       return normalizeOwner(data, base44.auth.getCachedUser?.() || {});
+    },
+  };
+
+  // The legacy dashboard calls GymChallenge, while production stores these
+  // records in the shared Challenge entity. This bridge keeps the UI working
+  // without creating a second challenge system.
+  base44.entities.GymChallenge = {
+    async filter(query = {}) {
+      const rows = await challengeEntity.filter({ gym_id: query.gym_id }, '-created_date', 100);
+      return rows.map(normalizeChallenge);
+    },
+    async create(data = {}) {
+      const duration = Math.max(1, Number(data.duration_days || 7));
+      const rewardCoins = Math.max(0, Number(data.reward_coins || 0));
+      const created = await challengeEntity.create({
+        gym_id: data.gym_id,
+        title: data.title || data.name || 'Gym Challenge',
+        description: data.description || `Complete ${data.target || duration} with your gym community.`,
+        difficulty: data.difficulty || 'Medium',
+        duration_days: duration,
+        reward_coins: rewardCoins,
+        target_scope: 'gym',
+        premium_required: Boolean(data.premium_required),
+        status: data.status || 'active',
+        rules: {
+          metric: data.metric || 'gym_visit',
+          threshold: Math.max(1, Number(data.threshold || 1)),
+          target_days: duration,
+          target_label: data.target || `${duration} verified gym days`,
+          reward_text: data.reward || `${rewardCoins} coins`,
+          unit: data.unit || 'visit',
+          emoji: data.emoji || '🏋️',
+          action_path: '/my-gym',
+        },
+      });
+      return normalizeChallenge(created);
+    },
+    async update(id, data = {}) {
+      const patch = { ...data };
+      if (patch.is_active !== undefined && patch.status === undefined) patch.status = patch.is_active ? 'active' : 'inactive';
+      const updated = await challengeEntity.update(id, patch);
+      return normalizeChallenge(updated);
+    },
+    async delete(id) {
+      return challengeEntity.delete(id);
     },
   };
 }
