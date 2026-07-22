@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, Mail, Lock, Loader2, ChevronLeft, User, Phone } from 'lucide-react';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import AnimatedOtpVerification from '@/components/auth/AnimatedOtpVerification';
 import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
 
 export default function GymOwnerSignup() {
@@ -39,13 +39,9 @@ export default function GymOwnerSignup() {
     finally { setLoading(false); }
   };
 
-  const handleVerify = async () => {
-    setError(''); setLoading(true);
-    try {
-      await verifyOtpWithPurpose({ email: form.email, otpCode: otp, purpose: 'register' });
-      navigate('/gym-owner/dashboard', { replace: true });
-    } catch (err) { setError(err.message || 'Invalid code'); }
-    finally { setLoading(false); }
+  const verifySignupCode = async (code) => {
+    setError('');
+    return verifyOtpWithPurpose({ email: form.email, otpCode: code, purpose: 'register' });
   };
 
   if (step === 2) {
@@ -56,21 +52,18 @@ export default function GymOwnerSignup() {
           <div className="font-display font-bold text-xl">SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span></div>
         </div>
         <div className="max-w-sm w-full mx-auto">
-          <div className="mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4"><Mail size={26} className="text-accent" /></div>
-            <h1 className="font-heading font-bold text-2xl">Verify Email</h1>
-            <p className="text-muted-foreground text-sm mt-1">Code sent to {form.email}</p>
-          </div>
           {error && <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>}
-          <div className="flex justify-center mb-6">
-            <InputOTP maxLength={6} value={otp} onChange={setOtp} autoFocus autoComplete="one-time-code">
-              <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
-            </InputOTP>
-          </div>
-          <Button className="w-full h-12 rounded-xl font-semibold bg-accent text-accent-foreground" onClick={handleVerify} disabled={loading || otp.length < 6}>
-            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : 'Verify & Continue'}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground mt-4">Didn't get code? <button onClick={() => resendOtpWithPurpose(form.email, 'register')} className="text-accent font-medium">Resend</button></p>
+          <AnimatedOtpVerification
+            value={otp}
+            onChange={setOtp}
+            onVerify={verifySignupCode}
+            onVerified={() => navigate('/gym-owner/dashboard', { replace: true })}
+            onError={(err) => setError(err?.message || 'Invalid verification code')}
+            onResend={() => resendOtpWithPurpose(form.email, 'register')}
+            resendDisabled={loading}
+            destination={form.email}
+            successDescription="Your gym owner account is verified."
+          />
         </div>
       </div>
     );
