@@ -151,6 +151,7 @@ export default function Tracking() {
 
   const activeDefinition = TABS.find((tab) => tab.key === activeTab) || TABS[0];
   const ActiveComponent = activeDefinition.component;
+  const ActiveIcon = activeDefinition.icon;
   const stepGoal = Number(profile?.daily_step_goal || 8000);
   const primaryTabs = PRIMARY_KEYS.map((key) => TABS.find((tab) => tab.key === key)).filter(Boolean);
   const secondaryTabs = SECONDARY_KEYS.map((key) => TABS.find((tab) => tab.key === key)).filter(Boolean);
@@ -264,7 +265,7 @@ export default function Tracking() {
           <div className="mb-3 flex items-center justify-between gap-3 px-1">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${activeDefinition.color}18`, color: activeDefinition.color }}>
-                <activeDefinition.icon size={17} />
+                <ActiveIcon size={17} />
               </span>
               <div className="min-w-0">
                 <h2 className="font-heading text-base font-black text-foreground">{activeDefinition.label}</h2>
