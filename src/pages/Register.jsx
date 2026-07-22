@@ -73,7 +73,7 @@ export default function Register() {
     setLoading(true);
     try {
       await base44.auth.loginWithProvider("google", "user");
-      navigate('/user-dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || "Google login failed");
     } finally {

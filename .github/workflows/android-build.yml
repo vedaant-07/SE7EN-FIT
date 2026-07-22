@@ -10,6 +10,8 @@ on:
       - 'src/**'
       - 'public/**'
       - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
       - 'capacitor.config.ts'
       - 'vite.config.js'
       - '.github/workflows/android-build.yml'
@@ -35,7 +37,7 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build web app
         run: npm run build:capacitor
@@ -46,6 +48,7 @@ jobs:
             npx cap add android
           fi
           npx cap sync android
+          npm run prepare:android
 
       - name: Build debug APK
         run: |

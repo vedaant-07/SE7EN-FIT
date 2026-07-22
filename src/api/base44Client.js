@@ -11,6 +11,13 @@ const LEGACY_AUTH_KEY = `${STORAGE_PREFIX}auth`;
 
 const nowIso = () => new Date().toISOString();
 const wait = (value) => Promise.resolve(value);
+const clientDateKey = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
 
@@ -102,6 +109,8 @@ async function apiRequest(path, options = {}) {
 
   const headers = {
     'Content-Type': 'application/json',
+    'X-Client-Date': clientDateKey(),
+    'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     ...extraHeaders,
   };
 
@@ -554,9 +563,36 @@ const gymOwner = {
   }
 };
 
+const dashboard = {
+  async getPerformance(date) {
+    const query = makeQueryString({ date });
+    const response = await apiRequest(`/users/me/performance${query}`);
+    return response.item || response;
+  },
+};
+
+const tracking = {
+  async getToday(date) {
+    const query = makeQueryString({ date });
+    const response = await apiRequest(`/tracking/today${query}`);
+    return response.item || response;
+  },
+
+  async saveLiveSession(session = {}) {
+    const response = await apiRequest('/tracking/live-session', {
+      method: 'POST',
+      body: session,
+      timeoutMs: 30000,
+    });
+    return response.item || response;
+  },
+};
+
 export const base44 = {
   auth,
   gymOwner,
+  dashboard,
+  tracking,
   entities: entityProxy,
   integrations,
   functions: new Proxy({}, {

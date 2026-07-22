@@ -61,10 +61,15 @@ export async function syncNativeHealthDay(base44, profile, date = getToday()) {
   const health = await readNativeHealthDay(date);
   if (!health.available) return { synced: false, reason: 'native_health_not_available' };
   const user = await base44.auth.me();
-  const existingSteps = await base44.entities.StepLog.filter({ user_id: user.id, date }, '-date', 1);
+  // Health Connect/HealthKit reports a daily aggregate. Keep that aggregate in
+  // its own provider row so a sync never overwrites manual or live-tracker data.
+  const existingSteps = await base44.entities.StepLog.filter({ user_id: user.id, date }, '-date', 100);
+  const providerStepLog = existingSteps.find((row) =>
+    row.health_provider === health.provider || row.source === health.provider
+  );
   const stepPayload = { user_id: user.id, date, steps: health.steps, distance_km: health.distanceKm, calories_burned: health.calories, source: health.provider, health_provider: health.provider, synced_at: new Date().toISOString() };
   if (health.steps > 0 || health.distanceKm > 0 || health.calories > 0) {
-    if (existingSteps?.[0]?.id) await base44.entities.StepLog.update(existingSteps[0].id, stepPayload);
+    if (providerStepLog?.id) await base44.entities.StepLog.update(providerStepLog.id, stepPayload);
     else await base44.entities.StepLog.create(stepPayload);
   }
   const existingCardio = await base44.entities.CardioLog.filter({ user_id: user.id, date }, '-date', 60);

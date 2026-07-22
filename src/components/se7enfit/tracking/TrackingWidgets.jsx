@@ -1,7 +1,6 @@
 import React from 'react';
 import ProgressRing from '@/components/se7enfit/ProgressRing';
-import { Trophy, Flame, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Trophy, Flame, Medal, Pencil, Target, Trash2 } from 'lucide-react';
 
 export function TodayProgressCard({ icon, label, value, unit, goalValue, goalUnit, percent, color, children }) {
   return (
@@ -25,7 +24,7 @@ export function AIInsightCard() {
   return null;
 }
 
-export function StreakCard({ streak, label, emoji }) {
+export function StreakCard({ streak, label }) {
   const milestones = [3, 7, 14, 30, 60, 90];
   const next = milestones.find(m => m > streak) || 100;
   const percent = (streak / next) * 100;
@@ -36,7 +35,7 @@ export function StreakCard({ streak, label, emoji }) {
         <p className="text-lg font-bold font-heading text-orange-400 leading-none">{streak}</p>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-heading font-semibold text-sm">{streak}-Day Streak {emoji}</p>
+        <p className="font-heading font-semibold text-sm">{streak}-day {String(label || 'activity').toLowerCase()} streak</p>
         <p className="text-[11px] text-muted-foreground mt-0.5">Next milestone: {next} days</p>
         <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
           <div className="h-full bg-orange-400 rounded-full transition-all duration-700" style={{ width: `${percent}%` }} />
@@ -48,21 +47,22 @@ export function StreakCard({ streak, label, emoji }) {
 
 export function AchievementBadge({ streak, count }) {
   const getBadge = () => {
-    if (streak >= 30 || count >= 50) return { label: '🏆 Legend', desc: '30-day streak or 50 logs', unlocked: true };
-    if (streak >= 14 || count >= 20) return { label: '🥇 Champion', desc: '14-day streak or 20 logs', unlocked: true };
-    if (streak >= 7 || count >= 10) return { label: '🥈 Dedicated', desc: '7-day streak or 10 logs', unlocked: true };
-    if (streak >= 3 || count >= 5) return { label: '🥉 Starter', desc: '3-day streak or 5 logs', unlocked: true };
-    return { label: '🎯 Beginner', desc: 'Start logging to earn badges', unlocked: false };
+    if (streak >= 30 || count >= 50) return { label: 'Legend', desc: '30-day streak or 50 logs', unlocked: true, icon: Trophy };
+    if (streak >= 14 || count >= 20) return { label: 'Champion', desc: '14-day streak or 20 logs', unlocked: true, icon: Medal };
+    if (streak >= 7 || count >= 10) return { label: 'Dedicated', desc: '7-day streak or 10 logs', unlocked: true, icon: Medal };
+    if (streak >= 3 || count >= 5) return { label: 'Starter', desc: '3-day streak or 5 logs', unlocked: true, icon: Medal };
+    return { label: 'Beginner', desc: 'Start logging to earn badges', unlocked: false, icon: Target };
   };
   const badge = getBadge();
+  const BadgeIcon = badge.icon;
   return (
     <div className={`border rounded-2xl p-4 flex items-center gap-3 ${badge.unlocked ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-card border-border'}`}>
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 ${badge.unlocked ? 'bg-yellow-500/15' : 'bg-muted'}`}>
-        {badge.label.split(' ')[0]}
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${badge.unlocked ? 'bg-yellow-500/15 text-yellow-400' : 'bg-muted text-muted-foreground'}`}>
+        <BadgeIcon size={20} />
       </div>
       <div>
         <p className={`font-heading font-semibold text-sm ${badge.unlocked ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-          {badge.label.split(' ').slice(1).join(' ')}
+          {badge.label}
         </p>
         <p className="text-[11px] text-muted-foreground">{badge.desc}</p>
       </div>

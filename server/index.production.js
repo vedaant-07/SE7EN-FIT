@@ -48,6 +48,21 @@ function cleanEmail(email) { return String(email || '').trim().toLowerCase(); }
 function cleanText(value) { return String(value || '').trim(); }
 function nowIso() { return new Date().toISOString(); }
 function todayIso() { return new Date().toISOString().slice(0, 10); }
+function isDateKey(value) {
+  const candidate = String(value || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) return false;
+  const date = new Date(`${candidate}T12:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === candidate;
+}
+function requestDate(req) {
+  const candidate = req.body?.date || req.query?.date || req.headers['x-client-date'];
+  return isDateKey(candidate) ? String(candidate) : todayIso();
+}
+function shiftDateKey(dateKey, days) {
+  const date = new Date(`${dateKey}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 function cleanMessage(value, fallback = 'Request failed') {
   const message = String(value || '').trim();
   if (!message || message === '{}' || message === '[object Object]') return fallback;
@@ -361,7 +376,7 @@ app.put('/api/profiles/me', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 app.get('/api/users/me/dashboard', requireAuth, asyncHandler(async (req, res) => {
-  const date = req.query.date || todayIso();
+  const date = requestDate(req);
   const [water, steps, nutrition, workouts, sleep, membership] = await Promise.all([
     selectByUserDate('water_logs', req.user.id, date), selectByUserDate('step_logs', req.user.id, date), selectByUserDate('nutrition_logs', req.user.id, date), selectByUserDate('workout_logs', req.user.id, date), selectByUserDate('sleep_logs', req.user.id, date), getUserActiveMembership(req.user.id),
   ]);
@@ -377,6 +392,100 @@ app.get('/api/users/me/dashboard', requireAuth, asyncHandler(async (req, res) =>
       sleep_hours: Number(sleep[0]?.hours || 0),
     },
     membership,
+  });
+}));
+
+app.get('/api/users/me/performance', requireAuth, asyncHandler(async (req, res) => {
+  const date = requestDate(req);
+  const rangeStart = shiftDateKey(date, -13);
+
+  const selectRange = async (table) => {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select('*')
+      .eq('user_id', req.user.id)
+      .gte('date', rangeStart)
+      .lte('date', date)
+      .order('date', { ascending: true });
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    return data || [];
+  };
+
+  const selectActiveSubscription = async () => {
+    const { data, error } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw Object.assign(new Error(error.message), { status: 500 });
+    const row = data?.[0] || null;
+    return row ? { ...row, plan: row.plan || row.plan_code || 'free' } : null;
+  };
+
+  const [steps, water, sleep, workouts, cardio, nutrition, weights, subscription, membership, attendance] = await Promise.all([
+    selectRange('step_logs'),
+    selectRange('water_logs'),
+    selectRange('sleep_logs'),
+    selectRange('workout_logs'),
+    selectRange('cardio_logs'),
+    selectRange('nutrition_logs'),
+    selectRange('weight_logs'),
+    selectActiveSubscription(),
+    getUserActiveMembership(req.user.id),
+    selectByUserDate('gym_attendance_logs', req.user.id, date),
+  ]);
+
+  const days = Array.from({ length: 14 }, (_, index) => shiftDateKey(rangeStart, index));
+  const daily = days.map((day) => {
+    const daySteps = steps.filter((row) => row.date === day);
+    const dayWater = water.filter((row) => row.date === day);
+    const daySleep = sleep.filter((row) => row.date === day);
+    const dayWorkouts = workouts.filter((row) => row.date === day && row.completed !== false);
+    const dayCardio = cardio.filter((row) => row.date === day);
+    const dayNutrition = nutrition.filter((row) => row.date === day);
+    return {
+      date: day,
+      steps: daySteps.reduce((sum, row) => sum + Number(row.steps || 0), 0),
+      water_ml: dayWater.reduce((sum, row) => sum + Number(row.amount_ml || 0), 0),
+      sleep_hours: daySleep.reduce((max, row) => Math.max(max, Number(row.hours || 0)), 0),
+      workout_count: dayWorkouts.length,
+      cardio_minutes: dayCardio.reduce((sum, row) => sum + Number(row.duration_minutes || 0), 0),
+      active_calories: [...dayWorkouts, ...dayCardio].reduce((sum, row) => sum + Number(row.calories_burned || 0), 0),
+      nutrition_calories: dayNutrition.reduce((sum, row) => sum + Number(row.calories || 0), 0),
+      protein_g: dayNutrition.reduce((sum, row) => sum + Number(row.protein_g || 0), 0),
+    };
+  });
+
+  const currentWeek = daily.slice(-7);
+  const previousWeek = daily.slice(0, 7);
+  const average = (rows, key) => rows.length ? Math.round(rows.reduce((sum, row) => sum + Number(row[key] || 0), 0) / rows.length) : 0;
+  const currentAverageSteps = average(currentWeek, 'steps');
+  const previousAverageSteps = average(previousWeek, 'steps');
+  const latestWeight = [...weights].sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
+  const sleepDays = currentWeek.filter((row) => row.sleep_hours > 0);
+
+  singleItem(res, {
+    date,
+    profile: req.userProfile,
+    subscription,
+    membership,
+    attendance: attendance?.[0] || null,
+    today: currentWeek[currentWeek.length - 1],
+    week: currentWeek,
+    previous_week: previousWeek,
+    performance: {
+      average_steps: currentAverageSteps,
+      step_change_percent: previousAverageSteps > 0 ? Math.round(((currentAverageSteps - previousAverageSteps) / previousAverageSteps) * 100) : null,
+      workouts: currentWeek.reduce((sum, row) => sum + row.workout_count, 0),
+      cardio_minutes: currentWeek.reduce((sum, row) => sum + row.cardio_minutes, 0),
+      active_days: currentWeek.filter((row) => row.steps > 0 || row.workout_count > 0 || row.cardio_minutes > 0).length,
+      average_sleep_hours: sleepDays.length
+        ? Number((sleepDays.reduce((sum, row) => sum + row.sleep_hours, 0) / sleepDays.length).toFixed(1))
+        : 0,
+    },
+    weight: latestWeight,
   });
 }));
 
@@ -477,14 +586,14 @@ app.patch('/api/gym-owner/leads/:leadId', requireAuth, asyncHandler(async (req, 
 app.post('/api/gym-attendance/check-in', requireAuth, asyncHandler(async (req, res) => {
   const membership = await getUserActiveMembership(req.user.id);
   if (!membership?.gym_id || membership.status !== 'active') throw Object.assign(new Error('Active gym membership required'), { status: 403 });
-  const { data, error } = await supabaseAdmin.from('gym_attendance_logs').insert({ gym_id: membership.gym_id, user_id: req.user.id, membership_id: membership.membership_id, date: todayIso(), check_in_at: nowIso(), status: 'checked_in' }).select('*').single();
+  const { data, error } = await supabaseAdmin.from('gym_attendance_logs').insert({ gym_id: membership.gym_id, user_id: req.user.id, membership_id: membership.membership_id, date: requestDate(req), check_in_at: nowIso(), status: 'checked_in' }).select('*').single();
   if (error) throw Object.assign(new Error(error.message), { status: 500 });
   singleItem(res, data);
 }));
 app.post('/api/gym-attendance/check-out', requireAuth, asyncHandler(async (req, res) => {
   const membership = await getUserActiveMembership(req.user.id);
   if (!membership?.gym_id) throw Object.assign(new Error('Gym membership required'), { status: 403 });
-  const log = await dbSelectSingle('gym_attendance_logs', (q) => q.eq('user_id', req.user.id).eq('gym_id', membership.gym_id).eq('date', todayIso()).eq('status', 'checked_in').order('created_at', { ascending: false }).limit(1));
+  const log = await dbSelectSingle('gym_attendance_logs', (q) => q.eq('user_id', req.user.id).eq('gym_id', membership.gym_id).eq('date', requestDate(req)).eq('status', 'checked_in').order('created_at', { ascending: false }).limit(1));
   if (!log) throw Object.assign(new Error('No active check-in found'), { status: 404 });
   const duration = Math.max(1, Math.round((Date.now() - new Date(log.check_in_at || log.created_at).getTime()) / 60000));
   const { data, error } = await supabaseAdmin.from('gym_attendance_logs').update({ check_out_at: nowIso(), duration_minutes: duration, status: 'checked_out' }).eq('log_id', log.log_id).select('*').single();
@@ -504,13 +613,13 @@ app.get('/api/gym-owner/attendance', requireAuth, asyncHandler(async (req, res) 
 }));
 
 app.get('/api/tracking/today', requireAuth, asyncHandler(async (req, res) => {
-  const date = req.query.date || todayIso();
-  const [water, steps, sleep, weight, body, cardio] = await Promise.all(['water_logs', 'step_logs', 'sleep_logs', 'weight_logs', 'body_measurements', 'cardio_logs'].map((table) => selectByUserDate(table, req.user.id, date)));
-  singleItem(res, { date, water, steps, sleep, weight, body_measurements: body, cardio });
+  const date = requestDate(req);
+  const [water, steps, sleep, weight, body, cardio, workout] = await Promise.all(['water_logs', 'step_logs', 'sleep_logs', 'weight_logs', 'body_measurements', 'cardio_logs', 'workout_logs'].map((table) => selectByUserDate(table, req.user.id, date)));
+  singleItem(res, { date, water, steps, sleep, weight, body_measurements: body, cardio, workout });
 }));
 function createLogRoute(path, table, mapBody) {
   app.post(path, requireAuth, asyncHandler(async (req, res) => {
-    const row = { user_id: req.user.id, date: req.body?.date || todayIso(), ...mapBody(req.body || {}) };
+    const row = { user_id: req.user.id, date: requestDate(req), ...mapBody(req.body || {}) };
     const { data, error } = await supabaseAdmin.from(table).insert(row).select('*').single();
     if (error) throw Object.assign(new Error(error.message), { status: 500 });
     singleItem(res, data);
@@ -522,6 +631,91 @@ createLogRoute('/api/tracking/sleep', 'sleep_logs', (b) => ({ hours: Number(b.ho
 createLogRoute('/api/tracking/weight', 'weight_logs', (b) => ({ weight_kg: Number(b.weight_kg || b.weight || 0), source: 'app' }));
 createLogRoute('/api/tracking/body-measurement', 'body_measurements', (b) => ({ chest_cm: b.chest_cm, waist_cm: b.waist_cm, hip_cm: b.hip_cm, biceps_cm: b.biceps_cm, thighs_cm: b.thighs_cm, notes: b.notes, source: 'app' }));
 createLogRoute('/api/tracking/cardio', 'cardio_logs', (b) => ({ activity: b.activity, duration_minutes: b.duration_minutes, distance_km: b.distance_km, calories_burned: b.calories_burned, source: 'app' }));
+app.post('/api/tracking/live-session', requireAuth, asyncHandler(async (req, res) => {
+  const allowedActivities = new Set(['walking', 'running', 'cycling', 'treadmill', 'elliptical', 'skipping']);
+  const activity = cleanText(req.body?.activity).toLowerCase();
+  if (!allowedActivities.has(activity)) throw Object.assign(new Error('Choose a supported activity before starting.'), { status: 400 });
+
+  const sessionId = cleanText(req.body?.session_id || req.body?.sessionId).slice(0, 120) || crypto.randomUUID();
+  const durationSeconds = Math.round(Number(req.body?.duration_seconds || req.body?.durationSeconds || 0));
+  const steps = Math.max(0, Math.min(200000, Math.round(Number(req.body?.steps || 0))));
+  const distance = Math.max(0, Math.min(500, Number(req.body?.distance_km || req.body?.distanceKm || 0)));
+  const calories = Math.max(0, Math.min(20000, Math.round(Number(req.body?.calories_burned || req.body?.calories || 0))));
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 5 || durationSeconds > 43200) {
+    throw Object.assign(new Error('The activity must run for at least 5 seconds and no longer than 12 hours.'), { status: 400 });
+  }
+
+  const existing = await dbSelectSingle('cardio_logs', (q) => q.eq('user_id', req.user.id).eq('external_id', sessionId));
+  if (existing) return singleItem(res, { duplicate: true, cardio: existing, steps: null });
+
+  const rawPoints = Array.isArray(req.body?.route_points) ? req.body.route_points : [];
+  const routePoints = rawPoints.slice(0, 800).map((point) => ({
+    latitude: Number(point.latitude),
+    longitude: Number(point.longitude),
+    accuracy: Math.max(0, Math.round(Number(point.accuracy || 0))),
+    captured_at: point.captured_at || point.capturedAt || null,
+  })).filter((point) => Number.isFinite(point.latitude) && point.latitude >= -90 && point.latitude <= 90 && Number.isFinite(point.longitude) && point.longitude >= -180 && point.longitude <= 180);
+
+  const latitudes = routePoints.map((point) => point.latitude);
+  const longitudes = routePoints.map((point) => point.longitude);
+  const routeSummary = routePoints.length ? {
+    point_count: routePoints.length,
+    points: routePoints,
+    start: routePoints[0],
+    end: routePoints[routePoints.length - 1],
+    bounds: { north: Math.max(...latitudes), south: Math.min(...latitudes), east: Math.max(...longitudes), west: Math.min(...longitudes) },
+  } : {};
+
+  const endedAt = new Date(req.body?.ended_at || req.body?.endedAt || Date.now());
+  const safeEndedAt = Number.isNaN(endedAt.getTime()) ? new Date() : endedAt;
+  const startedAt = new Date(req.body?.started_at || req.body?.startedAt || (safeEndedAt.getTime() - durationSeconds * 1000));
+  const safeStartedAt = Number.isNaN(startedAt.getTime()) ? new Date(safeEndedAt.getTime() - durationSeconds * 1000) : startedAt;
+  const cardioPayload = {
+    user_id: req.user.id,
+    date: requestDate(req),
+    activity,
+    duration_minutes: Math.max(1, Math.round(durationSeconds / 60)),
+    distance_km: Number(distance.toFixed(2)),
+    calories_burned: calories,
+    external_id: sessionId,
+    start_at: safeStartedAt.toISOString(),
+    end_at: safeEndedAt.toISOString(),
+    route_summary: routeSummary,
+    metadata: {
+      sensor: cleanText(req.body?.sensor).slice(0, 80) || 'device',
+      gps_points_received: rawPoints.length,
+      gps_points_accepted: routePoints.length,
+      client_timezone: cleanText(req.headers['x-client-timezone']).slice(0, 80) || null,
+    },
+    source: 'live_session',
+  };
+
+  const { data: cardioRow, error: cardioError } = await supabaseAdmin.from('cardio_logs').insert(cardioPayload).select('*').single();
+  if (cardioError) throw Object.assign(new Error(cardioError.message), { status: 500 });
+
+  let stepRow = null;
+  if (steps > 0) {
+    const stepPayload = {
+      user_id: req.user.id,
+      date: requestDate(req),
+      steps,
+      distance_km: Number(distance.toFixed(2)),
+      calories: calories,
+      calories_burned: calories,
+      source: 'live_session',
+      external_id: sessionId,
+      metadata: { activity, duration_seconds: durationSeconds },
+    };
+    const { data, error } = await supabaseAdmin.from('step_logs').insert(stepPayload).select('*').single();
+    if (error) {
+      await supabaseAdmin.from('cardio_logs').delete().eq('log_id', cardioRow.log_id).eq('user_id', req.user.id);
+      throw Object.assign(new Error(error.message), { status: 500 });
+    }
+    stepRow = data;
+  }
+
+  singleItem(res, { cardio: cardioRow, steps: stepRow });
+}));
 app.get('/api/tracking/history', requireAuth, asyncHandler(async (req, res) => {
   const table = req.query.type || 'weight_logs';
   const allowed = new Set(['workout_logs', 'nutrition_logs', 'water_logs', 'step_logs', 'sleep_logs', 'weight_logs', 'body_measurements', 'cardio_logs']);

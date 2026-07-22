@@ -1,6 +1,7 @@
 // Tracking utilities — chart data builders, streak calculators, AI insight generators
 
 import { base44 } from '@/api/base44Client';
+import { getLocalDateKey } from '@/lib/fitnessUtils';
 
 /** Build last-7-days chart data from a logs array */
 export function buildWeekData(logs, dateKey = 'date', valueKey, aggregator = 'sum') {
@@ -9,7 +10,7 @@ export function buildWeekData(logs, dateKey = 'date', valueKey, aggregator = 'su
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateKey(d);
     const dayLogs = logs.filter(l => l[dateKey] === dateStr);
     let val = 0;
     if (dayLogs.length) {
@@ -29,7 +30,7 @@ export function buildMonthData(logs, dateKey = 'date', valueKey, aggregator = 's
   for (let i = 29; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateKey(d);
     const dayLogs = logs.filter(l => l[dateKey] === dateStr);
     let val = 0;
     if (dayLogs.length) {
@@ -47,7 +48,7 @@ export function buildMonthData(logs, dateKey = 'date', valueKey, aggregator = 's
 /** Calculate streak from sorted logs array (expects {date:string} objects, newest first) */
 export function calcStreak(logs, dateKey = 'date') {
   if (!logs.length) return 0;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateKey();
   const dates = [...new Set(logs.map(l => l[dateKey]))].sort().reverse();
   let streak = 0;
   let check = today;
@@ -56,7 +57,7 @@ export function calcStreak(logs, dateKey = 'date') {
       streak++;
       const prev = new Date(check);
       prev.setDate(prev.getDate() - 1);
-      check = prev.toISOString().split('T')[0];
+      check = getLocalDateKey(prev);
     } else if (d < check) break;
   }
   return streak;

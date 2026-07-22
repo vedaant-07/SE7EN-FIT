@@ -19,7 +19,7 @@ export function getPostAuthRoute(user = {}) {
   const role = normalizeRouteRole(user.role, user);
   if (role === 'admin') return '/admin';
   if (role === 'gym_owner') return '/gym-owner/dashboard';
-  return '/user-dashboard';
+  return '/';
 }
 
 export function cacheRouteUser(user = {}) {

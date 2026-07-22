@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import EmptyState from '@/components/se7enfit/EmptyState';
-import ProgressRing from '@/components/se7enfit/ProgressRing';
 import { Button } from '@/components/ui/button';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Award, ChevronDown, Bot, RefreshCw, ChevronRight, BarChart2, Calendar, Dumbbell, Flame, Footprints, Moon, Droplets } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingDown, TrendingUp, Scale, Camera, Ruler, Plus, Target, Bot, RefreshCw, ChevronRight, BarChart2, Calendar, Dumbbell, Flame, Footprints, Moon, Droplets } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getToday, calculateBMI, getBMICategory } from '@/lib/fitnessUtils';
 
 const TABS = ['Weight', 'Body', 'Photos', 'Reports', 'AI Report'];
 
 export default function Progress() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [profile, setProfile] = useState(null);
   const [weightLogs, setWeightLogs] = useState([]);
@@ -254,10 +255,10 @@ export default function Progress() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-heading font-semibold text-sm">Body Measurements</h3>
-              <button onClick={() => window.location.href = '/tracking/measurements'} className="text-xs text-accent font-medium">+ Add</button>
+              <button onClick={() => navigate('/tracking?metric=measurements')} className="text-xs text-accent font-medium">+ Add</button>
             </div>
             {measurements.length === 0 ? (
-              <EmptyState icon={Ruler} title="No measurements yet" description="Track your body measurements to see how your physique is changing." actionLabel="Add Measurements" onAction={() => window.location.href = '/tracking/measurements'} compact />
+              <EmptyState icon={Ruler} title="No measurements yet" description="Track your body measurements to see how your physique is changing." actionLabel="Add Measurements" onAction={() => navigate('/tracking?metric=measurements')} compact />
             ) : (
               measurements.slice(0, 3).map(m => (
                 <div key={m.id} className="bg-card border border-border rounded-2xl p-4">
