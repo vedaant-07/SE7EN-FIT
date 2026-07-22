@@ -6,5 +6,6 @@ import './routes/gymOwnerPreload.js';
 import './routes/gymOwnerEmailPreload.js';
 import './routes/healthEntityPreload.js';
 import './routes/entityCompatPreload.js';
+import './routes/engagementPreload.js';
 import './routes/adminExtraPreload.js';
 import './index.production.js';
