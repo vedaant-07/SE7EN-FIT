@@ -1,3 +1,5 @@
+import { base44 } from '@/api/base44Client';
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
 ).replace(/\/+$/, '');
@@ -61,9 +63,28 @@ export const engagementClient = {
       body: { date },
     });
   },
-  getLeaderboard(scope = 'global') {
+  async getLeaderboard(scope = 'global') {
     const query = new URLSearchParams({ scope });
-    return request(`/engagement/leaderboard?${query.toString()}`);
+    const result = await request(`/engagement/leaderboard?${query.toString()}`);
+    if (scope !== 'global') return result;
+    try {
+      const prizes = await base44.entities.LeaderboardPrize.list('rank', 100);
+      return {
+        ...result,
+        prizes: prizes
+          .filter((prize) => !prize.gym_id && prize.active !== false && prize.status !== 'inactive')
+          .sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0))
+          .slice(0, 3)
+          .map((prize) => ({
+            rank: Number(prize.rank || 1),
+            title: prize.title,
+            reward: prize.description || prize.reward,
+            coins: Number(prize.coins || 0),
+          })),
+      };
+    } catch {
+      return result;
+    }
   },
   async getAdminGyms() {
     const response = await request('/admin/gyms');
