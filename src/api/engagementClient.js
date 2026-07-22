@@ -65,4 +65,8 @@ export const engagementClient = {
     const query = new URLSearchParams({ scope });
     return request(`/engagement/leaderboard?${query.toString()}`);
   },
+  async getAdminGyms() {
+    const response = await request('/admin/gyms');
+    return Array.isArray(response) ? response : (response?.items || []);
+  },
 };
