@@ -1,5 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import '@fontsource-variable/inter/wght.css'
+import '@fontsource-variable/space-grotesk/wght.css'
 import '@/index.css'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -7,7 +9,7 @@ const path = '';
 
 function renderFallback(message, actionPath = '/login/gym-owner', actionLabel = 'Login Again') {
   root.render(
-    <div style={{ minHeight: '100vh', background: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'Inter Variable, system-ui, sans-serif' }}>
       <div style={{ maxWidth: 380, textAlign: 'center' }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 10 }}>SE7EN FIT</h1>
         <p style={{ color: '#f87171', marginBottom: 16 }}>{message}</p>

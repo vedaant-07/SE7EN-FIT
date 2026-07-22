@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Activity, Plus, MapPin, Flame, Check, X } from 'lucide-react';
+import { Plus, MapPin, Flame, Check, X } from 'lucide-react';
 import { getToday } from '@/lib/fitnessUtils';
 import { buildWeekData, buildMonthData, calcStreak, getTrackingInsight } from '@/lib/trackingUtils';
 import { TodayProgressCard, AIInsightCard, StreakCard, AchievementBadge, HistoryItem, DeviceSyncBanner } from '../TrackingWidgets';
 import { WeekBarChart, MonthLineChart } from '../TrackingChart';
-import LiveTracker from '@/components/se7enfit/tracking/LiveTracker';
 import { useToast } from '@/components/ui/use-toast';
 import { syncNativeHealthDay } from '@/lib/healthSync';
 
-export default function StepsTab({ profile }) {
+export default function StepsTab({ profile, refreshToken = 0 }) {
   const { toast } = useToast();
   const [logs, setLogs] = useState([]);
   const [input, setInput] = useState('');
@@ -20,11 +19,10 @@ export default function StepsTab({ profile }) {
   const [insightLoading, setInsightLoading] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState('');
-  const [showLive, setShowLive] = useState(false);
   const today = getToday();
   const goal = profile?.daily_step_goal || 8000;
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [refreshToken]);
 
   const loadData = async () => {
     const user = await base44.auth.me();
@@ -37,9 +35,17 @@ export default function StepsTab({ profile }) {
 
   const fetchInsight = async (data) => {
     setInsightLoading(true);
-    const todayLog = data.find(l => l.date === today);
-    const todayVal = todayLog?.steps || 0;
-    const avg = data.length ? Math.round(data.slice(0, 7).reduce((s, l) => s + (l.steps || 0), 0) / Math.min(data.length, 7)) : 0;
+    const dailyTotals = data.reduce((totals, log) => {
+      totals[log.date] = (totals[log.date] || 0) + Number(log.steps || 0);
+      return totals;
+    }, {});
+    const todayVal = dailyTotals[today] || 0;
+    const recentDays = Object.entries(dailyTotals)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, 7);
+    const avg = recentDays.length
+      ? Math.round(recentDays.reduce((sum, [, steps]) => sum + steps, 0) / recentDays.length)
+      : 0;
     const text = await getTrackingInsight('Steps', todayVal, goal, 'steps', avg, profile?.goal);
     setInsight(text);
     setInsightLoading(false);
@@ -48,10 +54,10 @@ export default function StepsTab({ profile }) {
   const addSteps = async () => {
     if (!input) return;
     const user = await base44.auth.me();
-    const existing = logs.find(l => l.date === today);
+    const existing = logs.find(l => l.date === today && l.source === 'manual');
     const steps = Number(input);
     if (existing) {
-      await base44.entities.StepLog.update(existing.id, { steps: existing.steps + steps, distance_km: (existing.distance_km || 0) + Math.round(steps * 0.0008 * 100) / 100, calories_burned: (existing.calories_burned || 0) + Math.round(steps * 0.04) });
+      await base44.entities.StepLog.update(existing.id, { steps: Number(existing.steps || 0) + steps, distance_km: Number(existing.distance_km || 0) + Math.round(steps * 0.0008 * 100) / 100, calories_burned: Number(existing.calories_burned || 0) + Math.round(steps * 0.04) });
     } else {
       await base44.entities.StepLog.create({ user_id: user.id, date: today, steps, distance_km: Math.round(steps * 0.0008 * 100) / 100, calories_burned: Math.round(steps * 0.04), source: 'manual' });
     }
@@ -64,34 +70,18 @@ export default function StepsTab({ profile }) {
   const saveEdit = async () => { if (!editVal) return; await base44.entities.StepLog.update(editId, { steps: Number(editVal) }); setEditId(null); setEditVal(''); loadData(); };
   if (loading) return <div className="flex justify-center py-16"><div className="w-8 h-8 border-4 border-muted border-t-accent rounded-full animate-spin" /></div>;
 
-  const todayLog = logs.find(l => l.date === today);
-  const todaySteps = todayLog?.steps || 0;
+  const todayLogs = logs.filter(l => l.date === today);
+  const todaySteps = todayLogs.reduce((sum, log) => sum + Number(log.steps || 0), 0);
+  const todayDistance = todayLogs.reduce((sum, log) => sum + Number(log.distance_km || 0), 0);
+  const todayCalories = todayLogs.reduce((sum, log) => sum + Number(log.calories_burned ?? log.calories ?? 0), 0);
   const percent = Math.min((todaySteps / goal) * 100, 100);
-  const weekData = buildWeekData(logs, 'date', 'steps', 'first');
-  const monthData = buildMonthData(logs, 'date', 'steps', 'first');
+  const weekData = buildWeekData(logs, 'date', 'steps', 'sum');
+  const monthData = buildMonthData(logs, 'date', 'steps', 'sum');
   const streak = calcStreak(logs);
-
-  const handleLiveSession = async (session) => {
-    const user = await base44.auth.me();
-    const existing = logs.find(l => l.date === today);
-    if (existing) {
-      await base44.entities.StepLog.update(existing.id, { steps: (existing.steps || 0) + session.steps, distance_km: Math.round(((existing.distance_km || 0) + session.distanceKm) * 100) / 100, calories_burned: (existing.calories_burned || 0) + session.calories });
-    } else {
-      await base44.entities.StepLog.create({ user_id: user.id, date: today, steps: session.steps, distance_km: Math.round(session.distanceKm * 100) / 100, calories_burned: session.calories, source: 'live_tracker' });
-    }
-    toast({ title: `Live session saved — ${session.steps.toLocaleString()} steps` });
-    setShowLive(false);
-    loadData();
-  };
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-start justify-between gap-4"><div className="min-w-0"><div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent"><Activity size={16} /></div><div><p className="font-heading text-sm font-bold text-foreground">Live Walk Session</p><p className="text-xs text-muted-foreground">Track a focused walking session with a clean timer.</p></div></div></div><button onClick={() => setShowLive(p => !p)} className={`h-9 shrink-0 rounded-xl border px-4 text-xs font-bold transition-all active:scale-95 ${showLive ? 'border-white/20 bg-white/10 text-white hover:bg-white/15' : 'border-white/20 bg-white text-black shadow-[0_0_18px_rgba(255,255,255,0.12)] hover:bg-white/90'}`}>{showLive ? 'Hide' : 'Track'}</button></div>
-        {!showLive && <div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-background/70 px-2 py-3"><p className="text-[10px] text-muted-foreground">Focus</p><p className="mt-0.5 text-xs font-bold text-foreground">Walking</p></div><div className="rounded-xl bg-background/70 px-2 py-3"><p className="text-[10px] text-muted-foreground">Goal</p><p className="mt-0.5 text-xs font-bold text-foreground">Steps</p></div><div className="rounded-xl bg-background/70 px-2 py-3"><p className="text-[10px] text-muted-foreground">Save</p><p className="mt-0.5 text-xs font-bold text-foreground">Auto</p></div></div>}
-        {showLive && <div className="mt-4"><LiveTracker activity="walking" weightKg={profile?.weight_kg || 70} onSessionEnd={handleLiveSession} /></div>}
-      </div>
-      <TodayProgressCard label="Steps Today" value={todaySteps.toLocaleString()} unit="steps" goalValue={goal.toLocaleString()} goalUnit="steps" percent={percent} color="#a855f7"><div className="flex gap-3 mt-1.5"><span className="text-[11px] text-muted-foreground"><MapPin size={10} className="inline mr-0.5" />{(todayLog?.distance_km || 0).toFixed(2)} km</span><span className="text-[11px] text-muted-foreground"><Flame size={10} className="inline mr-0.5" />{todayLog?.calories_burned || 0} kcal</span></div></TodayProgressCard>
+      <TodayProgressCard label="Steps Today" value={todaySteps.toLocaleString()} unit="steps" goalValue={goal.toLocaleString()} goalUnit="steps" percent={percent} color="#a855f7"><div className="flex gap-3 mt-1.5"><span className="text-[11px] text-muted-foreground"><MapPin size={10} className="inline mr-0.5" />{todayDistance.toFixed(2)} km</span><span className="text-[11px] text-muted-foreground"><Flame size={10} className="inline mr-0.5" />{todayCalories} kcal</span></div></TodayProgressCard>
       <div className="grid grid-cols-4 gap-2">{[1000, 2000, 5000, 10000].map(s => <button key={s} onClick={() => { setInput(String(s)); }} className="bg-card border border-border rounded-xl py-2 text-center text-xs font-medium hover:border-accent/50 active:scale-95 transition-all">{s.toLocaleString()}</button>)}</div>
       <div className="flex gap-2"><Input type="number" placeholder="Enter steps" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSteps()} className="h-11 rounded-xl bg-card border-border flex-1" /><Button onClick={addSteps} className="h-11 rounded-xl border border-white/20 bg-white text-black hover:bg-white/90 px-4"><Plus size={15} /> Add</Button></div>
       <AIInsightCard insight={insight} loading={insightLoading} />

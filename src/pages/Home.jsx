@@ -1,48 +1,122 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { base44, normalizeRole } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import { getToday, calculateBMR, calculateTDEE, calculateCalorieTarget, calculateProteinTarget, getActivityLevel, calculateFitnessScore } from '@/lib/fitnessUtils';
-import { Flame, Droplets, Dumbbell, Camera, Scale, Utensils, Trophy, TrendingUp, ChevronRight, Crown, Building2, LogIn, LogOut, Users, Megaphone } from 'lucide-react';
+import ProgressRing from '@/components/se7enfit/ProgressRing';
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  Building2,
+  Camera,
+  ChevronRight,
+  Crown,
+  Dumbbell,
+  Footprints,
+  HeartPulse,
+  LogIn,
+  LogOut,
+  Moon,
+  RefreshCw,
+  Scale,
+  Sparkles,
+  Target,
+  Trophy,
+  Utensils,
+  Users,
+  Zap,
+} from 'lucide-react';
+import {
+  calculateBMR,
+  calculateCalorieTarget,
+  calculateFitnessScore,
+  calculateProteinTarget,
+  calculateTDEE,
+  getActivityLevel,
+  getGreeting,
+  getLocalDateKey,
+  getToday,
+} from '@/lib/fitnessUtils';
 
-const emptyToday = { calories: 0, protein: 0, water: 0, steps: 0, sleep: 0, workoutDone: false };
 const safeArray = (value) => Array.isArray(value) ? value : [];
-const iconTileClass = 'bg-[#77AC6F]/10 border border-[#77AC6F]/20 text-white';
-const fourPerViewStyle = { flex: '0 0 calc((100% - 18px) / 4)' };
+const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
-const defaultAds = [
-  {
-    id: 'admin-default-offer',
-    source_type: 'admin',
-    source_name: 'SE7EN FIT',
-    title: 'Premium fitness offers',
-    description: 'Admin offers, app promotions, and featured partner deals will appear here.',
-    offer_text: 'Featured Offer',
-    media_type: 'image',
-    media_url: '/fitness-ad.svg',
-    media_width: 1920,
-    media_height: 1080,
-    media_crop: 'center center',
-    media_quality: '1080p+',
-    cta_label: 'Explore',
-  },
-  {
-    id: 'gym-default-offer',
-    source_type: 'gym_owner',
-    source_name: 'Partner Gyms',
-    title: 'Gym owner ads',
-    description: 'Gym owners can promote plans, trials, and seasonal discounts to their referred users.',
-    offer_text: 'Gym Promotion',
-    media_type: 'image',
-    media_url: '/fitness-ad.svg',
-    media_width: 1920,
-    media_height: 1080,
-    media_crop: 'center center',
-    media_quality: '1080p+',
-    cta_label: 'View Offer',
-  },
-];
+function shiftDateKey(dateKey, days) {
+  const [year, month, day] = String(dateKey).split('-').map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  date.setDate(date.getDate() + days);
+  return getLocalDateKey(date);
+}
+
+function makeDailyRows(start, count, collections) {
+  return Array.from({ length: count }, (_, index) => {
+    const date = shiftDateKey(start, index);
+    const byDay = (rows) => safeArray(rows).filter((row) => row.date === date);
+    const steps = byDay(collections.steps);
+    const water = byDay(collections.water);
+    const sleep = byDay(collections.sleep);
+    const workouts = byDay(collections.workouts).filter((row) => row.completed !== false);
+    const cardio = byDay(collections.cardio);
+    const nutrition = byDay(collections.nutrition);
+    return {
+      date,
+      steps: steps.reduce((sum, row) => sum + number(row.steps), 0),
+      water_ml: water.reduce((sum, row) => sum + number(row.amount_ml), 0),
+      sleep_hours: sleep.reduce((max, row) => Math.max(max, number(row.hours)), 0),
+      workout_count: workouts.length,
+      cardio_minutes: cardio.reduce((sum, row) => sum + number(row.duration_minutes), 0),
+      active_calories: [...workouts, ...cardio].reduce((sum, row) => sum + number(row.calories_burned), 0),
+      nutrition_calories: nutrition.reduce((sum, row) => sum + number(row.calories), 0),
+      protein_g: nutrition.reduce((sum, row) => sum + number(row.protein_g), 0),
+    };
+  });
+}
+
+async function loadLegacyDashboard(user, date) {
+  const rangeStart = shiftDateKey(date, -13);
+  const [profiles, subscriptions, steps, water, sleep, workouts, cardio, nutrition, weights] = await Promise.all([
+    base44.entities.UserProfile.filter({ user_id: user.id }),
+    base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }),
+    base44.entities.StepLog.filter({ user_id: user.id }, '-date', 100),
+    base44.entities.WaterLog.filter({ user_id: user.id }, '-date', 100),
+    base44.entities.SleepLog.filter({ user_id: user.id }, '-date', 30),
+    base44.entities.WorkoutLog.filter({ user_id: user.id }, '-date', 60),
+    base44.entities.CardioLog.filter({ user_id: user.id }, '-date', 60),
+    base44.entities.NutritionLog.filter({ user_id: user.id }, '-date', 120),
+    base44.entities.WeightLog.filter({ user_id: user.id }, '-date', 10),
+  ]);
+  const inRange = (rows) => safeArray(rows).filter((row) => row.date >= rangeStart && row.date <= date);
+  const daily = makeDailyRows(rangeStart, 14, {
+    steps: inRange(steps), water: inRange(water), sleep: inRange(sleep), workouts: inRange(workouts), cardio: inRange(cardio), nutrition: inRange(nutrition),
+  });
+  const week = daily.slice(-7);
+  const previousWeek = daily.slice(0, 7);
+  const average = (rows, key) => Math.round(rows.reduce((sum, row) => sum + number(row[key]), 0) / Math.max(1, rows.length));
+  const currentAverageSteps = average(week, 'steps');
+  const previousAverageSteps = average(previousWeek, 'steps');
+  const sleepDays = week.filter((row) => row.sleep_hours > 0);
+  return {
+    date,
+    profile: profiles[0] || null,
+    subscription: subscriptions[0] || null,
+    membership: null,
+    attendance: null,
+    today: week[6],
+    week,
+    previous_week: previousWeek,
+    performance: {
+      average_steps: currentAverageSteps,
+      step_change_percent: previousAverageSteps ? Math.round(((currentAverageSteps - previousAverageSteps) / previousAverageSteps) * 100) : null,
+      workouts: week.reduce((sum, row) => sum + row.workout_count, 0),
+      cardio_minutes: week.reduce((sum, row) => sum + row.cardio_minutes, 0),
+      active_days: week.filter((row) => row.steps > 0 || row.workout_count > 0 || row.cardio_minutes > 0).length,
+      average_sleep_hours: sleepDays.length ? Number((sleepDays.reduce((sum, row) => sum + row.sleep_hours, 0) / sleepDays.length).toFixed(1)) : 0,
+    },
+    weight: weights[0] || null,
+  };
+}
 
 const isVideoAd = (ad) => {
   const type = String(ad?.media_type || ad?.type || '').toLowerCase();
@@ -54,348 +128,250 @@ const isAdActive = (ad) => {
   const status = String(ad?.status || 'active').toLowerCase();
   if (!['active', 'published', 'approved', 'live'].includes(status)) return false;
   const now = Date.now();
-  const start = ad.start_date ? Date.parse(ad.start_date) : null;
-  const end = ad.end_date ? Date.parse(ad.end_date) : null;
-  if (start && start > now) return false;
-  if (end && end < now) return false;
-  return true;
+  const start = ad.start_at || ad.start_date;
+  const end = ad.end_at || ad.end_date;
+  return (!start || Date.parse(start) <= now) && (!end || Date.parse(end) >= now);
 };
 
-const shouldShowAdToUser = (ad, profile) => {
-  const sourceType = String(ad.source_type || ad.created_by_role || ad.owner_type || '').toLowerCase();
-  const scope = String(ad.target_scope || ad.audience || '').toLowerCase();
-  if (sourceType === 'admin' || scope === 'all' || scope === 'everyone' || ad.show_to_all) return true;
-  const userGymId = profile?.primary_gym_id || profile?.referred_gym_id || profile?.gym_id;
-  const targetGymId = ad.target_gym_id || ad.gym_id || ad.owner_gym_id;
-  return !!userGymId && !!targetGymId && String(userGymId) === String(targetGymId);
+const shouldShowAdToUser = (ad, membership) => {
+  const scope = String(ad.target_scope || ad.audience || 'all').toLowerCase();
+  if (scope === 'all' || scope === 'everyone' || ad.show_to_all) return true;
+  const targetGymId = ad.gym_id || ad.target_gym_id || ad.owner_gym_id;
+  return Boolean(membership?.gym_id && targetGymId && String(membership.gym_id) === String(targetGymId));
 };
 
 export default function Home() {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);
-  const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [todayData, setTodayData] = useState(emptyToday);
-  const [gymStatus, setGymStatus] = useState({ gym: null, todayLog: null });
+  const [dashboard, setDashboard] = useState(null);
   const [ads, setAds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
   const today = getToday();
 
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async ({ background = false } = {}) => {
+    if (background) setRefreshing(true);
+    else setLoading(true);
+    setError('');
     try {
       const user = await base44.auth.me();
-      const owners = safeArray(await base44.entities.GymOwner.filter({ user_id: user.id }).catch(() => []));
-      if (owners.length > 0) {
-        setLoading(false);
-        navigate(owners[0].onboarding_complete ? '/gym-owner/dashboard' : '/gym-owner/onboarding', { replace: true });
+      if (normalizeRole(user.role) === 'gym_owner') {
+        navigate('/gym-owner/dashboard', { replace: true });
         return;
       }
 
-      const [profilesRaw, subsRaw] = await Promise.all([
-        base44.entities.UserProfile.filter({ user_id: user.id }).catch(() => []),
-        base44.entities.Subscription.filter({ user_id: user.id, status: 'active' }).catch(() => []),
-      ]);
-      const profiles = safeArray(profilesRaw);
-      const subs = safeArray(subsRaw);
-      if (!profiles.length) {
-        setLoading(false);
+      let performance;
+      try {
+        performance = await base44.dashboard.getPerformance(today);
+      } catch (requestError) {
+        if (requestError?.status !== 404) throw requestError;
+        performance = await loadLegacyDashboard(user, today);
+      }
+
+      if (!performance?.profile) {
         navigate('/onboarding', { replace: true });
         return;
       }
 
-      const p = profiles[0];
-      setProfile(p);
-      setSubscription(subs[0] || null);
-
-      if (p.primary_gym_id) {
-        try {
-          const [gymOwnersRaw, attLogsRaw] = await Promise.all([
-            base44.entities.GymOwner.list().catch(() => []),
-            base44.entities.GymAttendanceLog.filter({ user_id: user.id, gym_id: p.primary_gym_id, date: today }).catch(() => []),
-          ]);
-          const gymOwner = safeArray(gymOwnersRaw).find(o => o.id === p.primary_gym_id);
-          setGymStatus({ gym: gymOwner || null, todayLog: safeArray(attLogsRaw)[0] || null });
-        } catch {
-          setGymStatus({ gym: null, todayLog: null });
-        }
-      }
-
-      const [nutritionRaw, waterRaw, stepsRaw, sleepRaw, workoutRaw, adsRaw] = await Promise.all([
-        base44.entities.NutritionLog.filter({ user_id: user.id, date: today }).catch(() => []),
-        base44.entities.WaterLog.filter({ user_id: user.id, date: today }).catch(() => []),
-        base44.entities.StepLog.filter({ user_id: user.id, date: today }).catch(() => []),
-        base44.entities.SleepLog.filter({ user_id: user.id, date: today }).catch(() => []),
-        base44.entities.WorkoutLog.filter({ user_id: user.id, date: today }).catch(() => []),
-        base44.entities.Advertisement.list('-created_date', 30).catch(() => []),
-      ]);
-
-      const nutritionLogs = safeArray(nutritionRaw);
-      const waterLogs = safeArray(waterRaw);
-      const stepLogs = safeArray(stepsRaw);
-      const sleepLogs = safeArray(sleepRaw);
-      const workoutLogs = safeArray(workoutRaw);
-      const visibleAds = safeArray(adsRaw).filter(ad => isAdActive(ad) && shouldShowAdToUser(ad, p));
-
-      setTodayData({
-        calories: nutritionLogs.reduce((s, n) => s + Number(n.calories || 0), 0),
-        protein: nutritionLogs.reduce((s, n) => s + Number(n.protein_g || 0), 0),
-        water: waterLogs.reduce((s, w) => s + Number(w.amount_ml || 0), 0),
-        steps: stepLogs.reduce((s, st) => s + Number(st.steps || 0), 0),
-        sleep: Number(sleepLogs[0]?.hours || 0),
-        workoutDone: workoutLogs.some(w => w.completed),
-      });
-      setAds(visibleAds.length ? visibleAds : defaultAds);
-    } catch (error) {
-      console.error('[Home] Dashboard load failed:', error);
-      setProfile(null);
-      setTodayData(emptyToday);
-      navigate('/welcome', { replace: true });
+      setDashboard(performance);
+      const rawAds = await base44.entities.Advertisement.list('-created_date', 20).catch(() => []);
+      setAds(safeArray(rawAds).filter((ad) => isAdActive(ad) && shouldShowAdToUser(ad, performance.membership)));
+    } catch (requestError) {
+      console.error('[Home] Dashboard load failed:', requestError);
+      if (requestError?.status === 401) navigate('/welcome', { replace: true });
+      else setError('Your dashboard could not refresh. Your saved data is safe—check your connection and try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => { loadData(); }, []);
+
   if (loading) return <LoadingScreen />;
-  if (!profile) return null;
+  if (!dashboard && error) return <DashboardError message={error} onRetry={() => loadData()} />;
+  if (!dashboard) return null;
 
-  const bmr = calculateBMR(profile.weight_kg || 70, profile.height_cm || 170, profile.age || 25, profile.gender || 'male');
-  const tdee = calculateTDEE(bmr, getActivityLevel(profile.workout_days_per_week || 4));
+  const profile = dashboard.profile || {};
+  const current = dashboard.today || {};
+  const week = safeArray(dashboard.week);
+  const performance = dashboard.performance || {};
+  const membership = dashboard.membership;
+  const attendance = dashboard.attendance;
+  const subscription = dashboard.subscription;
+  const firstName = String(profile.full_name || profile.name || 'Athlete').trim().split(/\s+/)[0];
+  const stepGoal = number(profile.daily_step_goal, 8000);
+  const waterGoal = number(profile.daily_water_goal_ml, 2500);
+  const workoutGoal = Math.max(1, number(profile.workout_days_per_week, 4));
+  const currentWeight = number(dashboard.weight?.weight_kg ?? profile.weight_kg, 0);
+  const targetWeight = number(profile.target_weight_kg, 0);
+  const bmr = calculateBMR(number(profile.weight_kg, 70), number(profile.height_cm, 170), number(profile.age, 25), profile.gender || 'male');
+  const tdee = calculateTDEE(bmr, getActivityLevel(workoutGoal));
   const calorieTarget = calculateCalorieTarget(tdee, profile.goal);
-  const proteinTarget = calculateProteinTarget(profile.weight_kg || 70, profile.goal);
-  const waterGoal = profile.daily_water_goal_ml || 2500;
-  const stepGoal = profile.daily_step_goal || 8000;
-  const isPremium = subscription && subscription.plan !== 'free';
-
-  const fitnessScore = calculateFitnessScore({
-    workoutDone: todayData.workoutDone,
-    stepsPercent: (todayData.steps / stepGoal) * 100,
-    waterPercent: (todayData.water / waterGoal) * 100,
-    caloriesOnTrack: todayData.calories > 0 && todayData.calories <= calorieTarget * 1.1,
-    sleepHours: todayData.sleep,
-    proteinOnTrack: todayData.protein >= proteinTarget * 0.8,
+  const proteinTarget = calculateProteinTarget(number(profile.weight_kg, 70), profile.goal);
+  const score = calculateFitnessScore({
+    workoutDone: number(current.workout_count) > 0,
+    stepsPercent: (number(current.steps) / stepGoal) * 100,
+    waterPercent: (number(current.water_ml) / waterGoal) * 100,
+    caloriesOnTrack: number(current.nutrition_calories) > 0 && number(current.nutrition_calories) <= calorieTarget * 1.1,
+    sleepHours: number(current.sleep_hours),
+    proteinOnTrack: number(current.protein_g) >= proteinTarget * 0.8,
   });
-  const scoreLabel = fitnessScore >= 80 ? 'Excellent' : fitnessScore >= 50 ? 'Good Progress' : 'Let\'s Go';
+  const isPremium = Boolean(subscription && String(subscription.plan || subscription.plan_code || 'free') !== 'free');
+  const nextAction = getNextAction({ current, stepGoal, currentWeight });
+  const remainingWeight = currentWeight && targetWeight ? Math.abs(currentWeight - targetWeight) : null;
+  const maxWeekSteps = Math.max(stepGoal, ...week.map((day) => number(day.steps)));
 
   return (
     <>
       <TopBar />
-      <div className="px-4 pt-3 pb-6 space-y-5">
-        <AdBanners ads={ads} />
-        <div>
-          <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Daily Fitness</h3>
-          <DailyScoreCard score={fitnessScore} label={scoreLabel} onClick={() => navigate('/tracking')} />
-        </div>
-        <DailyStatsRows
-          calories={todayData.calories}
-          calorieTarget={calorieTarget}
-          protein={todayData.protein}
-          proteinTarget={proteinTarget}
-          waterGlasses={Math.round(todayData.water / 250)}
-          waterGoalGlasses={Math.round(waterGoal / 250)}
-          steps={todayData.steps}
-          stepGoal={stepGoal}
-          onNavigate={navigate}
-        />
+      <main className="space-y-5 px-4 pb-8 pt-4">
+        <header className="flex items-start justify-between gap-4 px-0.5">
+          <div><p className="text-xs font-semibold text-accent">{getGreeting()}</p><h1 className="mt-0.5 font-heading text-2xl font-black tracking-tight">Ready, {firstName}?</h1><p className="mt-1 text-xs text-muted-foreground">{new Date(`${today}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p></div>
+          <button type="button" onClick={() => loadData({ background: true })} disabled={refreshing} aria-label="Refresh dashboard" className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground transition-all active:scale-95 disabled:opacity-60"><RefreshCw size={16} className={refreshing ? 'animate-spin text-accent' : ''} /></button>
+        </header>
 
-        {gymStatus.gym && (
-          <button onClick={() => navigate('/my-gym')}
-            className={`w-full rounded-2xl p-4 flex items-center gap-3 border transition-all active:scale-[0.98] ${
-              gymStatus.todayLog?.status === 'checked_in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-card border-border hover:border-white/25'
-            }`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconTileClass}`}>
-              {gymStatus.todayLog?.status === 'checked_in' ? <LogOut size={18} className="text-white" /> : <LogIn size={18} className="text-white" />}
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold">{gymStatus.gym.gym_name || 'My Gym'}</p>
-              <p className="text-xs text-muted-foreground">
-                {gymStatus.todayLog?.status === 'checked_in'
-                  ? `Checked in at ${gymStatus.todayLog.check_in_time} — tap to check out`
-                  : gymStatus.todayLog?.status === 'checked_out'
-                  ? `Session done — ${gymStatus.todayLog.duration_minutes || 0} min`
-                  : 'Tap to check in to your gym'}
-              </p>
-            </div>
-            <ChevronRight size={15} className="text-muted-foreground flex-shrink-0" />
-          </button>
-        )}
+        {error && <div role="alert" className="rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-amber-200">{error}</div>}
 
-        <div>
-          <h3 className="font-heading font-semibold text-sm mb-3 px-0.5">Quick Actions</h3>
-          <div className="-mx-1 overflow-x-auto no-scrollbar pb-1">
-            <div className="flex gap-1.5 px-1 snap-x snap-mandatory">
-              {[
-                { icon: Dumbbell, label: 'Log Workout', route: '/workout/log', tileClass: 'bg-[#0F2A1A] border-[#153822]', iconClass: 'text-[#22C55E]' },
-                { icon: Utensils, label: 'Log Meal', route: '/nutrition/log', tileClass: 'bg-[#2B1E13] border-[#3A2919]', iconClass: 'text-[#FB923C]' },
-                { icon: Droplets, label: 'Add Water', route: '/tracking', tileClass: 'bg-[#111D2B] border-[#1A2B45]', iconClass: 'text-[#60A5FA]' },
-                { icon: Camera, label: 'Food Scan', route: '/food-scan', tileClass: 'bg-[#0F2A1A] border-[#153822]', iconClass: 'text-[#4ADE80]' },
-                { icon: Building2, label: 'My Gym', route: '/my-gym', tileClass: 'bg-[#2A220F] border-[#3B3014]', iconClass: 'text-[#FBBF24]' },
-                { icon: Scale, label: 'Progress', route: '/progress', tileClass: 'bg-[#22182C] border-[#332140]', iconClass: 'text-[#C084FC]' },
-              ].map(({ icon: Icon, label, route, tileClass, iconClass }) => (
-                <button key={route} onClick={() => navigate(route)} style={fourPerViewStyle} className="snap-start flex flex-col items-center gap-1.5 rounded-2xl py-2 hover:bg-card/60 active:scale-95 transition-all">
-                  <div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center border ${tileClass}`}><Icon size={28} className={iconClass} /></div>
-                  <span className="text-[10px] font-semibold text-center leading-tight whitespace-nowrap">{label}</span>
-                </button>
-              ))}
-            </div>
+        <PerformanceHero score={score} current={current} performance={performance} nextAction={nextAction} onAction={() => navigate(nextAction.route)} />
+
+        <section>
+          <SectionHeading title="Progress & performance" subtitle="What is moving you toward your goal" action="Full progress" onAction={() => navigate('/progress')} />
+          <div className="grid grid-cols-2 gap-2.5">
+            <PerformanceTile icon={Footprints} label="Steps" value={`${Math.min(100, Math.round(number(current.steps) / stepGoal * 100))}%`} detail={`${number(current.steps).toLocaleString()} of ${stepGoal.toLocaleString()}`} color="purple" onClick={() => navigate('/tracking?metric=steps')} />
+            <PerformanceTile icon={Dumbbell} label="Weekly training" value={`${number(performance.workouts)}/${workoutGoal}`} detail={`${number(performance.cardio_minutes)} cardio min`} color="green" onClick={() => navigate('/tracking?metric=workout')} />
+            <PerformanceTile icon={Moon} label="Recovery" value={number(current.sleep_hours) ? `${number(current.sleep_hours)}h` : 'Log sleep'} detail={`7-day avg ${number(performance.average_sleep_hours).toFixed(1)}h`} color="blue" onClick={() => navigate('/tracking?metric=sleep')} />
+            <PerformanceTile icon={Target} label="Body goal" value={remainingWeight !== null ? `${remainingWeight.toFixed(1)} kg` : 'Set target'} detail={remainingWeight !== null ? `remaining to ${targetWeight} kg` : 'Add weight & target'} color="orange" onClick={() => navigate('/progress')} />
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          <button onClick={() => navigate('/my-gym')} className="bg-card border border-border rounded-2xl p-4 text-left hover:border-white/25 active:scale-[0.97] transition-all">
-            <div className="w-10 h-10 rounded-xl bg-[#2A220F] border border-[#3B3014] flex items-center justify-center mb-3"><Building2 size={19} className="text-[#FBBF24]" /></div>
-            <p className="font-heading font-bold text-sm">My Gym</p>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{gymStatus.gym?.gym_name || 'Connect your gym'}</p>
-          </button>
-          <button onClick={() => navigate('/leaderboard')} className="bg-card border border-border rounded-2xl p-4 text-left hover:border-white/25 active:scale-[0.97] transition-all">
-            <div className="w-10 h-10 rounded-xl bg-[#2A220F] border border-[#3B3014] flex items-center justify-center mb-3"><Trophy size={19} className="text-[#FBBF24]" /></div>
-            <p className="font-heading font-bold text-sm">Leaderboard</p>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">Gym member scores & top 3 prizes</p>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-card border border-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2"><Trophy size={14} className="text-white" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Streak</span></div>
-            <p className="text-2xl font-bold font-heading">{profile.streak_days || 0}</p>
-            <p className="text-xs text-muted-foreground">days in a row</p>
+        <section className="rounded-[28px] border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3"><div><p className="font-heading text-sm font-bold">This week</p><p className="mt-0.5 text-[11px] text-muted-foreground">Consistency beats a perfect day</p></div>{performance.step_change_percent !== null && performance.step_change_percent !== undefined && <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${number(performance.step_change_percent) >= 0 ? 'bg-accent/10 text-accent' : 'bg-orange-400/10 text-orange-300'}`}>{number(performance.step_change_percent) >= 0 ? '+' : ''}{number(performance.step_change_percent)}% steps</span>}</div>
+          <div className="mt-5 flex h-28 items-end gap-2" aria-label="Seven day steps chart">
+            {week.map((day, index) => {
+              const height = Math.max(6, Math.round(number(day.steps) / maxWeekSteps * 100));
+              const isToday = index === week.length - 1;
+              return <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-2"><div className="relative flex h-full w-full items-end justify-center rounded-xl bg-background/60 px-1"><div className={`w-full rounded-lg transition-all duration-700 ${isToday ? 'bg-accent' : 'bg-white/15'}`} style={{ height: `${height}%` }} /></div><span className={`text-[9px] font-semibold ${isToday ? 'text-accent' : 'text-muted-foreground'}`}>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'narrow' })}</span></div>;
+            })}
           </div>
-          <Link to="/progress">
-            <div className="bg-card border border-border rounded-2xl p-4 hover:border-white/25 active:scale-[0.97] transition-all h-full">
-              <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className="text-white" /><span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Weight</span></div>
-              <p className="text-2xl font-bold font-heading">{profile.weight_kg}<span className="text-sm font-normal text-muted-foreground"> kg</span></p>
-              <p className="text-[11px] text-accent font-medium">Target: {profile.target_weight_kg} kg</p>
-            </div>
-          </Link>
-        </div>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-border rounded-2xl bg-background/55 py-3 text-center">
+            <WeeklyStat value={number(performance.active_days)} label="Active days" />
+            <WeeklyStat value={number(performance.average_steps).toLocaleString()} label="Avg steps" />
+            <WeeklyStat value={`${number(performance.cardio_minutes)}m`} label="Cardio" />
+          </div>
+        </section>
+
+        <section>
+          <SectionHeading title="Quick log" subtitle="The actions you use most" />
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { icon: Dumbbell, label: 'Workout', route: '/workout/log', tone: 'bg-accent/10 text-accent' },
+              { icon: Utensils, label: 'Meal', route: '/nutrition/log', tone: 'bg-orange-400/10 text-orange-300' },
+              { icon: Activity, label: 'Activity', route: '/tracking', tone: 'bg-purple-400/10 text-purple-300' },
+              { icon: Camera, label: 'Food scan', route: '/food-scan', tone: 'bg-blue-400/10 text-blue-300' },
+            ].map(({ icon: Icon, label, route, tone }) => (
+              <button key={label} type="button" onClick={() => navigate(route)} className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card px-1 py-3.5 text-center transition-all active:scale-[0.97]">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}><Icon size={18} /></span><span className="max-w-full truncate text-[10px] font-semibold">{label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {membership && <GymStatusCard membership={membership} attendance={attendance} onClick={() => navigate('/my-gym')} />}
+
+        {ads.length > 0 && <AdBanners ads={ads} />}
 
         {!isPremium && (
-          <Link to="/subscription" className="block">
-            <div className="bg-gradient-to-r from-yellow-500/15 via-amber-500/10 to-yellow-500/5 border border-yellow-500/30 rounded-3xl px-5 py-5 hover:border-yellow-500/50 active:scale-[0.98] transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-[#2A220F] border border-[#3B3014]"><Crown size={19} className="text-[#FBBF24]" /></div>
-                <div className="flex-1"><p className="font-heading font-bold text-sm">Unlock Premium AI Trainer</p><p className="text-xs text-muted-foreground mt-0.5">Personalized plans, advanced analytics & more</p></div>
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </div>
-            </div>
+          <Link to="/subscription" className="block rounded-[28px] border border-yellow-500/25 bg-gradient-to-br from-yellow-500/12 via-card to-card p-5 transition-all active:scale-[0.99]">
+            <div className="flex items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-400/10 text-yellow-300"><Crown size={20} /></span><div className="min-w-0 flex-1"><p className="font-heading text-sm font-bold">Unlock your complete plan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Advanced analytics, personalized AI coaching, and deeper reports.</p></div><ChevronRight size={16} className="shrink-0 text-muted-foreground" /></div>
           </Link>
         )}
 
-        <div className="grid grid-cols-3 gap-2.5">
-          {[
-            { label: 'Community', icon: Users, route: '/community' },
-            { label: 'Rewards', icon: Trophy, route: '/rewards' },
-            { label: 'Premium', icon: Crown, route: '/subscription' },
-          ].map(({ label, icon: Icon, route }) => (
-            <Link key={route} to={route}>
-              <div className="bg-card border border-border rounded-2xl p-3.5 text-center hover:border-white/25 active:scale-[0.97] transition-all">
-                <div className="w-9 h-9 mx-auto rounded-xl flex items-center justify-center bg-[#2A220F] border border-[#3B3014]"><Icon size={18} className="text-[#FBBF24]" /></div>
-                <p className="text-[10px] font-medium mt-1.5">{label}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+        <section>
+          <SectionHeading title="Explore SE7EN FIT" subtitle="Community, rewards, gym, and competition" />
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { label: 'Community', detail: 'Share and learn', icon: Users, route: '/community' },
+              { label: 'Challenges', detail: 'Build consistency', icon: Zap, route: '/challenges' },
+              { label: 'Leaderboard', detail: 'See your rank', icon: Trophy, route: '/leaderboard' },
+              { label: 'My Gym', detail: membership?.gyms?.name || membership?.gym?.name || 'Connect your gym', icon: Building2, route: '/my-gym' },
+            ].map(({ label, detail, icon: Icon, route }) => (
+              <button key={label} type="button" onClick={() => navigate(route)} className="rounded-2xl border border-border bg-card p-4 text-left transition-all active:scale-[0.98]"><span className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-foreground"><Icon size={17} /></span><p className="font-heading text-sm font-bold">{label}</p><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{detail}</p></button>
+            ))}
+          </div>
+        </section>
+      </main>
     </>
   );
 }
 
-function AdBanners({ ads }) {
+function getNextAction({ current, stepGoal, currentWeight }) {
+  if (!number(current.workout_count)) return { eyebrow: 'Best next action', title: 'Complete today’s workout', detail: 'A focused session will have the biggest impact on your score.', route: '/workout', icon: Dumbbell };
+  if (number(current.steps) < stepGoal * 0.65) return { eyebrow: 'Keep momentum', title: 'Start a short walk', detail: `${Math.max(0, stepGoal - number(current.steps)).toLocaleString()} steps remain today.`, route: '/tracking', icon: Footprints };
+  if (number(current.sleep_hours) < 7) return { eyebrow: 'Recovery check', title: 'Log last night’s sleep', detail: 'Recovery data helps make your training guidance more useful.', route: '/tracking?metric=sleep', icon: Moon };
+  if (!currentWeight) return { eyebrow: 'Complete your baseline', title: 'Log your current weight', detail: 'A baseline makes body-goal progress measurable.', route: '/progress', icon: Scale };
+  return { eyebrow: 'Strong day', title: 'Review your weekly progress', detail: 'See what improved and choose your next focus.', route: '/progress', icon: BarChart3 };
+}
+
+function PerformanceHero({ score, current, performance, nextAction, onAction }) {
+  const Icon = nextAction.icon;
+  const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Strong' : score >= 35 ? 'Building' : 'Start here';
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3 px-0.5">
-        <h3 className="font-heading font-semibold text-sm">Offers & Advertisements</h3>
-        <span className="text-[10px] text-muted-foreground">Sponsored</span>
+    <section className="overflow-hidden rounded-[30px] border border-accent/20 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.16),transparent_42%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)))] p-5">
+      <div className="flex items-center gap-4">
+        <ProgressRing percent={score} size={104} strokeWidth={8} color="hsl(var(--accent))"><div className="text-center"><p className="font-heading text-2xl font-black leading-none">{score}</p><p className="mt-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Score</p></div></ProgressRing>
+        <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-accent"><Sparkles size={12} /> Today’s performance</div><h2 className="mt-1 font-heading text-2xl font-black">{scoreLabel}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">A balanced view of movement, training, recovery, and consistency.</p></div>
       </div>
-      <div className="overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
-        <div className="flex gap-3">
-          {safeArray(ads).map(ad => <AdCard key={ad.id || ad.title} ad={ad} />)}
-        </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <HeroStat value={number(performance.active_days)} label="Active days" />
+        <HeroStat value={number(current.steps).toLocaleString()} label="Steps today" />
+        <HeroStat value={`${number(performance.cardio_minutes)}m`} label="Cardio week" />
       </div>
-    </div>
+      <button type="button" onClick={onAction} className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5 text-left transition-all hover:bg-white/[0.09] active:scale-[0.99]"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground"><Icon size={18} /></span><span className="min-w-0 flex-1"><span className="block text-[9px] font-bold uppercase tracking-[0.13em] text-accent">{nextAction.eyebrow}</span><span className="mt-0.5 line-clamp-2 block text-sm font-bold leading-tight">{nextAction.title}</span><span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{nextAction.detail}</span></span><ArrowRight size={16} className="shrink-0 text-muted-foreground" /></button>
+    </section>
   );
+}
+
+function HeroStat({ value, label }) {
+  return <div className="rounded-2xl bg-background/55 px-2 py-3 text-center"><p className="font-heading text-sm font-black">{value}</p><p className="mt-0.5 text-[9px] text-muted-foreground">{label}</p></div>;
+}
+
+function SectionHeading({ title, subtitle, action, onAction }) {
+  return <div className="mb-3 flex items-end justify-between gap-3 px-0.5"><div><h2 className="font-heading text-sm font-bold">{title}</h2>{subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}</div>{action && <button type="button" onClick={onAction} className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-accent">{action}<ArrowUpRight size={12} /></button>}</div>;
+}
+
+function PerformanceTile({ icon: Icon, label, value, detail, color, onClick }) {
+  const tones = { green: 'bg-accent/10 text-accent', purple: 'bg-purple-400/10 text-purple-300', blue: 'bg-blue-400/10 text-blue-300', orange: 'bg-orange-400/10 text-orange-300' };
+  return <button type="button" onClick={onClick} className="min-h-[138px] rounded-[24px] border border-border bg-card p-4 text-left transition-all hover:border-white/20 active:scale-[0.98]"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tones[color]}`}><Icon size={17} /></span><p className="mt-3 text-[10px] font-semibold text-muted-foreground">{label}</p><p className="mt-0.5 font-heading text-xl font-black">{value}</p><p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{detail}</p></button>;
+}
+
+function WeeklyStat({ value, label }) {
+  return <div className="px-1"><p className="font-heading text-sm font-black">{value}</p><p className="mt-0.5 text-[9px] text-muted-foreground">{label}</p></div>;
+}
+
+function GymStatusCard({ membership, attendance, onClick }) {
+  const gym = membership.gyms || membership.gym || {};
+  const checkedIn = attendance?.status === 'checked_in';
+  return <button type="button" onClick={onClick} className={`flex w-full items-center gap-3 rounded-[24px] border p-4 text-left transition-all active:scale-[0.99] ${checkedIn ? 'border-accent/30 bg-accent/10' : 'border-border bg-card'}`}><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${checkedIn ? 'bg-accent text-accent-foreground' : 'bg-muted text-foreground'}`}>{checkedIn ? <LogOut size={19} /> : <LogIn size={19} />}</span><span className="min-w-0 flex-1"><span className="block truncate font-heading text-sm font-bold">{gym.name || gym.gym_name || 'My Gym'}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{checkedIn ? 'You are checked in — tap when your session is done' : attendance?.status === 'checked_out' ? `Session complete · ${attendance.duration_minutes || 0} min` : 'Membership active · tap to check in'}</span></span><ChevronRight size={16} className="shrink-0 text-muted-foreground" /></button>;
+}
+
+function AdBanners({ ads }) {
+  return <section><SectionHeading title="Offers for you" subtitle="Relevant SE7EN FIT and gym partner promotions" /><div className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">{ads.map((ad) => <AdCard key={ad.id || ad.ad_id || ad.title} ad={ad} />)}</div></section>;
 }
 
 function AdCard({ ad }) {
   const mediaUrl = ad.media_url || ad.image_url || ad.video_url || '';
-  const clickable = !!ad.cta_url;
-  const crop = ad.media_crop || 'center center';
-  const handleClick = () => {
-    if (!clickable) return;
-    window.open(ad.cta_url, '_blank', 'noopener,noreferrer');
-  };
-
+  const handleClick = () => { if (ad.cta_url) window.open(ad.cta_url, '_blank', 'noopener,noreferrer'); };
   return (
-    <button type="button" onClick={handleClick} className="snap-start flex-shrink-0 w-full overflow-hidden rounded-3xl border border-border bg-card text-left active:scale-[0.99] transition-all">
-      <div className="relative min-h-[184px] bg-gradient-to-br from-accent/25 via-emerald-500/10 to-yellow-500/10">
-        {mediaUrl && isVideoAd(ad) && (
-          <video src={mediaUrl} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: crop }} muted loop playsInline autoPlay preload="metadata" />
-        )}
-        {mediaUrl && !isVideoAd(ad) && (
-          <img src={mediaUrl} alt={ad.title || 'Advertisement'} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: crop }} loading="eager" decoding="async" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/15" />
-        <div className="relative z-10 flex min-h-[184px] flex-col justify-between p-4">
-          <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex max-w-[68%] items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-              <Megaphone size={11} className="shrink-0" /> <span className="truncate">{ad.offer_text || ad.source_name || 'Offer'}</span>
-            </span>
-            <span className="shrink-0 rounded-full bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase text-white/80">
-              {String(ad.source_type || 'admin').replace('_', ' ')}{ad.media_quality ? ` • ${ad.media_quality}` : ''}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <p className="font-heading text-[23px] font-black leading-tight text-white line-clamp-2 drop-shadow">{ad.title || 'Special offer'}</p>
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/85 drop-shadow">{ad.description || ad.subtitle || 'Tap to view this offer.'}</p>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-black text-black">
-              {ad.cta_label || 'View Offer'} <ChevronRight size={13} />
-            </div>
-          </div>
-        </div>
-      </div>
+    <button type="button" onClick={handleClick} className="relative min-h-[176px] w-[88%] shrink-0 snap-start overflow-hidden rounded-[26px] border border-border bg-card text-left transition-all active:scale-[0.99]">
+      {mediaUrl && isVideoAd(ad) && <video src={mediaUrl} className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: ad.media_crop || 'center' }} muted loop playsInline autoPlay preload="metadata" />}
+      {mediaUrl && !isVideoAd(ad) && <img src={mediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: ad.media_crop || 'center' }} loading="lazy" decoding="async" />}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/10" />
+      <div className="relative z-10 flex min-h-[176px] flex-col justify-between p-4"><span className="w-fit rounded-full bg-white/15 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur">{ad.offer_text || ad.source_name || 'Featured'}</span><div><p className="line-clamp-2 font-heading text-xl font-black leading-tight text-white">{ad.title}</p>{ad.description && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-white/75">{ad.description}</p>}<span className="mt-3 inline-flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-[10px] font-black text-black">{ad.cta_label || 'View offer'}<ChevronRight size={12} /></span></div></div>
     </button>
   );
 }
 
-function DailyScoreCard({ score, label, onClick }) {
-  const pct = Math.min(Math.max(score || 0, 0), 100);
-  return (
-    <button onClick={onClick} className="w-full bg-card border border-border rounded-3xl px-5 py-4 hover:border-white/20 active:scale-[0.98] transition-all">
-      <div className="flex items-center gap-3 text-left">
-        <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-muted/50 border border-border"><Trophy size={18} className="text-[#FBBF24]" /></div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-3"><p className="font-heading font-bold text-sm">Daily Score</p><span className="text-xs bg-muted text-foreground border border-border px-2.5 py-1 rounded-full font-black">{pct}/100</span></div>
-          <p className="text-xs text-muted-foreground mt-0.5">{label} • Tap to view today’s tracking</p>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-white/40 transition-all duration-700" style={{ width: `${pct}%` }} /></div>
-        </div>
-        <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
-      </div>
-    </button>
-  );
-}
-
-function DailyStatsRows({ calories, calorieTarget, protein, proteinTarget, waterGlasses, waterGoalGlasses, steps, stepGoal, onNavigate }) {
-  const rows = [
-    { label: 'Calorie Intake', value: `${calories}`, target: `/ ${calorieTarget} kcal`, route: '/nutrition', labelClass: 'bg-yellow-500/15 border-yellow-500/25' },
-    { label: 'Protein Intake', value: `${protein}g`, target: `/ ${proteinTarget}g`, route: '/nutrition', labelClass: 'bg-emerald-500/15 border-emerald-500/25' },
-    { label: 'Water Intake', value: `${waterGlasses}`, target: `/ ${waterGoalGlasses} glasses`, route: '/tracking/water', labelClass: 'bg-blue-500/15 border-blue-500/25' },
-    { label: 'Daily Steps', value: steps.toLocaleString(), target: `/ ${stepGoal.toLocaleString()}`, route: '/tracking/steps', labelClass: 'bg-purple-500/15 border-purple-500/25' },
-  ];
-
-  return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      {rows.map((row, index) => (
-        <button key={row.label} onClick={() => onNavigate(row.route)} className={`w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted/35 active:scale-[0.995] transition-all ${index !== rows.length - 1 ? 'border-b border-border/60' : ''}`}>
-          <span className={`w-[132px] shrink-0 rounded-xl border px-3 py-1.5 text-sm font-semibold text-white ${row.labelClass}`}>{row.label}</span>
-          <ChevronRight size={14} className="text-muted-foreground shrink-0" />
-          <span className="flex items-baseline gap-1.5 text-left whitespace-nowrap min-w-0">
-            <span className="font-heading text-base font-black text-white">{row.value}</span>
-            <span className="text-[11px] text-muted-foreground">{row.target}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  );
+function DashboardError({ message, onRetry }) {
+  return <><TopBar /><div className="flex min-h-[70vh] items-center justify-center px-5"><div className="w-full max-w-sm rounded-[28px] border border-border bg-card p-6 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-400/10 text-orange-300"><HeartPulse size={22} /></span><h1 className="mt-4 font-heading text-lg font-bold">Dashboard unavailable</h1><p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p><button type="button" onClick={onRetry} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-sm font-bold text-accent-foreground"><RefreshCw size={15} /> Try again</button></div></div></>;
 }

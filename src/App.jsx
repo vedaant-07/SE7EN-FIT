@@ -98,7 +98,7 @@ const AuthenticatedApp = () => {
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
-          <Route path="/user-dashboard" element={<Home />} />
+          <Route path="/user-dashboard" element={<Navigate to="/" replace />} />
           <Route path="/ai-trainer" element={<AITrainer />} />
           <Route path="/workout" element={<Workout />} />
           <Route path="/workout/log" element={<WorkoutLog />} />
@@ -106,15 +106,15 @@ const AuthenticatedApp = () => {
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/nutrition/log" element={<NutritionLog />} />
           <Route path="/tracking" element={<Tracking />} />
-          <Route path="/tracking/water" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/steps" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/sleep" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/weight" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/measurements" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/cardio" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/habits" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/mood" element={<Navigate to="/tracking" replace />} />
-          <Route path="/tracking/gym-attendance" element={<Navigate to="/tracking" replace />} />
+          <Route path="/tracking/water" element={<Navigate to="/tracking?metric=water" replace />} />
+          <Route path="/tracking/steps" element={<Navigate to="/tracking?metric=steps" replace />} />
+          <Route path="/tracking/sleep" element={<Navigate to="/tracking?metric=sleep" replace />} />
+          <Route path="/tracking/weight" element={<Navigate to="/tracking?metric=weight" replace />} />
+          <Route path="/tracking/measurements" element={<Navigate to="/tracking?metric=measurements" replace />} />
+          <Route path="/tracking/cardio" element={<Navigate to="/tracking?metric=cardio" replace />} />
+          <Route path="/tracking/habits" element={<Navigate to="/tracking?metric=habits" replace />} />
+          <Route path="/tracking/mood" element={<Navigate to="/tracking?metric=mood" replace />} />
+          <Route path="/tracking/gym-attendance" element={<Navigate to="/my-gym" replace />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/community" element={<Community />} />
           <Route path="/profile" element={<Profile />} />

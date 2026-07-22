@@ -15,7 +15,7 @@ workflows:
           node --version
           java -version
           npm --version
-          npm install --legacy-peer-deps --no-audit --no-fund
+          npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Build web app
         script: |
@@ -30,6 +30,7 @@ workflows:
       - name: Sync Capacitor Android
         script: |
           npx cap sync android
+          npm run prepare:android
 
       - name: Build APK
         script: |

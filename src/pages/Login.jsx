@@ -28,7 +28,7 @@ export default function Login() {
         setShowOtp(true);
         return;
       }
-      navigate('/user-dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -41,7 +41,7 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.verifyOtp({ email, otpCode });
-      navigate('/user-dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || "Invalid verification code");
     } finally {
@@ -63,7 +63,7 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.loginWithProvider("google", "user");
-      navigate('/user-dashboard', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || "Google login failed");
     } finally {

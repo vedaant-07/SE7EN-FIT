@@ -97,8 +97,24 @@ export function formatDate(date) {
   });
 }
 
+/**
+ * Return a calendar date in the device's local timezone.
+ *
+ * Fitness logs are day-based, not UTC-instant based. Using toISOString() here
+ * moved late-evening/early-morning entries into the wrong day for users in
+ * timezones such as India.
+ */
+export function getLocalDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getToday() {
-  return new Date().toISOString().split('T')[0];
+  return getLocalDateKey();
 }
 
 export const GOALS_LABELS = {

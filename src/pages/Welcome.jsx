@@ -30,7 +30,7 @@ const routeForRole = async (user) => {
 
   if (activeRole === 'super_admin' || activeRole === 'nagarsevak') return '/admin';
 
-  return '/user-dashboard';
+  return '/';
 };
 
 export default function Welcome() {
