@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   ChevronRight,
-  City,
   Crown,
   Gift,
   Globe2,
+  MapPin,
   Medal,
   RefreshCw,
   ShieldCheck,
@@ -22,7 +22,7 @@ import { engagementClient } from '@/api/engagementClient';
 
 const SCOPES = [
   { key: 'gym', label: 'Gym', icon: Building2 },
-  { key: 'city', label: 'City', icon: City },
+  { key: 'city', label: 'City', icon: MapPin },
   { key: 'global', label: 'Whole app', icon: Globe2 },
 ];
 
@@ -139,7 +139,7 @@ export default function Leaderboard() {
           </section>
         ) : data?.unavailable_reason ? (
           <section className="rounded-[24px] border border-border bg-card p-6 text-center">
-            {scope === 'gym' ? <Building2 size={32} className="mx-auto text-muted-foreground" /> : <City size={32} className="mx-auto text-muted-foreground" />}
+            {scope === 'gym' ? <Building2 size={32} className="mx-auto text-muted-foreground" /> : <MapPin size={32} className="mx-auto text-muted-foreground" />}
             <h2 className="mt-3 font-heading text-base font-black">Unlock the {scope} leaderboard</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{data.unavailable_reason}</p>
             <Button onClick={() => navigate('/my-gym')} className="mt-5 h-11 rounded-xl bg-accent text-accent-foreground">Open My Gym</Button>
