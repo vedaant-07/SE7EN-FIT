@@ -30,6 +30,7 @@ import ExerciseLibrary from '@/pages/ExerciseLibrary';
 import Nutrition from '@/pages/Nutrition';
 import NutritionLog from '@/pages/NutritionLog';
 import Tracking from '@/pages/Tracking';
+import LiveTracking from '@/pages/LiveTracking';
 import Progress from '@/pages/Progress';
 import Community from '@/pages/Community';
 import Profile from '@/pages/Profile';
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/nutrition/log" element={<NutritionLog />} />
           <Route path="/tracking" element={<Tracking />} />
+          <Route path="/tracking/live" element={<LiveTracking />} />
           <Route path="/tracking/water" element={<Navigate to="/tracking?metric=water" replace />} />
           <Route path="/tracking/steps" element={<Navigate to="/tracking?metric=steps" replace />} />
           <Route path="/tracking/sleep" element={<Navigate to="/tracking?metric=sleep" replace />} />
