@@ -1,4 +1,4 @@
-name: Engagement Quality Check
+name: Production Quality Check
 
 on:
   pull_request:
@@ -9,6 +9,7 @@ on:
       - 'server/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'render.yaml'
       - '.github/workflows/engagement-quality.yml'
   workflow_dispatch:
 
@@ -33,14 +34,18 @@ jobs:
           node --check server/start.js
           node --check server/routes/engagementPreload.js
           node --check server/routes/entityCompatPreload.js
+          node --check server/routes/billingPreload.js
 
-      - name: Lint changed engagement files
+      - name: Lint critical production files
         run: >-
           npx eslint
           src/api/engagementClient.js
+          src/api/billingClient.js
+          src/lib/subscriptionUtils.js
           src/pages/Challenges.jsx
           src/pages/Leaderboard.jsx
           src/pages/Rewards.jsx
+          src/pages/Subscription.jsx
           src/pages/admin/AdminLeaderboardPrizes.jsx
           src/pages/GymOwnerDashboardProduction.jsx
 
