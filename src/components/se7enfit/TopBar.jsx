@@ -1,7 +1,7 @@
 import '@/screenshot-colors.css';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, User, ChevronLeft, Swords } from 'lucide-react';
+import { Bell, User, ChevronLeft, Swords, Grid2X2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function TopBar({ title, showBack, backTo, rightElement }) {
@@ -42,6 +42,7 @@ export default function TopBar({ title, showBack, backTo, rightElement }) {
   }, [location.pathname]);
 
   const isChallengesHome = location.pathname === '/challenges';
+  const isHome = location.pathname === '/';
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-2xl"
@@ -68,6 +69,16 @@ export default function TopBar({ title, showBack, backTo, rightElement }) {
         <div className="flex items-center gap-1.5">
           {rightElement || (
             <>
+              {isHome && (
+                <Link
+                  to="/features"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent transition-all hover:bg-accent/15 active:scale-95"
+                  aria-label="Core features"
+                >
+                  <Grid2X2 size={16} strokeWidth={2.2} />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-background" />
+                </Link>
+              )}
               {isChallengesHome && (
                 <Link
                   to="/challenges/battles"
