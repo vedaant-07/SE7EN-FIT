@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+import { Check, ShieldCheck, X } from 'lucide-react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
@@ -53,7 +53,7 @@ export default function AnimatedOtpVerification({
   }, []);
 
   const resetAfterError = useCallback(async () => {
-    await sleep(shouldReduceMotion ? 80 : 520);
+    await sleep(shouldReduceMotion ? 80 : 760);
     if (!mountedRef.current) return;
     attemptRef.current = '';
     onChange('');
@@ -72,7 +72,7 @@ export default function AnimatedOtpVerification({
 
       setPhase('success');
       void playHaptic('success');
-      await sleep(shouldReduceMotion ? 120 : 900);
+      await sleep(shouldReduceMotion ? 120 : 1350);
 
       if (mountedRef.current) await onVerified?.(result);
     } catch (error) {
@@ -106,7 +106,10 @@ export default function AnimatedOtpVerification({
     }
   }, [isResending, onChange, onError, onResend, phase, resendDisabled]);
 
-  const fastTransition = { duration: shouldReduceMotion ? 0.01 : 0.28, ease: [0.22, 1, 0.36, 1] };
+  const mediumTransition = {
+    duration: shouldReduceMotion ? 0.01 : 0.46,
+    ease: [0.22, 1, 0.36, 1],
+  };
   const isSuccess = phase === 'success';
 
   return (
@@ -118,16 +121,19 @@ export default function AnimatedOtpVerification({
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={isSuccess ? 'success-copy' : 'verification-copy'}
-          initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+          initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -6 }}
-          transition={fastTransition}
+          exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -8 }}
+          transition={mediumTransition}
           className="text-center"
         >
-          <h1 className="font-heading font-bold text-2xl">
+          <div className="mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent/[0.08] px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-accent">
+            <ShieldCheck size={11} /> Secure OTP verification
+          </div>
+          <h1 className="font-heading text-2xl font-black">
             {isSuccess ? successTitle : title}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1.5 break-words">
+          <p className="mt-1.5 break-words text-sm leading-relaxed text-muted-foreground">
             {isSuccess
               ? successDescription
               : `Enter the ${codeLength}-digit code sent to ${destination}`}
@@ -145,8 +151,8 @@ export default function AnimatedOtpVerification({
               animate={phase === 'error'
                 ? { opacity: 1, scale: 1, x: shouldReduceMotion ? 0 : [0, -9, 8, -6, 4, 0] }
                 : { opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scaleX: 0.2, scaleY: 0.72, filter: 'blur(3px)' }}
-              transition={fastTransition}
+              exit={{ opacity: 0, scaleX: 0.24, scaleY: 0.76, filter: 'blur(3px)' }}
+              transition={mediumTransition}
             >
               <InputOTP
                 maxLength={codeLength}
@@ -174,17 +180,30 @@ export default function AnimatedOtpVerification({
               key="otp-loader"
               layoutId="otp-verification-core"
               className="otp-loader-shell"
-              initial={{ opacity: 0, scale: 0.55, rotate: -35 }}
+              initial={{ opacity: 0, scale: 0.55, rotate: -30 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.72 }}
-              transition={fastTransition}
+              exit={{ opacity: 0, scale: 0.76 }}
+              transition={mediumTransition}
               aria-label="Verifying code"
             >
               <motion.div
                 className="otp-loader-outline"
                 animate={shouldReduceMotion ? undefined : { rotate: 360 }}
-                transition={{ duration: 0.82, ease: 'linear', repeat: Infinity }}
+                transition={{ duration: 1.25, ease: 'linear', repeat: Infinity }}
               />
+              {!shouldReduceMotion && [0, 1, 2].map((dot) => (
+                <motion.span
+                  key={dot}
+                  className="absolute h-1.5 w-1.5 rounded-full bg-accent"
+                  animate={{
+                    x: [0, Math.cos((dot * Math.PI * 2) / 3) * 39, 0],
+                    y: [0, Math.sin((dot * Math.PI * 2) / 3) * 39, 0],
+                    opacity: [0.2, 0.9, 0.2],
+                    scale: [0.7, 1, 0.7],
+                  }}
+                  transition={{ duration: 1.8, repeat: Infinity, delay: dot * 0.18, ease: 'easeInOut' }}
+                />
+              ))}
               <span className="otp-loader-dot" />
             </motion.div>
           )}
@@ -198,19 +217,20 @@ export default function AnimatedOtpVerification({
               animate={{ opacity: 1, scale: 1 }}
               transition={shouldReduceMotion
                 ? { duration: 0.01 }
-                : { type: 'spring', stiffness: 420, damping: 24 }}
+                : { type: 'spring', stiffness: 260, damping: 24 }}
               aria-label="Verification successful"
             >
               <motion.span
                 className="otp-success-glow"
                 initial={{ opacity: 0, scale: 0.2 }}
-                animate={{ opacity: [0, 0.85, 0.5], scale: [0.2, 1, 1.18] }}
-                transition={{ duration: shouldReduceMotion ? 0.01 : 0.72, ease: 'easeOut' }}
+                animate={{ opacity: [0, 0.82, 0.46], scale: [0.2, 1, 1.2] }}
+                transition={{ duration: shouldReduceMotion ? 0.01 : 1.05, ease: 'easeOut' }}
               />
               <motion.span
                 className="otp-success-check"
-                initial={{ rotate: -20 }}
-                animate={{ rotate: 0 }}
+                initial={{ rotate: -18, scale: 0.8 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ duration: shouldReduceMotion ? 0.01 : 0.48, ease: [0.22, 1, 0.36, 1] }}
               >
                 <Check size={27} strokeWidth={3.2} />
               </motion.span>
@@ -237,7 +257,7 @@ export default function AnimatedOtpVerification({
           type="button"
           onClick={handleResend}
           disabled={!onResend || resendDisabled || isResending || phase !== 'input'}
-          className="text-accent font-semibold hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
+          className="font-semibold text-accent hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
         >
           {isResending ? 'Sending...' : resendLabel}
         </button>
