@@ -47,8 +47,8 @@ export const PLAN_CONFIG = [
   {
     key: PLANS.PREMIUM_QUARTERLY,
     label: 'Quarterly',
-    price: 2999,
-    duration: 'quarter',
+    price: 999,
+    duration: '3 months',
     billing: 'quarterly',
     tagline: 'Best value',
     color: 'text-yellow-400',
@@ -59,13 +59,13 @@ export const PLAN_CONFIG = [
   {
     key: PLANS.PREMIUM_ANNUAL,
     label: 'Annual',
-    price: 5999,
+    price: 3999,
     duration: 'year',
     billing: 'annual',
     tagline: 'Maximum savings',
     color: 'text-purple-400',
     border: 'border-purple-500/40',
-    savings: 'Save ₹1989',
+    savings: 'Save ₹1,989',
     features: ['Everything in Premium', '12 months access', 'VIP community badge', 'Exclusive challenges', 'Yearly progress report'],
   },
 ];
