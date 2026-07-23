@@ -1,0 +1,70 @@
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
+).replace(/\/+$/, '');
+const TOKEN_KEY = 'se7enfit_auth_token';
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS || 20000);
+
+function localDateKey() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function request(path, options = {}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs || REQUEST_TIMEOUT_MS);
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const response = await fetch(`${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`, {
+      method: options.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Date': localDateKey(),
+        'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      const error = new Error(data?.error || data?.message || 'Payment service is unavailable. Please try again.');
+      error.status = response.status;
+      error.code = data?.code;
+      error.body = data;
+      throw error;
+    }
+    return data?.item ?? data;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('The payment service is taking too long. Please try again.');
+      timeoutError.isNetworkError = true;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+export const billingClient = {
+  getCurrentSubscription() {
+    return request('/billing/subscription');
+  },
+  createOrder(planCode, offerCode) {
+    return request('/billing/order', {
+      method: 'POST',
+      body: { plan_code: planCode, offer_code: offerCode || undefined },
+      timeoutMs: 30000,
+    });
+  },
+  verifyPayment(payload) {
+    return request('/billing/verify', {
+      method: 'POST',
+      body: payload,
+      timeoutMs: 30000,
+    });
+  },
+};
