@@ -38,6 +38,7 @@ import Notifications from '@/pages/Notifications';
 import Subscription from '@/pages/Subscription';
 import FoodScan from '@/pages/FoodScan';
 import Challenges from '@/pages/Challenges';
+import GymBattles from '@/pages/GymBattles';
 import Rewards from '@/pages/Rewards';
 import Leaderboard from '@/pages/Leaderboard';
 import PolicyPages from '@/pages/PolicyPages';
@@ -124,6 +125,7 @@ const AuthenticatedApp = () => {
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/food-scan" element={<FoodScan />} />
           <Route path="/challenges" element={<Challenges />} />
+          <Route path="/challenges/battles" element={<GymBattles />} />
           <Route path="/challenges/:challengeId" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
