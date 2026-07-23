@@ -8,4 +8,5 @@ import './routes/healthEntityPreload.js';
 import './routes/entityCompatPreload.js';
 import './routes/engagementPreload.js';
 import './routes/adminExtraPreload.js';
+import './routes/billingPreload.js';
 import './index.production.js';
