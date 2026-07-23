@@ -1,20 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { billingClient } from '@/api/billingClient';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Crown, Check, ChevronRight, Shield, AlertCircle, Gift, WalletCards, Lock } from 'lucide-react';
-import { PLAN_CONFIG, PLANS, isActivePlan, getDaysRemaining } from '@/lib/subscriptionUtils';
+import {
+  AlertCircle,
+  Check,
+  ChevronRight,
+  Crown,
+  Gift,
+  Loader2,
+  Lock,
+  RefreshCw,
+  Shield,
+  ShieldCheck,
+  WalletCards,
+} from 'lucide-react';
+import { PLAN_CONFIG, PLANS, getDaysRemaining, isActivePlan } from '@/lib/subscriptionUtils';
 import { useToast } from '@/components/ui/use-toast';
 
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
+const PENDING_PAYMENT_KEY = 'se7enfit_pending_payment_verification';
 
 const AVAILABLE_OFFERS = [
   {
     code: 'WELCOME20',
     title: 'Welcome Offer',
-    description: 'Save 20% on any paid subscription plan.',
+    description: 'Save 20% on your first paid SE7EN FIT plan.',
     tag: '20% OFF',
     type: 'percent',
     value: 20,
@@ -22,7 +35,7 @@ const AVAILABLE_OFFERS = [
   {
     code: 'SE7EN50',
     title: 'SE7EN FIT Starter',
-    description: 'Flat ₹50 off on Basic or Premium monthly plan.',
+    description: 'Flat ₹50 off your first Basic or Premium monthly plan.',
     tag: '₹50 OFF',
     type: 'flat',
     value: 50,
@@ -41,56 +54,153 @@ const AVAILABLE_OFFERS = [
 
 function isOfferEligible(offer, plan) {
   if (!offer || !plan) return false;
-  if (!offer.appliesTo) return true;
-  return offer.appliesTo.includes(plan.key) || offer.appliesTo.includes(plan.billing);
+  return !offer.appliesTo || offer.appliesTo.includes(plan.key);
 }
 
 function getOfferDiscount(offer, plan) {
   if (!isOfferEligible(offer, plan)) return 0;
-  if (offer.type === 'percent') return Math.min(plan.price, Math.round((plan.price * offer.value) / 100));
-  if (offer.type === 'flat') return Math.min(plan.price, offer.value);
+  if (offer.type === 'percent') return Math.min(plan.price - 1, Math.round((plan.price * offer.value) / 100));
+  if (offer.type === 'flat') return Math.min(plan.price - 1, offer.value);
   return 0;
 }
 
 function loadRazorpay() {
   return new Promise((resolve) => {
-    if (window.Razorpay) { resolve(true); return; }
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const existing = document.querySelector('script[data-se7enfit-razorpay]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true), { once: true });
+      existing.addEventListener('error', () => resolve(false), { once: true });
+      return;
+    }
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.dataset.se7enfitRazorpay = 'true';
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
 }
 
-function getSubscriptionDates(plan) {
-  const today = new Date();
-  const endDate = new Date(today);
-  if (plan.billing === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
-  else if (plan.billing === 'quarterly') endDate.setMonth(endDate.getMonth() + 3);
-  else if (plan.billing === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
-  return { today, endDate };
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+function readPendingPayment() {
+  try {
+    const raw = localStorage.getItem(PENDING_PAYMENT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePendingPayment(payload) {
+  localStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify(payload));
+}
+
+function clearPendingPayment() {
+  localStorage.removeItem(PENDING_PAYMENT_KEY);
 }
 
 export default function Subscription() {
   const { toast } = useToast();
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState('');
   const [checkoutPlan, setCheckoutPlan] = useState(null);
   const [coupon, setCoupon] = useState('');
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [user, setUser] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    const u = await base44.auth.me();
-    const subs = await base44.entities.Subscription.filter({ user_id: u.id, status: 'active' });
-    setUser(u);
-    setCurrent(subs[0] || null);
-    setLoading(false);
+  const loadData = async ({ background = false } = {}) => {
+    if (!background) setLoading(true);
+    setPageError('');
+    try {
+      const [account, subscription] = await Promise.all([
+        base44.auth.me(),
+        billingClient.getCurrentSubscription(),
+      ]);
+      setUser(account);
+      setCurrent(subscription || null);
+    } catch (error) {
+      console.error('[Subscription] load failed:', error);
+      setPageError(error.message || 'Subscription details could not be loaded.');
+    } finally {
+      if (!background) setLoading(false);
+    }
   };
+
+  const verifyAndActivate = async (payload, { silent = false } = {}) => {
+    if (!payload || processing) return false;
+    setProcessing(true);
+    setPendingVerification(payload);
+    savePendingPayment(payload);
+
+    try {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const result = await billingClient.verifyPayment(payload);
+        if (!result?.pending && result?.subscription) {
+          clearPendingPayment();
+          setPendingVerification(null);
+          setCurrent(result.subscription);
+          setCheckoutPlan(null);
+          if (!silent) {
+            toast({
+              title: 'Plan activated securely',
+              description: `${String(result.subscription.plan || 'Paid plan').replace(/_/g, ' ')} is now active.`,
+            });
+          }
+          return true;
+        }
+        if (attempt < 3) await wait(1800);
+      }
+
+      if (!silent) {
+        toast({
+          title: 'Payment received — activation pending',
+          description: 'Razorpay is still confirming capture. Use Retry activation in a moment.',
+        });
+      }
+      return false;
+    } catch (error) {
+      console.error('[Subscription] verification failed:', error);
+      const permanentFailure = error.status >= 400 && error.status < 500 && ![408, 409, 429].includes(error.status);
+      if (permanentFailure) {
+        clearPendingPayment();
+        setPendingVerification(null);
+      }
+      if (!silent) {
+        toast({
+          title: permanentFailure ? 'Payment could not be verified' : 'Activation needs another attempt',
+          description: error.message || 'Please try again or contact support with your payment ID.',
+          variant: permanentFailure ? 'destructive' : 'default',
+        });
+      }
+      return false;
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const initialise = async () => {
+      await loadData();
+      if (cancelled) return;
+      const pending = readPendingPayment();
+      if (pending) {
+        setPendingVerification(pending);
+        await verifyAndActivate(pending, { silent: true });
+      }
+    };
+    initialise();
+    return () => { cancelled = true; };
+  }, []);
 
   const openCheckout = (plan) => {
     if (plan.key === PLANS.FREE_TRIAL || plan.key === PLANS.FREE) return;
@@ -106,21 +216,18 @@ export default function Subscription() {
       toast({ title: 'Enter a coupon code', variant: 'destructive' });
       return;
     }
-
-    const offer = AVAILABLE_OFFERS.find(item => item.code === value);
+    const offer = AVAILABLE_OFFERS.find((item) => item.code === value);
     if (!offer || !isOfferEligible(offer, checkoutPlan)) {
-      toast({ title: 'Invalid offer for this plan', description: 'Choose one of the available offers below.', variant: 'destructive' });
+      toast({ title: 'Offer is not valid for this plan', variant: 'destructive' });
       return;
     }
-
     setSelectedOffer(offer);
-    toast({ title: 'Offer applied', description: `${offer.code} saved ₹${getOfferDiscount(offer, checkoutPlan)}` });
+    toast({ title: 'Offer selected', description: 'Eligibility and final amount will be verified securely before checkout.' });
   };
 
   const selectOffer = (offer) => {
     setSelectedOffer(offer);
     setCoupon(offer.code);
-    toast({ title: 'Offer applied', description: `${offer.code} saved ₹${getOfferDiscount(offer, checkoutPlan)}` });
   };
 
   const clearOffer = () => {
@@ -128,239 +235,176 @@ export default function Subscription() {
     setCoupon('');
   };
 
-  const completeSubscription = async (response, plan, payableAmount, discountAmount) => {
-    const { today, endDate } = getSubscriptionDates(plan);
-
-    await base44.entities.Payment.create({
-      user_id: user.id,
-      plan: plan.key,
-      amount: payableAmount,
-      original_amount: plan.price,
-      discount_amount: discountAmount,
-      currency: 'INR',
-      status: 'success',
-      razorpay_payment_id: response.razorpay_payment_id,
-      applied_offer_code: selectedOffer?.code || undefined,
-      paid_at: new Date().toISOString(),
-    });
-
-    if (current) {
-      await base44.entities.Subscription.update(current.id, { status: 'expired' });
-    }
-
-    const nextSub = await base44.entities.Subscription.create({
-      user_id: user.id,
-      plan: plan.key,
-      status: 'active',
-      start_date: today.toISOString().split('T')[0],
-      end_date: endDate.toISOString().split('T')[0],
-      payment_id: response.razorpay_payment_id,
-      original_amount: plan.price,
-      paid_amount: payableAmount,
-      discount_amount: discountAmount,
-      applied_offer_code: selectedOffer?.code || undefined,
-    });
-
-    setCurrent(nextSub);
-    setCheckoutPlan(null);
-    toast({ title: `${plan.label} Activated`, description: `Active until ${endDate.toDateString()}` });
-  };
-
   const continueToPayment = async () => {
     if (!checkoutPlan || processing) return;
+    setProcessing(true);
 
-    if (!RAZORPAY_KEY_ID) {
+    try {
+      const loaded = await loadRazorpay();
+      if (!loaded) throw new Error('Secure checkout could not be loaded. Check your connection and try again.');
+
+      const order = await billingClient.createOrder(checkoutPlan.key, selectedOffer?.code);
+      if (!order?.order_id || !order?.key_id) throw new Error('The secure payment order was not created.');
+
+      const options = {
+        key: order.key_id,
+        order_id: order.order_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'SE7EN FIT',
+        description: `${order.plan_label} Plan`,
+        image: '/favicon.ico',
+        prefill: {
+          name: order.prefill?.name || user?.full_name || user?.name || '',
+          email: order.prefill?.email || user?.email || '',
+          contact: order.prefill?.contact || user?.phone || user?.mobile || '',
+        },
+        notes: {
+          plan_code: order.plan_code,
+          offer_code: order.offer_code || '',
+        },
+        theme: { color: '#22c55e' },
+        handler: async (response) => {
+          const payload = {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          };
+          savePendingPayment(payload);
+          setPendingVerification(payload);
+          await verifyAndActivate(payload);
+        },
+        modal: {
+          ondismiss: () => setProcessing(false),
+          confirm_close: true,
+        },
+      };
+
+      const checkout = new window.Razorpay(options);
+      checkout.on('payment.failed', (failure) => {
+        console.error('[Subscription] Razorpay payment failed:', failure?.error);
+        toast({
+          title: 'Payment was not completed',
+          description: failure?.error?.description || 'No plan was activated. You can safely try again.',
+          variant: 'destructive',
+        });
+        setProcessing(false);
+      });
+      checkout.open();
+      setProcessing(false);
+    } catch (error) {
+      console.error('[Subscription] checkout failed:', error);
       toast({
-        title: 'Razorpay key missing',
-        description: 'Add VITE_RAZORPAY_KEY_ID in Render frontend environment and redeploy.',
+        title: 'Checkout unavailable',
+        description: error.message || 'Please try again shortly.',
         variant: 'destructive',
       });
-      return;
-    }
-
-    const discountAmount = getOfferDiscount(selectedOffer, checkoutPlan);
-    const payableAmount = Math.max(1, checkoutPlan.price - discountAmount);
-
-    setProcessing(true);
-    const loaded = await loadRazorpay();
-    if (!loaded) {
-      toast({ title: 'Payment gateway failed to load', description: 'Check your internet connection.', variant: 'destructive' });
       setProcessing(false);
-      return;
     }
-
-    const options = {
-      key: RAZORPAY_KEY_ID,
-      amount: payableAmount * 100,
-      currency: 'INR',
-      name: 'SE7EN FIT',
-      description: `${checkoutPlan.label} Plan`,
-      image: '/favicon.ico',
-      prefill: {
-        name: user?.full_name || user?.name || '',
-        email: user?.email || '',
-        contact: user?.phone || user?.mobile || '',
-      },
-      notes: {
-        plan: checkoutPlan.key,
-        offer: selectedOffer?.code || '',
-        original_amount: String(checkoutPlan.price),
-        discount_amount: String(discountAmount),
-      },
-      theme: { color: '#22c55e' },
-      handler: async (response) => {
-        try {
-          await completeSubscription(response, checkoutPlan, payableAmount, discountAmount);
-        } catch (error) {
-          toast({ title: 'Payment done, activation failed', description: error.message || 'Please contact support.', variant: 'destructive' });
-        } finally {
-          setProcessing(false);
-        }
-      },
-      modal: {
-        ondismiss: () => setProcessing(false),
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', () => {
-      toast({ title: 'Payment failed', description: 'Please try again.', variant: 'destructive' });
-      setProcessing(false);
-    });
-    rzp.open();
   };
 
   if (loading) return <LoadingScreen />;
 
   if (checkoutPlan) {
-    const eligibleOffers = AVAILABLE_OFFERS.filter(offer => isOfferEligible(offer, checkoutPlan));
+    const eligibleOffers = AVAILABLE_OFFERS.filter((offer) => isOfferEligible(offer, checkoutPlan));
     const discountAmount = getOfferDiscount(selectedOffer, checkoutPlan);
-    const payableAmount = Math.max(1, checkoutPlan.price - discountAmount);
+    const estimatedPayable = Math.max(1, checkoutPlan.price - discountAmount);
 
     return (
       <>
-        <TopBar title="Checkout" showBack backTo="/subscription" rightElement={null} />
-        <div className="max-w-lg mx-auto px-4 py-4 pb-32 space-y-4">
-          <button onClick={() => setCheckoutPlan(null)} className="text-xs text-muted-foreground hover:text-foreground">Back to plans</button>
+        <TopBar title="Secure checkout" showBack backTo="/subscription" rightElement={null} />
+        <main className="mx-auto max-w-lg space-y-4 px-4 pb-32 pt-4">
+          <button type="button" onClick={() => setCheckoutPlan(null)} className="text-xs font-medium text-muted-foreground hover:text-foreground">Back to plans</button>
 
-          <div className="rounded-3xl border border-accent/35 bg-gradient-to-b from-accent/10 to-card p-5">
+          <section className="rounded-[28px] border border-accent/35 bg-gradient-to-b from-accent/10 to-card p-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Selected plan</p>
-                <h2 className="font-heading text-2xl font-black mt-1">{checkoutPlan.label}</h2>
-                <p className="text-sm text-muted-foreground mt-1">{checkoutPlan.tagline}</p>
+                <h1 className="mt-1 font-heading text-2xl font-black">{checkoutPlan.label}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">{checkoutPlan.tagline}</p>
               </div>
-              <div className="h-12 w-12 rounded-2xl bg-accent/15 text-accent flex items-center justify-center">
-                <WalletCards size={22} />
-              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent"><WalletCards size={22} /></div>
             </div>
-
-            <div className="flex items-baseline gap-1 mt-5">
-              <span className="font-heading text-4xl font-black">₹{checkoutPlan.price}</span>
+            <div className="mt-5 flex items-baseline gap-1">
+              <span className="font-heading text-4xl font-black">₹{checkoutPlan.price.toLocaleString('en-IN')}</span>
               <span className="text-sm text-muted-foreground">/{checkoutPlan.duration}</span>
             </div>
-
             <div className="mt-4 space-y-2">
-              {checkoutPlan.features.slice(0, 5).map((feature, index) => (
-                <div key={index} className="flex items-center gap-2.5">
-                  <div className="w-4 h-4 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                    <Check size={9} className="text-accent" />
-                  </div>
+              {checkoutPlan.features.slice(0, 5).map((feature) => (
+                <div key={feature} className="flex items-center gap-2.5">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15"><Check size={9} className="text-accent" /></span>
                   <span className="text-xs text-muted-foreground">{feature}</span>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <p className="font-heading font-semibold text-sm flex items-center gap-2">
-              <Gift size={15} className="text-accent" /> Have a code?
-            </p>
+          {pendingVerification && (
+            <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+              <div className="flex items-start gap-3">
+                <Loader2 size={18} className="mt-0.5 shrink-0 text-amber-300" />
+                <div className="flex-1">
+                  <p className="text-sm font-bold">Payment activation pending</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Your payment confirmation is saved on this device. Retrying will not charge you again.</p>
+                  <Button type="button" onClick={() => verifyAndActivate(pendingVerification)} disabled={processing} variant="outline" className="mt-3 h-9 rounded-xl">
+                    <RefreshCw size={14} className={`mr-2 ${processing ? 'animate-spin' : ''}`} /> Retry activation
+                  </Button>
+                </div>
+              </div>
+            </section>
+          )}
 
+          <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+            <p className="flex items-center gap-2 font-heading text-sm font-semibold"><Gift size={15} className="text-accent" /> Offer code</p>
             {selectedOffer && (
-              <div className="rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-xs text-accent font-semibold flex items-center justify-between">
-                <span>{selectedOffer.code} applied • You save ₹{discountAmount}</span>
-                <button onClick={clearOffer} className="text-muted-foreground hover:text-foreground">Remove</button>
+              <div className="flex items-center justify-between rounded-xl border border-accent/25 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent">
+                <span>{selectedOffer.code} selected</span>
+                <button type="button" onClick={clearOffer} className="text-muted-foreground">Remove</button>
               </div>
             )}
-
             <div className="flex gap-2">
-              <Input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                placeholder="COUPON CODE" className="flex-1 h-12 rounded-xl bg-muted/40 uppercase font-mono" />
-              <button onClick={applyCoupon} className="px-4 h-12 rounded-xl bg-accent text-accent-foreground text-sm font-bold">Apply</button>
+              <Input value={coupon} onChange={(event) => setCoupon(event.target.value.toUpperCase())} placeholder="COUPON CODE" className="h-12 flex-1 rounded-xl bg-muted/40 font-mono uppercase" />
+              <button type="button" onClick={applyCoupon} className="h-12 rounded-xl bg-accent px-4 text-sm font-bold text-accent-foreground">Apply</button>
             </div>
-          </div>
+          </section>
 
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-heading font-semibold text-sm flex items-center gap-2">
-                <Gift size={15} className="text-accent" /> Available offers
-              </p>
-              <span className="text-[10px] text-muted-foreground">Tap to apply</span>
-            </div>
-
+          <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between"><p className="flex items-center gap-2 font-heading text-sm font-semibold"><Gift size={15} className="text-accent" /> Available offers</p><span className="text-[10px] text-muted-foreground">Server verified</span></div>
             <div className="space-y-2">
-              {eligibleOffers.map(offer => {
+              {eligibleOffers.map((offer) => {
                 const active = selectedOffer?.code === offer.code;
-                const savings = getOfferDiscount(offer, checkoutPlan);
                 return (
-                  <button
-                    key={offer.code}
-                    onClick={() => selectOffer(offer)}
-                    className={`w-full text-left rounded-2xl border p-3 transition-all active:scale-[0.99] ${
-                      active ? 'border-accent bg-accent/10' : 'border-border bg-background/60 hover:border-accent/30'
-                    }`}
-                  >
+                  <button key={offer.code} type="button" onClick={() => selectOffer(offer)} className={`w-full rounded-2xl border p-3 text-left transition-all active:scale-[0.99] ${active ? 'border-accent bg-accent/10' : 'border-border bg-background/60'}`}>
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-foreground">{offer.title}</span>
-                          {active && <span className="text-[9px] font-bold text-accent">APPLIED</span>}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-1">{offer.description}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground mt-2">Code: {offer.code}</p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <span className="inline-flex rounded-full bg-accent/15 px-2 py-1 text-[10px] font-bold text-accent">{offer.tag}</span>
-                        <p className="text-[10px] text-muted-foreground mt-1">Save ₹{savings}</p>
-                      </div>
+                      <div><p className="text-sm font-bold">{offer.title}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{offer.description}</p><p className="mt-2 font-mono text-[10px] text-muted-foreground">{offer.code}</p></div>
+                      <span className="shrink-0 rounded-full bg-accent/15 px-2 py-1 text-[10px] font-bold text-accent">{offer.tag}</span>
                     </div>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-2">
-            <p className="font-heading font-semibold text-xs flex items-center gap-1.5"><Shield size={12} className="text-muted-foreground" /> Secure checkout</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">Payment opens through Razorpay test checkout. Your plan activates after successful payment.</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed flex items-center gap-1.5"><Lock size={12} /> Prices in INR • GST included.</p>
-          </div>
+          <section className="space-y-2 rounded-2xl border border-border bg-muted/40 p-4">
+            <p className="flex items-center gap-1.5 font-heading text-xs font-semibold"><ShieldCheck size={13} className="text-accent" /> Server-verified checkout</p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">SE7EN FIT creates the Razorpay order on the backend. Access activates only after the server verifies the checkout signature, order amount and captured payment status.</p>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Lock size={12} /> Payment details are handled by Razorpay.</p>
+          </section>
 
-          <div className="rounded-3xl border border-accent/30 bg-card p-4 shadow-lg shadow-accent/5">
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Plan price</span>
-                <span>₹{checkoutPlan.price}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex items-center justify-between text-xs text-accent">
-                  <span>Offer discount</span>
-                  <span>-₹{discountAmount}</span>
-                </div>
-              )}
+          <section className="rounded-3xl border border-accent/30 bg-card p-4 shadow-lg shadow-accent/5">
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Plan price</span><span>₹{checkoutPlan.price.toLocaleString('en-IN')}</span></div>
+              {discountAmount > 0 && <div className="flex items-center justify-between text-xs text-accent"><span>Estimated offer</span><span>-₹{discountAmount.toLocaleString('en-IN')}</span></div>}
+              <p className="text-[10px] text-muted-foreground">The backend confirms final eligibility and amount before Razorpay opens.</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <p className="text-[11px] text-muted-foreground">Total payable</p>
-                <p className="font-heading text-2xl font-black">₹{payableAmount}</p>
-              </div>
-              <Button onClick={continueToPayment} disabled={processing} className="h-12 rounded-2xl bg-accent px-6 text-accent-foreground font-bold hover:bg-accent/90">
-                {processing ? 'Processing...' : <>Pay Now <ChevronRight size={15} /></>}
+              <div className="flex-1"><p className="text-[11px] text-muted-foreground">Estimated payable</p><p className="font-heading text-2xl font-black">₹{estimatedPayable.toLocaleString('en-IN')}</p></div>
+              <Button type="button" onClick={continueToPayment} disabled={processing || Boolean(pendingVerification)} className="h-12 rounded-2xl bg-accent px-6 font-bold text-accent-foreground hover:bg-accent/90">
+                {processing ? <><Loader2 size={15} className="mr-2 animate-spin" /> Verifying</> : <>Pay securely <ChevronRight size={15} /></>}
               </Button>
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
       </>
     );
   }
@@ -372,117 +416,68 @@ export default function Subscription() {
   return (
     <>
       <TopBar title="Subscription" showBack />
-      <div className="px-4 py-4 space-y-4 pb-10 max-w-lg mx-auto">
-        <div className="text-center py-2">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-yellow-400/20 to-accent/10 border border-yellow-400/30 flex items-center justify-center mx-auto mb-3">
-            <Crown size={28} className="text-yellow-400" />
-          </div>
-          <h2 className="font-heading font-bold text-2xl">Unlock SE7ENFIT</h2>
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-            Premium AI fitness coaching, food scanner,<br />animated guides & unlimited everything
-          </p>
-        </div>
+      <main className="mx-auto max-w-lg space-y-4 px-4 pb-28 pt-4">
+        <section className="py-2 text-center">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-3xl border border-yellow-400/30 bg-gradient-to-br from-yellow-400/20 to-accent/10"><Crown size={28} className="text-yellow-400" /></div>
+          <h1 className="font-heading text-2xl font-black">Choose your SE7EN FIT plan</h1>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Upgrade for deeper coaching, premium challenges, rewards and transformation tools.</p>
+        </section>
+
+        {pageError && (
+          <section className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+            <div className="flex items-start gap-3"><AlertCircle size={18} className="mt-0.5 shrink-0 text-destructive" /><div className="flex-1"><p className="text-sm font-semibold">Subscription details unavailable</p><p className="mt-1 text-xs text-muted-foreground">{pageError}</p><Button type="button" onClick={() => loadData()} variant="outline" className="mt-3 h-9 rounded-xl"><RefreshCw size={14} className="mr-2" /> Try again</Button></div></div>
+          </section>
+        )}
+
+        {pendingVerification && (
+          <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+            <div className="flex items-start gap-3"><Loader2 size={18} className={`mt-0.5 shrink-0 text-amber-300 ${processing ? 'animate-spin' : ''}`} /><div className="flex-1"><p className="text-sm font-bold">Payment found — activation pending</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Retrying verifies the same payment and never creates a second charge.</p><Button type="button" onClick={() => verifyAndActivate(pendingVerification)} disabled={processing} variant="outline" className="mt-3 h-9 rounded-xl"><RefreshCw size={14} className="mr-2" /> Retry activation</Button></div></div>
+          </section>
+        )}
 
         {current && isActive && (
-          <div className="bg-accent/10 border border-accent/30 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center"><Check size={18} className="text-accent" /></div>
-            <div className="flex-1">
-              <p className="text-xs text-muted-foreground">Active Plan</p>
-              <p className="font-heading font-bold text-accent capitalize">{current.plan.replace(/_/g, ' ')}</p>
-              {daysLeft !== null && <p className="text-[10px] text-muted-foreground">{daysLeft} days remaining</p>}
-            </div>
-            {current.end_date && <p className="text-[10px] text-muted-foreground text-right">Until<br />{current.end_date}</p>}
-          </div>
+          <section className="flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20"><Check size={18} className="text-accent" /></span>
+            <div className="flex-1"><p className="text-xs text-muted-foreground">Active plan</p><p className="font-heading font-bold capitalize text-accent">{String(current.plan).replace(/_/g, ' ')}</p>{daysLeft !== null && <p className="text-[10px] text-muted-foreground">{daysLeft} days remaining</p>}</div>
+            {current.end_date && <p className="text-right text-[10px] text-muted-foreground">Until<br />{current.end_date}</p>}
+          </section>
         )}
 
         {current && !isActive && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-center gap-3">
-            <AlertCircle size={18} className="text-destructive flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-sm text-destructive">Plan Expired</p>
-              <p className="text-xs text-muted-foreground">Renew now to restore full access</p>
-            </div>
-          </div>
+          <section className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4"><AlertCircle size={18} className="shrink-0 text-destructive" /><div><p className="text-sm font-semibold text-destructive">Plan expired</p><p className="text-xs text-muted-foreground">Choose a plan to restore paid access.</p></div></section>
         )}
 
-        <div className="space-y-3">
-          {PLAN_CONFIG.map(plan => {
-            const isCurrentPlan = activePlan === plan.key;
-            const isPopular = plan.popular;
-
+        <section className="space-y-3">
+          {PLAN_CONFIG.map((plan) => {
+            const isCurrentPlan = activePlan === plan.key && isActive;
             return (
-              <div key={plan.key}
-                className={`bg-card border-2 rounded-3xl p-5 relative overflow-hidden transition-all ${
-                  isCurrentPlan ? 'border-accent shadow-lg shadow-accent/10' :
-                  isPopular ? 'border-accent/50' : plan.border
-                }`}>
-
-                {isPopular && !isCurrentPlan && (
-                  <div className="absolute -top-px left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-[9px] font-bold px-5 py-1 rounded-b-xl uppercase tracking-widest">
-                    Best Choice
-                  </div>
-                )}
-
-                {plan.savings && (
-                  <div className="absolute top-4 right-4 bg-green-500/10 border border-green-500/30 text-green-400 text-[9px] font-bold px-2 py-1 rounded-full">
-                    {plan.savings}
-                  </div>
-                )}
-
-                <div className="flex items-end gap-2 mb-1 mt-1">
-                  <p className="font-heading font-black text-xl">{plan.label}</p>
-                  {isCurrentPlan && <span className="text-[10px] bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-bold mb-0.5">ACTIVE</span>}
+              <article key={plan.key} className={`relative overflow-hidden rounded-3xl border-2 bg-card p-5 transition-all ${isCurrentPlan ? 'border-accent shadow-lg shadow-accent/10' : plan.popular ? 'border-accent/50' : plan.border}`}>
+                {plan.popular && !isCurrentPlan && <div className="absolute -top-px left-1/2 -translate-x-1/2 rounded-b-xl bg-accent px-5 py-1 text-[9px] font-bold uppercase tracking-widest text-accent-foreground">Popular</div>}
+                {plan.savings && <div className="absolute right-4 top-4 rounded-full border border-green-500/30 bg-green-500/10 px-2 py-1 text-[9px] font-bold text-green-400">{plan.savings}</div>}
+                <div className="mb-1 mt-1 flex items-end gap-2"><h2 className="font-heading text-xl font-black">{plan.label}</h2>{isCurrentPlan && <span className="mb-0.5 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">ACTIVE</span>}</div>
+                <div className="mb-4 flex items-baseline gap-1"><span className="font-heading text-3xl font-black">{plan.price === 0 ? 'Free' : `₹${plan.price.toLocaleString('en-IN')}`}</span>{plan.price > 0 && <span className="text-sm text-muted-foreground">/{plan.duration}</span>}</div>
+                <div className="mb-4 space-y-2">
+                  {plan.features.map((feature) => <div key={feature} className="flex items-center gap-2.5"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15"><Check size={9} className="text-accent" /></span><span className="text-xs text-muted-foreground">{feature}</span></div>)}
                 </div>
-
-                <div className="flex items-baseline gap-1 mb-4">
-                  <span className="font-heading font-black text-3xl">{plan.price === 0 ? 'Free' : `₹${plan.price}`}</span>
-                  {plan.price > 0 && <span className="text-sm text-muted-foreground">/{plan.duration}</span>}
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  {plan.features.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <div className="w-4 h-4 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
-                        <Check size={9} className="text-accent" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{f}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {!isCurrentPlan && plan.key !== PLANS.FREE && plan.key !== PLANS.FREE_TRIAL && (
-                  <Button
-                    onClick={() => openCheckout(plan)}
-                    className="w-full h-11 rounded-xl font-semibold text-sm transition-all bg-foreground text-background hover:bg-foreground/90 shadow-none"
-                  >
-                    Get {plan.label} — ₹{plan.price}/{plan.duration} <ChevronRight size={14} />
-                  </Button>
-                )}
-
-                {isCurrentPlan && (
-                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-accent font-medium">
-                    <Shield size={12} /> Your current plan
-                  </div>
-                )}
-              </div>
+                {!isCurrentPlan && plan.price > 0 && <Button type="button" onClick={() => openCheckout(plan)} disabled={Boolean(pendingVerification)} className="h-11 w-full rounded-xl bg-foreground text-sm font-semibold text-background hover:bg-foreground/90">Choose {plan.label} <ChevronRight size={14} /></Button>}
+                {isCurrentPlan && <div className="flex items-center justify-center gap-2 py-2 text-xs font-medium text-accent"><Shield size={12} /> Your current plan</div>}
+              </article>
             );
           })}
-        </div>
+        </section>
 
-        <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-2">
-          <p className="font-heading font-semibold text-xs flex items-center gap-1.5"><Shield size={12} className="text-muted-foreground" /> Subscription Policy</p>
+        <section className="space-y-2 rounded-2xl border border-border bg-muted/40 p-4">
+          <p className="flex items-center gap-1.5 font-heading text-xs font-semibold"><Shield size={12} className="text-muted-foreground" /> Subscription policy</p>
           {[
-            'All subscription payments are non-refundable once purchased.',
-            'Paid access remains active until the end of the selected billing period.',
-            'You can cancel future renewal anytime — access continues until expiry.',
-            'Health guidance is for informational purposes only. Consult a doctor before intense exercise.',
-          ].map((p, i) => (
-            <p key={i} className="text-[11px] text-muted-foreground leading-relaxed">• {p}</p>
-          ))}
-        </div>
+            'Final price and offer eligibility are confirmed by the backend before checkout.',
+            'Access activates only after Razorpay signature and captured-payment verification.',
+            'Paid access remains active until the displayed billing-period end date.',
+            'For a paid-but-not-activated payment, use Retry activation or contact support with the payment ID.',
+          ].map((policy) => <p key={policy} className="text-[11px] leading-relaxed text-muted-foreground">• {policy}</p>)}
+        </section>
 
-        <p className="text-center text-[10px] text-muted-foreground">Prices in INR • Payments secured by Razorpay • GST included</p>
-      </div>
+        <p className="text-center text-[10px] text-muted-foreground">Prices in INR • Secure order and signature verification • Payments handled by Razorpay</p>
+      </main>
     </>
   );
 }
