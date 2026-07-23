@@ -38,16 +38,22 @@ jobs:
       - name: Lint changed product files
         run: >-
           npx eslint
+          src/App.jsx
           src/api/engagementClient.js
           src/api/gymBattleClient.js
           src/components/auth/AnimatedOtpVerification.jsx
           src/components/auth/AuthExperienceShell.jsx
           src/components/se7enfit/BottomNav.jsx
           src/components/se7enfit/TopBar.jsx
+          src/pages/Login.jsx
+          src/pages/Register.jsx
+          src/pages/ForgotPassword.jsx
+          src/pages/ResetPassword.jsx
           src/pages/UserLogin.jsx
           src/pages/UserSignup.jsx
           src/pages/GymOwnerLoginSafe.jsx
           src/pages/GymOwnerSignup.jsx
+          src/pages/CoreFeatures.jsx
           src/pages/GymBattles.jsx
           src/pages/Challenges.jsx
           src/pages/Leaderboard.jsx
