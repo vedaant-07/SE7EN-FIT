@@ -22,6 +22,7 @@ import AppShell from '@/components/se7enfit/AppShell';
 import Welcome from '@/pages/Welcome';
 import Onboarding from '@/pages/Onboarding';
 import Home from '@/pages/Home';
+import CoreFeatures from '@/pages/CoreFeatures';
 import AITrainer from '@/pages/AITrainer';
 import Workout from '@/pages/Workout';
 import WorkoutLog from '@/pages/WorkoutLog';
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
+          <Route path="/features" element={<CoreFeatures />} />
           <Route path="/user-dashboard" element={<Navigate to="/" replace />} />
           <Route path="/ai-trainer" element={<AITrainer />} />
           <Route path="/workout" element={<Workout />} />
