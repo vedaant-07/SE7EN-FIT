@@ -54,7 +54,6 @@ jobs:
           src/components/auth/AuthExperienceShell.jsx
           src/components/se7enfit/BottomNav.jsx
           src/components/se7enfit/TopBar.jsx
-          src/components/se7enfit/tracking/UnifiedLiveTrackerV2.jsx
           src/pages/Login.jsx
           src/pages/Register.jsx
           src/pages/ForgotPassword.jsx
