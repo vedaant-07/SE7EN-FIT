@@ -22,6 +22,7 @@ import AppShell from '@/components/se7enfit/AppShell';
 import Welcome from '@/pages/Welcome';
 import Onboarding from '@/pages/Onboarding';
 import Home from '@/pages/Home';
+import CoreFeatures from '@/pages/CoreFeatures';
 import AITrainer from '@/pages/AITrainer';
 import Workout from '@/pages/Workout';
 import WorkoutLog from '@/pages/WorkoutLog';
@@ -38,6 +39,7 @@ import Notifications from '@/pages/Notifications';
 import Subscription from '@/pages/Subscription';
 import FoodScan from '@/pages/FoodScan';
 import Challenges from '@/pages/Challenges';
+import GymBattles from '@/pages/GymBattles';
 import Rewards from '@/pages/Rewards';
 import Leaderboard from '@/pages/Leaderboard';
 import PolicyPages from '@/pages/PolicyPages';
@@ -99,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
+          <Route path="/features" element={<CoreFeatures />} />
           <Route path="/user-dashboard" element={<Navigate to="/" replace />} />
           <Route path="/ai-trainer" element={<AITrainer />} />
           <Route path="/workout" element={<Workout />} />
@@ -124,6 +127,7 @@ const AuthenticatedApp = () => {
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/food-scan" element={<FoodScan />} />
           <Route path="/challenges" element={<Challenges />} />
+          <Route path="/challenges/battles" element={<GymBattles />} />
           <Route path="/challenges/:challengeId" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/leaderboard" element={<Leaderboard />} />

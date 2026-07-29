@@ -1,7 +1,7 @@
 import '@/screenshot-colors.css';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, User, ChevronLeft } from 'lucide-react';
+import { Bell, User, ChevronLeft, Swords, Grid2X2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function TopBar({ title, showBack, backTo, rightElement }) {
@@ -41,43 +41,67 @@ export default function TopBar({ title, showBack, backTo, rightElement }) {
     };
   }, [location.pathname]);
 
+  const isChallengesHome = location.pathname === '/challenges';
+  const isHome = location.pathname === '/';
+
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-2xl border-b border-border/40"
+    <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-2xl"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-      <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-14">
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
         {showBack ? (
           <button
             onClick={handleBack}
-            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted active:scale-95 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-muted active:scale-95"
+            aria-label="Go back"
           >
             <ChevronLeft size={22} />
           </button>
         ) : (
-          <div className="font-display font-bold text-xl tracking-tight select-none">
+          <div className="select-none font-display text-xl font-bold tracking-tight">
             SE<span className="text-accent">7</span>EN <span className="text-accent">FIT</span>
           </div>
         )}
 
         {title && (
-          <h1 className="absolute left-1/2 -translate-x-1/2 text-base font-heading font-semibold">{title}</h1>
+          <h1 className="absolute left-1/2 -translate-x-1/2 font-heading text-base font-semibold">{title}</h1>
         )}
 
         <div className="flex items-center gap-1.5">
           {rightElement || (
             <>
+              {isHome && (
+                <Link
+                  to="/features"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent transition-all hover:bg-accent/15 active:scale-95"
+                  aria-label="Core features"
+                >
+                  <Grid2X2 size={16} strokeWidth={2.2} />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-accent ring-2 ring-background" />
+                </Link>
+              )}
+              {isChallengesHome && (
+                <Link
+                  to="/challenges/battles"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-accent/25 bg-accent/10 text-accent transition-all hover:bg-accent/15 active:scale-95"
+                  aria-label="Gym battles"
+                >
+                  <Swords size={17} strokeWidth={2.2} />
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-orange-400 ring-2 ring-background" />
+                </Link>
+              )}
               <Link
                 to="/notifications"
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-muted relative active:scale-95 transition-all"
+                className="relative flex h-9 w-9 items-center justify-center rounded-xl transition-all hover:bg-muted active:scale-95"
                 aria-label="Notifications"
               >
                 <Bell size={18} strokeWidth={1.8} />
                 {hasUnreadNotifications && location.pathname !== '/notifications' && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full ring-1 ring-background" />
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent ring-1 ring-background" />
                 )}
               </Link>
               <Link
                 to="/profile"
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 active:scale-95 transition-all"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted transition-all hover:bg-muted/80 active:scale-95"
                 aria-label="Profile"
               >
                 <User size={16} strokeWidth={1.8} />
