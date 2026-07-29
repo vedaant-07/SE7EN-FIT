@@ -1,0 +1,51 @@
+name: One-time entity fallback hardening
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/api/base44Client.js'
+      - '.github/workflows/one-time-entity-hardening.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Disable production local-data fallback
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/api/base44Client.js')
+          content = path.read_text()
+          old = """const shouldUseLocalEntityFallback = (error) => {
+            if (import.meta.env.VITE_USE_LOCAL_ENTITIES === 'true') return true;
+            if (error?.isNetworkError) return true;
+            if ([404, 501].includes(error?.status)) return true;
+            return false;
+          };"""
+          new = """const shouldUseLocalEntityFallback = () => import.meta.env.VITE_USE_LOCAL_ENTITIES === 'true';"""
+          if old not in content:
+              print('Production fallback is already hardened.')
+          else:
+              path.write_text(content.replace(old, new))
+          PY
+
+      - name: Commit hardened client
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "SE7EN FIT Security Bot"
+          git config user.email "actions@github.com"
+          git add src/api/base44Client.js
+          git commit -m "Disable fake local entity fallback in production"
+          git push origin HEAD:${{ github.head_ref }}
