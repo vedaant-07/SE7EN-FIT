@@ -293,12 +293,7 @@ const makeRemoteEntity = (name) => ({
   }
 });
 
-const shouldUseLocalEntityFallback = (error) => {
-  if (import.meta.env.VITE_USE_LOCAL_ENTITIES === 'true') return true;
-  if (error?.isNetworkError) return true;
-  if ([404, 501].includes(error?.status)) return true;
-  return false;
-};
+const shouldUseLocalEntityFallback = () => import.meta.env.VITE_USE_LOCAL_ENTITIES === 'true';
 
 const makeEntity = (name, seed = []) => {
   const local = makeLocalEntity(name, seed);
