@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { storeAuthSession } from '@/lib/authSessionSecurity';
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit.onrender.com/api'
+  import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
 ).replace(/\/+$/, '');
 
 function loadGoogleIdentityScript() {
@@ -29,24 +30,6 @@ function loadGoogleIdentityScript() {
   });
 }
 
-function normalizeRole(role) {
-  const value = String(role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
-  if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
-  if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'super_admin';
-  return 'user';
-}
-
-function cacheSession(session = {}) {
-  const token = session.access_token || session.token;
-  if (!token) throw new Error('No access token returned from server');
-  localStorage.setItem('se7enfit_auth_token', token);
-  localStorage.setItem('se7enfit_auth', 'true');
-
-  const user = session.user ? { ...session.user, role: normalizeRole(session.user.role) } : null;
-  if (user) localStorage.setItem('se7enfit_user', JSON.stringify(user));
-  return user;
-}
-
 async function exchangeGoogleCredential(credential, role) {
   const response = await fetch(`${API_BASE_URL}/auth/google`, {
     method: 'POST',
@@ -59,7 +42,7 @@ async function exchangeGoogleCredential(credential, role) {
     throw new Error(data?.error || data?.message || `Google login failed (${response.status})`);
   }
 
-  return cacheSession(data);
+  return storeAuthSession(data).user;
 }
 
 export default function GoogleSignInButton({ role = 'user', onSuccess, onError, disabled }) {
