@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'server/routes/authSecurityPreload.js'
+      - 'server/routes/authSecurityDirectRoutesPreload.js'
       - 'server/routes/roleApprovalPreload.js'
       - 'server/start.js'
       - 'server/supabase/migrations/009_auth_security.sql'
@@ -48,8 +49,15 @@ jobs:
       - name: Check backend syntax
         run: |
           node --check server/routes/authSecurityPreload.js
+          node --check server/routes/authSecurityDirectRoutesPreload.js
           node --check server/routes/roleApprovalPreload.js
           node --check server/start.js
+
+      - name: Verify missing auth paths are registered
+        run: |
+          grep -q "'/api/auth/refresh'" server/routes/authSecurityDirectRoutesPreload.js
+          grep -q "'/api/auth/password-reset/request'" server/routes/authSecurityDirectRoutesPreload.js
+          grep -q "'/api/auth/password-reset/confirm'" server/routes/authSecurityDirectRoutesPreload.js
 
       - name: Lint authentication files
         run: >-
