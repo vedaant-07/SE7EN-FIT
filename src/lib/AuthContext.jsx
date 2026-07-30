@@ -1,6 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { base44 } from '@/api/base44Client';
+import {
+  clearStoredSession,
+  endAuthSession,
+  getRefreshToken,
+  getVerifiedCurrentUser,
+} from '@/lib/authSessionSecurity';
 
 const AuthContext = createContext();
 const isNativeCapacitor = import.meta.env.MODE === 'capacitor' || Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.location.hostname === 'localhost' && !window.location.port);
@@ -9,7 +15,11 @@ const AUTH_STARTUP_TIMEOUT_MS = 8000;
 function withTimeout(promise, ms = AUTH_STARTUP_TIMEOUT_MS) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error('Auth check timed out')), ms);
+    timeoutId = window.setTimeout(() => {
+      const error = new Error('Auth check timed out');
+      error.isNetworkError = true;
+      reject(error);
+    }, ms);
   });
   return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
 }
@@ -37,37 +47,30 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingAuth(false);
   };
 
-  const completeStartup = async () => {
+  const resolveSessionUser = async () => {
     const token = base44.auth.getToken();
+    const refreshToken = getRefreshToken();
     const cachedUser = base44.auth.getCachedUser?.();
+    if (!token && !refreshToken) return null;
 
-    if (token && cachedUser) {
-      finishReady(cachedUser);
-      withTimeout(base44.auth.me(), AUTH_STARTUP_TIMEOUT_MS)
-        .then((freshUser) => {
-          if (freshUser) {
-            setUser(freshUser);
-            setIsAuthenticated(true);
-          }
-        })
-        .catch((error) => {
-          console.warn('[Auth] background session validation skipped:', error?.message || error);
-        });
-      return;
-    }
-
-    if (token) {
-      try {
-        const currentUser = await withTimeout(base44.auth.me(), AUTH_STARTUP_TIMEOUT_MS);
-        finishReady(currentUser);
-        return;
-      } catch (error) {
-        console.warn('[Auth] startup auth check failed:', error?.message || error);
-        base44.auth.logout();
+    try {
+      return await withTimeout(getVerifiedCurrentUser(), AUTH_STARTUP_TIMEOUT_MS);
+    } catch (error) {
+      if ([400, 401, 403].includes(error?.status)) {
+        clearStoredSession();
+        return null;
       }
+      if (cachedUser) {
+        console.warn('[Auth] server validation unavailable; using cached session until connectivity returns:', error?.message || error);
+        return cachedUser;
+      }
+      throw error;
     }
+  };
 
-    finishReady(null);
+  const completeStartup = async () => {
+    const currentUser = await resolveSessionUser();
+    finishReady(currentUser);
   };
 
   const checkAppState = async () => {
@@ -82,7 +85,8 @@ export const AuthProvider = ({ children }) => {
       await completeStartup();
     } catch (error) {
       console.error('App startup failed:', error);
-      finishReady(base44.auth.getCachedUser?.() || null);
+      setAuthError(error);
+      finishReady(null);
     } finally {
       window.clearTimeout(safetyTimer);
     }
@@ -91,40 +95,16 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      const token = base44.auth.getToken();
-      const cachedUser = base44.auth.getCachedUser?.();
-
-      if (token && cachedUser) {
-        setUser(cachedUser);
-        setIsAuthenticated(true);
-        setAuthError(null);
-        setAuthChecked(true);
-        setIsLoadingAuth(false);
-        return cachedUser;
-      }
-
-      if (token) {
-        try {
-          const currentUser = await withTimeout(base44.auth.me(), AUTH_STARTUP_TIMEOUT_MS);
-          setUser(currentUser);
-          setIsAuthenticated(Boolean(currentUser));
-          setAuthError(null);
-          return currentUser;
-        } catch (error) {
-          console.warn('[Auth] user auth check failed:', error?.message || error);
-          base44.auth.logout();
-        }
-      }
-
-      setUser(null);
-      setIsAuthenticated(false);
+      const currentUser = await resolveSessionUser();
+      setUser(currentUser);
+      setIsAuthenticated(Boolean(currentUser));
       setAuthError(null);
-      return null;
+      return currentUser;
     } catch (error) {
       console.error('User auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
-      setAuthError(null);
+      setAuthError(error);
       return null;
     } finally {
       setIsLoadingAuth(false);
@@ -132,10 +112,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    base44.auth.logout();
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async (scope = 'local') => {
+    try {
+      await endAuthSession(scope);
+    } catch (error) {
+      console.warn('[Auth] backend logout could not be confirmed:', error?.message || error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      setAuthError(null);
+    }
   };
 
   const navigateToLogin = () => {
