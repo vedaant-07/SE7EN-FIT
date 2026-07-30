@@ -1,0 +1,78 @@
+name: Phase 3 Gym Management Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/platformPhase3Preload.js'
+      - 'server/routes/platformPhase3CorrectionsPreload.js'
+      - 'server/start.js'
+      - 'server/package.json'
+      - 'server/supabase/migrations/012_gym_management_workflows.sql'
+      - 'server/supabase/migrations/013_fix_staff_invitation_acceptance.sql'
+      - 'src/api/platformClient.js'
+      - 'src/components/ProtectedRoute.jsx'
+      - 'src/lib/routing.js'
+      - 'src/pages/GymOwnerDashboardPhase3.jsx'
+      - 'src/pages/GymOwnerDashboardProduction.jsx'
+      - '.github/workflows/phase3-gym-management-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Install backend production dependencies
+        run: npm install --prefix server --omit=dev --no-fund --no-audit
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --prefix server --omit=dev --audit-level=high
+
+      - name: Check backend syntax and imports
+        run: |
+          node --check server/routes/platformPhase3Preload.js
+          node --check server/routes/platformPhase3CorrectionsPreload.js
+          node --check server/start.js
+          node -e "import('./server/routes/platformPhase3Preload.js').then(() => console.log('phase3 backend imports valid'))"
+        env:
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+
+      - name: Validate migration safety markers
+        run: |
+          grep -q "gym_staff_invitations" server/supabase/migrations/012_gym_management_workflows.sql
+          grep -q "accept_gym_staff_invitation" server/supabase/migrations/013_fix_staff_invitation_acceptance.sql
+          grep -q "revoke all" server/supabase/migrations/013_fix_staff_invitation_acceptance.sql
+
+      - name: Lint Phase 3 frontend files
+        run: >-
+          npx eslint --quiet
+          src/api/platformClient.js
+          src/components/ProtectedRoute.jsx
+          src/lib/routing.js
+          src/pages/GymOwnerDashboardPhase3.jsx
+          src/pages/GymOwnerDashboardProduction.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
