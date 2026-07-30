@@ -8,6 +8,7 @@ import { Building2, Mail, Lock, Loader2, User, Phone } from 'lucide-react';
 import AnimatedOtpVerification from '@/components/auth/AnimatedOtpVerification';
 import AuthExperienceShell from '@/components/auth/AuthExperienceShell';
 import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
+import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/passwordPolicy';
 
 function friendlyError(error, fallback) {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
@@ -38,7 +39,8 @@ export default function GymOwnerSignup() {
     event.preventDefault();
     setError(''); setNotice('');
     if (form.password !== form.confirm) { setError('Passwords do not match'); return; }
-    if (form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    const policyError = getPasswordPolicyError(form.password);
+    if (policyError) { setError(policyError); return; }
     setLoading(true);
     try {
       const result = await base44.auth.register({
@@ -126,8 +128,8 @@ export default function GymOwnerSignup() {
           <div className="space-y-2"><Label htmlFor="owner-name">Owner name</Label><div className="relative"><User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-name" placeholder="Your full name" value={form.ownerName} onChange={set('ownerName')} className="h-12 rounded-2xl pl-10" required /></div></div>
           <div className="space-y-2"><Label htmlFor="owner-mobile">Mobile number</Label><div className="relative"><Phone className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-mobile" type="tel" autoComplete="tel" placeholder="Mobile number" value={form.mobile} onChange={set('mobile')} className="h-12 rounded-2xl pl-10" /></div></div>
           <div className="space-y-2"><Label htmlFor="owner-signup-email">Email</Label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-signup-email" type="email" autoComplete="email" placeholder="gym@example.com" value={form.email} onChange={set('email')} className="h-12 rounded-2xl pl-10" required /></div></div>
-          <div className="space-y-2"><Label htmlFor="owner-signup-password">Password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-signup-password" type="password" autoComplete="new-password" placeholder="Minimum 6 characters" value={form.password} onChange={set('password')} className="h-12 rounded-2xl pl-10" required /></div></div>
-          <div className="space-y-2"><Label htmlFor="owner-confirm-password">Confirm password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-confirm-password" type="password" autoComplete="new-password" placeholder="Repeat password" value={form.confirm} onChange={set('confirm')} className="h-12 rounded-2xl pl-10" required /></div></div>
+          <div className="space-y-2"><Label htmlFor="owner-signup-password">Password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-signup-password" type="password" autoComplete="new-password" placeholder="8+ chars, upper/lowercase and number" value={form.password} onChange={set('password')} className="h-12 rounded-2xl pl-10" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></div></div>
+          <div className="space-y-2"><Label htmlFor="owner-confirm-password">Confirm password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="owner-confirm-password" type="password" autoComplete="new-password" placeholder="Repeat password" value={form.confirm} onChange={set('confirm')} className="h-12 rounded-2xl pl-10" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></div></div>
           <Button type="submit" className="h-12 w-full rounded-2xl bg-accent font-black text-accent-foreground hover:bg-accent/90" disabled={loading}>{loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account…</> : 'Create Gym Owner Account'}</Button>
         </form>
       )}

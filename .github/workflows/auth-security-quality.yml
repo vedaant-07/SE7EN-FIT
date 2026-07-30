@@ -1,0 +1,71 @@
+name: Authentication Security Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/authSecurityPreload.js'
+      - 'server/routes/roleApprovalPreload.js'
+      - 'server/start.js'
+      - 'server/supabase/migrations/009_auth_security.sql'
+      - 'server/supabase/migrations/010_auth_session_control.sql'
+      - 'server/supabase/migrations/011_fix_auth_rate_limit.sql'
+      - 'src/components/GoogleSignInButton.jsx'
+      - 'src/lib/AuthContext.jsx'
+      - 'src/lib/authSessionSecurity.js'
+      - 'src/lib/otp.js'
+      - 'src/lib/passwordPolicy.js'
+      - 'src/pages/ForgotPassword.jsx'
+      - 'src/pages/ResetPassword.jsx'
+      - 'src/pages/UserSignup.jsx'
+      - 'src/pages/GymOwnerSignup.jsx'
+      - '.github/workflows/auth-security-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Check backend syntax
+        run: |
+          node --check server/routes/authSecurityPreload.js
+          node --check server/routes/roleApprovalPreload.js
+          node --check server/start.js
+
+      - name: Lint authentication files
+        run: >-
+          npx eslint --quiet
+          src/components/GoogleSignInButton.jsx
+          src/lib/AuthContext.jsx
+          src/lib/authSessionSecurity.js
+          src/lib/otp.js
+          src/lib/passwordPolicy.js
+          src/pages/ForgotPassword.jsx
+          src/pages/ResetPassword.jsx
+          src/pages/UserSignup.jsx
+          src/pages/GymOwnerSignup.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor

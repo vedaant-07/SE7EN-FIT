@@ -11,6 +11,7 @@ import AuthExperienceShell from '@/components/auth/AuthExperienceShell';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { cacheRouteUser, getPostAuthRoute } from '@/lib/routing';
 import { verifyOtpWithPurpose, resendOtpWithPurpose } from '@/lib/otp';
+import { getPasswordPolicyError, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@/lib/passwordPolicy';
 
 function getErrorMessage(error, fallback = 'Something went wrong') {
   const message = typeof error?.message === 'string' ? error.message.trim() : '';
@@ -64,7 +65,8 @@ export default function UserSignup() {
     event.preventDefault();
     setError(''); setSuccess('');
     if (password !== confirm) { setError('Passwords do not match'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    const policyError = getPasswordPolicyError(password);
+    if (policyError) { setError(policyError); return; }
     setLoading(true);
     try {
       const result = await base44.auth.register({ email, password, role: 'user', referral_code: gymCode.trim() || undefined });
@@ -167,8 +169,8 @@ export default function UserSignup() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2"><Label htmlFor="signup-email">Email</Label><div className="relative"><Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="signup-email" type="email" autoComplete="email" autoFocus placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} className="h-12 rounded-2xl pl-10" required /></div></div>
-            <div className="space-y-2"><Label htmlFor="signup-password">Password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="signup-password" type="password" autoComplete="new-password" placeholder="Minimum 6 characters" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-2xl pl-10" required /></div></div>
-            <div className="space-y-2"><Label htmlFor="signup-confirm">Confirm password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="signup-confirm" type="password" autoComplete="new-password" placeholder="Repeat password" value={confirm} onChange={(event) => setConfirm(event.target.value)} className="h-12 rounded-2xl pl-10" required /></div></div>
+            <div className="space-y-2"><Label htmlFor="signup-password">Password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="signup-password" type="password" autoComplete="new-password" placeholder="8+ chars, upper/lowercase and number" value={password} onChange={(event) => setPassword(event.target.value)} className="h-12 rounded-2xl pl-10" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></div></div>
+            <div className="space-y-2"><Label htmlFor="signup-confirm">Confirm password</Label><div className="relative"><Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="signup-confirm" type="password" autoComplete="new-password" placeholder="Repeat password" value={confirm} onChange={(event) => setConfirm(event.target.value)} className="h-12 rounded-2xl pl-10" minLength={PASSWORD_MIN_LENGTH} maxLength={PASSWORD_MAX_LENGTH} required /></div></div>
             <div className="space-y-2">
               <Label htmlFor="gym-code" className="flex items-center gap-1.5"><Building2 size={13} className="text-accent" />Gym referral code <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <div className="relative"><Hash className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input id="gym-code" placeholder="SE7EN-GYM-001" value={gymCode} onChange={(event) => setGymCode(event.target.value.toUpperCase())} onBlur={() => validateGymCode(gymCode)} className="h-12 rounded-2xl pl-10 font-mono tracking-wider" /></div>
