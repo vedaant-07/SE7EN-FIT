@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Check, Loader2, Mail } from 'lucide-react';
 import AuthExperienceShell from '@/components/auth/AuthExperienceShell';
+import { requestPasswordReset } from '@/lib/authSessionSecurity';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function ForgotPassword() {
     event.preventDefault();
     setLoading(true);
     try {
-      await base44.auth.resetPasswordRequest(email);
+      await requestPasswordReset(email);
     } catch {
       // Keep the response private and identical whether the account exists or not.
     } finally {
@@ -31,7 +31,7 @@ export default function ForgotPassword() {
       onBack={() => navigate('/login/user')}
       icon={Mail}
       title="Reset your password"
-      subtitle="Enter your email and we will send a secure reset link."
+      subtitle="Enter your email and we will send a secure, single-use reset link."
       roleLabel="Account recovery"
       compact={sent}
       footer={<Link to="/login/user" className="font-semibold text-accent hover:underline">Back to login</Link>}
