@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import UnifiedLiveTracker from '@/components/se7enfit/tracking/UnifiedLiveTracker';
+import UnifiedLiveTrackerV2 from '@/components/se7enfit/tracking/UnifiedLiveTrackerV2';
 import { Button } from '@/components/ui/button';
 import { LocateFixed, RefreshCw, ShieldCheck } from 'lucide-react';
 
@@ -42,12 +42,12 @@ export default function LiveTracking() {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent"><LocateFixed size={20} /></span>
             <div>
               <h1 className="font-heading text-lg font-black text-foreground">One focused activity recorder</h1>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Choose an activity, start once, then pause, resume, finish, review and save.</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Accuracy-aware GPS filtering rejects drift and impossible jumps while preserving normal walking movement.</p>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 rounded-2xl bg-background/60 px-3 py-2.5 text-xs text-muted-foreground">
-            <ShieldCheck size={15} className="shrink-0 text-accent" />
-            GPS and motion data stay connected only to your account.
+          <div className="mt-3 flex items-start gap-2 rounded-2xl bg-background/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
+            Route data stays private. Keep the app open during outdoor tracking; true closed-screen background recording requires a separate native foreground service.
           </div>
         </section>
 
@@ -58,7 +58,7 @@ export default function LiveTracking() {
           </div>
         )}
 
-        <UnifiedLiveTracker profile={profile} />
+        <UnifiedLiveTrackerV2 profile={profile} />
       </main>
     </>
   );

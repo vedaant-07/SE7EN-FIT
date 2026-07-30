@@ -12,9 +12,13 @@ on:
       - '.github/workflows/engagement-quality.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,8 +29,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Check backend syntax
         run: |
@@ -34,13 +41,15 @@ jobs:
           node --check server/routes/engagementPreload.js
           node --check server/routes/gymBattlesPreload.js
           node --check server/routes/entityCompatPreload.js
+          node --check server/routes/platformIntegrationPreload.js
 
-      - name: Lint changed product files
+      - name: Lint critical product files
         run: >-
           npx eslint
           src/App.jsx
           src/api/engagementClient.js
           src/api/gymBattleClient.js
+          src/api/platformClient.js
           src/components/auth/AnimatedOtpVerification.jsx
           src/components/auth/AuthExperienceShell.jsx
           src/components/se7enfit/BottomNav.jsx
@@ -53,11 +62,17 @@ jobs:
           src/pages/UserSignup.jsx
           src/pages/GymOwnerLoginSafe.jsx
           src/pages/GymOwnerSignup.jsx
+          src/pages/GymOwnerDashboardConnected.jsx
+          src/pages/GymOwnerDashboardProduction.jsx
           src/pages/CoreFeatures.jsx
           src/pages/GymBattles.jsx
           src/pages/Challenges.jsx
           src/pages/Leaderboard.jsx
           src/pages/Rewards.jsx
+          src/pages/LiveTracking.jsx
 
       - name: Build production web app
         run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
