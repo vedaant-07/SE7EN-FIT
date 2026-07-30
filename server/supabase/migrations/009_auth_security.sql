@@ -80,7 +80,7 @@ set search_path = public
 as $$
 declare
   current_row public.auth_rate_limits%rowtype;
-  current_time timestamptz := clock_timestamp();
+  v_now timestamptz := clock_timestamp();
   next_attempts integer;
 begin
   if coalesce(length(p_key_hash), 0) < 16
@@ -108,27 +108,27 @@ begin
       p_key_hash,
       p_scope,
       1,
-      current_time,
+      v_now,
       null,
-      current_time
+      v_now
     );
     return true;
   end if;
 
-  if current_row.blocked_until is not null and current_row.blocked_until > current_time then
+  if current_row.blocked_until is not null and current_row.blocked_until > v_now then
     update public.auth_rate_limits
-    set updated_at = current_time
+    set updated_at = v_now
     where key_hash = p_key_hash;
     return false;
   end if;
 
-  if current_row.window_started_at + make_interval(secs => p_window_seconds) <= current_time then
+  if current_row.window_started_at + make_interval(secs => p_window_seconds) <= v_now then
     update public.auth_rate_limits
     set scope = p_scope,
         attempts = 1,
-        window_started_at = current_time,
+        window_started_at = v_now,
         blocked_until = null,
-        updated_at = current_time
+        updated_at = v_now
     where key_hash = p_key_hash;
     return true;
   end if;
@@ -139,8 +139,8 @@ begin
     update public.auth_rate_limits
     set scope = p_scope,
         attempts = next_attempts,
-        blocked_until = current_time + make_interval(secs => p_block_seconds),
-        updated_at = current_time
+        blocked_until = v_now + make_interval(secs => p_block_seconds),
+        updated_at = v_now
     where key_hash = p_key_hash;
     return false;
   end if;
@@ -149,7 +149,7 @@ begin
   set scope = p_scope,
       attempts = next_attempts,
       blocked_until = null,
-      updated_at = current_time
+      updated_at = v_now
   where key_hash = p_key_hash;
 
   return true;
