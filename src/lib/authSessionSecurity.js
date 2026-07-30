@@ -5,6 +5,9 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
 ).replace(/\/+$/, '');
 
+const ACCESS_TOKEN_KEY = 'se7enfit_auth_token';
+const USER_KEY = 'se7enfit_user';
+const LEGACY_AUTH_KEY = 'se7enfit_auth';
 const REFRESH_TOKEN_KEY = 'se7enfit_refresh_token';
 const EXPIRES_AT_KEY = 'se7enfit_auth_expires_at';
 
@@ -51,14 +54,20 @@ async function request(path, { method = 'POST', body, token, timeoutMs = 15000 }
   }
 }
 
+function clearLocalAuthKeys() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LEGACY_AUTH_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(EXPIRES_AT_KEY);
+}
+
 export function getRefreshToken() {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function clearStoredSession() {
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(EXPIRES_AT_KEY);
-  base44.auth.logout();
+  clearLocalAuthKeys();
 }
 
 export function storeAuthSession(session = {}) {
@@ -146,3 +155,16 @@ export async function endAuthSession(scope = 'local') {
     clearStoredSession();
   }
 }
+
+base44.auth.resetPasswordRequest = requestPasswordReset;
+base44.auth.resetPassword = confirmPasswordReset;
+base44.auth.refreshSession = refreshAuthSession;
+base44.auth.logout = (redirectTo) => {
+  const operation = endAuthSession('local').catch(() => undefined);
+  if (typeof redirectTo === 'string' && redirectTo) {
+    operation.finally(() => {
+      window.location.href = redirectTo;
+    });
+  }
+  return operation;
+};
