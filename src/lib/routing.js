@@ -1,15 +1,17 @@
 export function normalizeRouteRole(role, user = {}) {
   const value = String(role || user.role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
+  if (['staff', 'gym_staff', 'gymstaff'].includes(value)) return 'gym_staff';
   if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'admin';
   return 'user';
 }
 
 export function normalizeRouteStatus(user = {}) {
-  const raw = user.account_status || user.status || user.approval_status || user.gym_owner_status || (normalizeRouteRole(user.role, user) === 'gym_owner' ? 'pending' : 'active');
+  const role = normalizeRouteRole(user.role, user);
+  const raw = user.account_status || user.status || user.approval_status || user.gym_owner_status || (role === 'gym_owner' ? 'pending' : 'active');
   const value = String(raw || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (['approved', 'active', 'enabled'].includes(value)) return 'active';
-  if (['deactivated', 'disabled', 'inactive', 'suspended'].includes(value)) return 'deactivated';
+  if (['deactivated', 'disabled', 'inactive', 'suspended', 'removed'].includes(value)) return 'deactivated';
   if (['blocked', 'banned'].includes(value)) return 'blocked';
   if (['pending', 'pending_approval', 'review', 'under_review'].includes(value)) return 'pending';
   return value || 'active';
@@ -18,7 +20,7 @@ export function normalizeRouteStatus(user = {}) {
 export function getPostAuthRoute(user = {}) {
   const role = normalizeRouteRole(user.role, user);
   if (role === 'admin') return '/admin';
-  if (role === 'gym_owner') return '/gym-owner/dashboard';
+  if (role === 'gym_owner' || role === 'gym_staff') return '/gym-owner/dashboard';
   return '/';
 }
 

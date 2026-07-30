@@ -20,7 +20,7 @@ services:
     name: se7en-fit-api
     runtime: node
     rootDir: server
-    buildCommand: npm install
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
@@ -34,6 +34,20 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: FRONTEND_ORIGIN
+        sync: false
+      - key: AUTH_SECURITY_SECRET
+        sync: false
+      - key: PASSWORD_RESET_URL
+        sync: false
+      - key: MAILJET_API_KEY
+        sync: false
+      - key: MAILJET_SECRET_KEY
+        sync: false
+      - key: MAILJET_FROM_EMAIL
+        sync: false
+      - key: MAILJET_FROM_NAME
+        value: SE7EN FIT
+      - key: STAFF_INVITATION_URL
         sync: false
       - key: PLAY_STORE_URL
         sync: false
