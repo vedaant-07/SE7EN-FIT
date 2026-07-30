@@ -9,6 +9,7 @@ on:
       - 'server/start.js'
       - 'server/supabase/migrations/009_auth_security.sql'
       - 'server/supabase/migrations/010_auth_session_control.sql'
+      - 'server/supabase/migrations/011_fix_auth_rate_limit.sql'
       - 'src/components/GoogleSignInButton.jsx'
       - 'src/lib/AuthContext.jsx'
       - 'src/lib/authSessionSecurity.js'
