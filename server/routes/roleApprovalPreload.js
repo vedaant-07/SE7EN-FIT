@@ -9,9 +9,12 @@ const cleanEmail = (v) => String(v || '').trim().toLowerCase();
 const normalizeRole = (role) => {
   const value = String(role || 'user').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (['owner', 'gym_owner', 'gymowner'].includes(value)) return 'gym_owner';
-  if (['admin', 'super_admin', 'superadmin'].includes(value)) return 'admin';
+  if (['super_admin', 'superadmin'].includes(value)) return 'super_admin';
+  if (['admin', 'staff', 'gym_staff'].includes(value)) return value;
   return 'user';
 };
+
+const normalizePublicRole = (role) => normalizeRole(role) === 'gym_owner' ? 'gym_owner' : 'user';
 
 const normalizeStatus = (status, role) => {
   const value = String(status || (role === 'gym_owner' ? 'pending' : 'active')).trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -38,10 +41,13 @@ async function findAuthUserByEmail(email) {
 async function patchProfileStatus(email, role, status) {
   const authUser = await findAuthUserByEmail(email);
   if (!authUser?.id) return null;
-  const patch = { role, status, source: role === 'gym_owner' ? 'gym_owner' : 'app', updated_at: new Date().toISOString() };
+  const existing = await db.from('profiles').select('role').eq('user_id', authUser.id).maybeSingle();
+  if (existing.error) throw fail(existing.error.message, 500);
+  const safeRole = existing.data?.role ? normalizeRole(existing.data.role) : normalizePublicRole(role);
+  const patch = { role: safeRole, status, source: safeRole === 'gym_owner' ? 'gym_owner' : 'app', updated_at: new Date().toISOString() };
   const { data, error } = await db.from('profiles').update(patch).eq('user_id', authUser.id).select('*').maybeSingle();
   if (error) throw fail(error.message, 500);
-  await db.from('user_roles').upsert({ user_id: authUser.id, role }, { onConflict: 'user_id,role' }).catch(() => null);
+  await db.from('user_roles').upsert({ user_id: authUser.id, role: safeRole }, { onConflict: 'user_id,role' }).catch(() => null);
   return data;
 }
 
@@ -58,7 +64,7 @@ function patchAuthRouteRegistration() {
   express.application.post = function patchedPost(path, ...handlers) {
     if (path === '/api/auth/register' || path === '/api/auth/google') {
       const pre = async (req, res, next) => {
-        const role = normalizeRole(req.body?.role);
+        const role = normalizePublicRole(req.body?.role);
         req.body = { ...(req.body || {}), role };
         const originalJson = res.json.bind(res);
         res.json = (payload) => {
@@ -114,6 +120,9 @@ async function updateGymOwnerStatus(req, res, userId) {
   if (profileUpdate.error) throw fail(profileUpdate.error.message, 500);
   await db.from('gyms').update({ status: status === 'active' ? 'active' : status }).eq('owner_user_id', userId).catch(() => null);
   await db.from('gym_owners').update({ status }).eq('user_id', userId).catch(() => null);
+  if (status === 'blocked' || status === 'deactivated') {
+    await db.rpc('revoke_user_auth_sessions', { p_user_id: userId }).catch(() => null);
+  }
   await db.from('admin_logs').insert({ actor_id: req.user.id, action: `gym_owner.${status}`, entity: 'profiles', entity_id: userId, details: { status } }).catch(() => null);
   res.json({ item: profileUpdate.data, success: true });
 }
