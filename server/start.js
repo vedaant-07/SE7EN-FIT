@@ -10,5 +10,6 @@ import './routes/entityCompatPreload.js';
 import './routes/engagementPreload.js';
 import './routes/gymBattlesPreload.js';
 import './routes/platformIntegrationPreload.js';
+import './routes/platformPhase3Preload.js';
 import './routes/adminExtraPreload.js';
 import './index.production.js';
