@@ -1,0 +1,69 @@
+name: Phase 4 Billing Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/billingPhase4Preload.js'
+      - 'server/start.js'
+      - 'server/supabase/migrations/014_subscription_commission_foundation.sql'
+      - 'server/package.json'
+      - 'server/package-lock.json'
+      - 'src/api/billingClient.js'
+      - 'src/pages/Subscription.jsx'
+      - 'render.yaml'
+      - '.github/workflows/billing-phase4-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Install locked backend dependencies
+        run: npm ci --omit=dev --no-fund --no-audit
+        working-directory: server
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --omit=dev --audit-level=high --prefix server
+
+      - name: Check backend syntax
+        run: |
+          node --check server/routes/billingPhase4Preload.js
+          node --check server/start.js
+
+      - name: Verify Phase 4 migration contracts
+        run: |
+          grep -q "create table if not exists public.subscription_plans" server/supabase/migrations/014_subscription_commission_foundation.sql
+          grep -q "activate_verified_subscription" server/supabase/migrations/014_subscription_commission_foundation.sql
+          grep -q "admin_create_gym_commission_payout_v2" server/supabase/migrations/014_subscription_commission_foundation.sql
+          grep -q "qualified_referral_is_immutable" server/supabase/migrations/014_subscription_commission_foundation.sql
+
+      - name: Lint billing files
+        run: >-
+          npx eslint --quiet
+          src/api/billingClient.js
+          src/pages/Subscription.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
