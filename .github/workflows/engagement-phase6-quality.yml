@@ -1,0 +1,92 @@
+name: Phase 6 Engagement Integrity Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/engagementPhase6Preload.js'
+      - 'server/start.js'
+      - 'server/supabase/migrations/021_engagement_competition_integrity.sql'
+      - 'server/supabase/migrations/022_engagement_competition_corrections.sql'
+      - 'src/api/engagementClient.js'
+      - 'src/pages/Challenges.jsx'
+      - 'src/pages/GymBattles.jsx'
+      - 'src/pages/Leaderboard.jsx'
+      - 'src/pages/FairPlayReport.jsx'
+      - 'src/pages/admin/AdminLeaderboardPrizes.jsx'
+      - 'src/pages/admin/AdminEngagementIntegrity.jsx'
+      - 'src/App.jsx'
+      - '.github/workflows/engagement-phase6-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Install backend production dependencies
+        run: npm install --omit=dev --no-fund --no-audit
+        working-directory: server
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --omit=dev --audit-level=high --prefix server
+
+      - name: Check backend syntax
+        run: |
+          node --check server/routes/engagementPhase6Preload.js
+          node --check server/start.js
+
+      - name: Verify engagement database contracts
+        run: |
+          grep -q "create table if not exists public.challenge_checkins" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "create table if not exists public.engagement_integrity_flags" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "create table if not exists public.engagement_abuse_reports" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "create table if not exists public.leaderboard_awards" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "grant_reward_once_v2" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "record_challenge_checkin_v2" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "award_leaderboard_prize_v2" server/supabase/migrations/021_engagement_competition_integrity.sql
+          grep -q "enforce_challenge_governance" server/supabase/migrations/022_engagement_competition_corrections.sql
+          grep -q "minimum_reward_progress" server/supabase/migrations/022_engagement_competition_corrections.sql
+
+      - name: Verify server-managed competition protection
+        run: |
+          grep -q "PROTECTED_ENTITIES" server/routes/engagementPhase6Preload.js
+          grep -q "server_managed_entity" server/routes/engagementPhase6Preload.js
+          grep -q "trustedSteps" server/routes/engagementPhase6Preload.js
+          grep -q "trustedCardio" server/routes/engagementPhase6Preload.js
+          grep -q "settle_gym_battle_v2" server/routes/engagementPhase6Preload.js
+          grep -q "engagement_abuse_reports" server/routes/engagementPhase6Preload.js
+
+      - name: Lint Phase 6 frontend files
+        run: >-
+          npx eslint --quiet
+          src/api/engagementClient.js
+          src/pages/GymBattles.jsx
+          src/pages/Leaderboard.jsx
+          src/pages/FairPlayReport.jsx
+          src/pages/admin/AdminLeaderboardPrizes.jsx
+          src/pages/admin/AdminEngagementIntegrity.jsx
+          src/App.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
