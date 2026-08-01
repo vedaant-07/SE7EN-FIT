@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'server/routes/adminSessionGuardPreload.js'
       - 'server/routes/billingPhase4Preload.js'
       - 'server/start.js'
       - 'server/supabase/migrations/014_subscription_commission_foundation.sql'
@@ -46,6 +47,7 @@ jobs:
 
       - name: Check backend syntax
         run: |
+          node --check server/routes/adminSessionGuardPreload.js
           node --check server/routes/billingPhase4Preload.js
           node --check server/start.js
 
@@ -55,6 +57,12 @@ jobs:
           grep -q "activate_verified_subscription" server/supabase/migrations/014_subscription_commission_foundation.sql
           grep -q "admin_create_gym_commission_payout_v2" server/supabase/migrations/014_subscription_commission_foundation.sql
           grep -q "qualified_referral_is_immutable" server/supabase/migrations/014_subscription_commission_foundation.sql
+
+      - name: Verify server-side admin verification
+        run: |
+          grep -q "x-admin-session" server/routes/adminSessionGuardPreload.js
+          grep -q "ADMIN_SESSION_SECRET" server/routes/adminSessionGuardPreload.js
+          grep -q "is_admin" server/routes/adminSessionGuardPreload.js
 
       - name: Lint billing files
         run: >-
