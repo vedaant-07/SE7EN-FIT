@@ -13,5 +13,8 @@ import './routes/gymBattlesPreload.js';
 import './routes/platformIntegrationPreload.js';
 import './routes/platformPhase3Preload.js';
 import './routes/platformPhase3CorrectionsPreload.js';
+import './routes/adminSessionGuardPreload.js';
+import './routes/billingPhase4CorrectionsPreload.js';
+import './routes/billingPhase4Preload.js';
 import './routes/adminExtraPreload.js';
 import './index.production.js';

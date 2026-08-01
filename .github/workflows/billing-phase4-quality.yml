@@ -1,0 +1,88 @@
+name: Phase 4 Billing Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/adminSessionGuardPreload.js'
+      - 'server/routes/billingPhase4CorrectionsPreload.js'
+      - 'server/routes/billingPhase4Preload.js'
+      - 'server/start.js'
+      - 'server/supabase/migrations/014_subscription_commission_foundation.sql'
+      - 'server/supabase/migrations/015_canonical_admin_profile_roles.sql'
+      - 'server/supabase/migrations/016_partial_refund_commission_recalculation.sql'
+      - 'server/supabase/migrations/017_fix_subscription_activation_idempotency.sql'
+      - 'server/supabase/migrations/018_fix_payout_currency_validation.sql'
+      - 'server/supabase/migrations/019_demote_removed_admin_profiles.sql'
+      - 'server/package.json'
+      - 'src/api/billingClient.js'
+      - 'src/pages/Subscription.jsx'
+      - 'render.yaml'
+      - '.github/workflows/billing-phase4-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Install backend production dependencies
+        run: npm install --omit=dev --no-fund --no-audit
+        working-directory: server
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --omit=dev --audit-level=high --prefix server
+
+      - name: Check backend syntax
+        run: |
+          node --check server/routes/adminSessionGuardPreload.js
+          node --check server/routes/billingPhase4CorrectionsPreload.js
+          node --check server/routes/billingPhase4Preload.js
+          node --check server/start.js
+
+      - name: Verify Phase 4 migration contracts
+        run: |
+          grep -q "create table if not exists public.subscription_plans" server/supabase/migrations/014_subscription_commission_foundation.sql
+          grep -q "activate_verified_subscription" server/supabase/migrations/017_fix_subscription_activation_idempotency.sql
+          grep -q "admin_create_gym_commission_payout_v2" server/supabase/migrations/018_fix_payout_currency_validation.sql
+          grep -q "qualified_referral_is_immutable" server/supabase/migrations/014_subscription_commission_foundation.sql
+          grep -q "sync_profile_privileged_role_from_user_roles" server/supabase/migrations/015_canonical_admin_profile_roles.sql
+          grep -q "partially_refunded" server/supabase/migrations/016_partial_refund_commission_recalculation.sql
+          grep -q "v_current in ('admin'" server/supabase/migrations/019_demote_removed_admin_profiles.sql
+
+      - name: Verify server-side admin and payout protection
+        run: |
+          grep -q "x-admin-session" server/routes/adminSessionGuardPreload.js
+          grep -q "ADMIN_SESSION_SECRET" server/routes/adminSessionGuardPreload.js
+          grep -q "is_admin" server/routes/adminSessionGuardPreload.js
+          grep -q "payment_locked_by_payout" server/routes/billingPhase4CorrectionsPreload.js
+          grep -q "BILLING_CHECKOUT_ENABLED" server/routes/billingPhase4Preload.js
+
+      - name: Lint billing files
+        run: >-
+          npx eslint --quiet
+          src/api/billingClient.js
+          src/pages/Subscription.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
