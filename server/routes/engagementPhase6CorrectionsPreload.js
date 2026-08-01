@@ -48,9 +48,37 @@ async function attachProfiles(rows, fields) {
   }));
 }
 
+function normalizeLeaderboardPayload(payload) {
+  const item = payload?.item;
+  if (!item || !Array.isArray(item.entries)) return payload;
+  const eligible = item.entries
+    .filter((entry) => Number(entry.score || 0) > 0 && entry.integrity_status !== 'review')
+    .sort((left, right) => Number(right.score || 0) - Number(left.score || 0) || Number(right.completed_challenges || 0) - Number(left.completed_challenges || 0));
+  const ranked = eligible.map((entry, index) => ({ ...entry, rank: index + 1 }));
+  const currentOriginal = item.entries.find((entry) => entry.is_current_user);
+  const currentRanked = ranked.find((entry) => entry.is_current_user);
+  const entries = currentOriginal && !currentRanked
+    ? [...ranked, { ...currentOriginal, rank: null }]
+    : ranked;
+  return {
+    ...payload,
+    item: {
+      ...item,
+      entries,
+      user_rank: currentRanked?.rank || null,
+    },
+  };
+}
+
 function register(app) {
   if (app.__se7enfitEngagementPhase6CorrectionRoutes) return;
   app.__se7enfitEngagementPhase6CorrectionRoutes = true;
+
+  app.use('/api/engagement/leaderboard', (_req, res, next) => {
+    const sendJson = res.json.bind(res);
+    res.json = (payload) => sendJson(normalizeLeaderboardPayload(payload));
+    next();
+  });
 
   app.get('/api/admin/engagement/integrity-flags', wrap(async (req, res) => {
     await requireAdmin(req);
