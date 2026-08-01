@@ -2,6 +2,24 @@
 
 create extension if not exists pgcrypto;
 
+alter table public.ai_chat_messages
+  add column if not exists request_id text,
+  add column if not exists status text not null default 'legacy',
+  add column if not exists model text,
+  add column if not exists safety_flags jsonb not null default '{}'::jsonb;
+
+alter table public.ai_chat_messages drop constraint if exists ai_chat_messages_status_check;
+alter table public.ai_chat_messages
+  add constraint ai_chat_messages_status_check
+  check (status in ('legacy','pending','completed','failed'));
+
+create unique index if not exists uq_ai_chat_request_role
+  on public.ai_chat_messages(user_id, request_id, role)
+  where request_id is not null;
+
+create index if not exists idx_ai_chat_member_conversation
+  on public.ai_chat_messages(user_id, conversation_id, created_at);
+
 create table if not exists public.member_feature_usage (
   usage_id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -38,7 +56,8 @@ alter table public.workout_plans
   add constraint workout_plans_status_check check (status in ('active','archived','draft'));
 alter table public.workout_plans drop constraint if exists workout_plans_days_per_week_check;
 alter table public.workout_plans
-  add constraint workout_plans_days_per_week_check check (days_per_week is null or days_per_week between 1 and 7);
+  add constraint workout_plans_days_per_week_check
+  check (days_per_week is null or days_per_week between 1 and 7);
 
 create index if not exists idx_workout_plans_member_status
   on public.workout_plans(user_id, status, created_at desc);
@@ -72,7 +91,7 @@ create index if not exists idx_workout_plan_sessions_member_date
 create table if not exists public.food_scans (
   scan_id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  request_id text not null,
+  request_id text not null check (length(request_id) between 8 and 160),
   scan_date date not null default current_date,
   meal_type text not null default 'meal' check (meal_type in ('breakfast','lunch','dinner','snack','meal')),
   status text not null default 'analyzed' check (status in ('analyzed','confirmed','failed')),
@@ -167,7 +186,8 @@ declare
   v_count integer;
   v_usage public.member_feature_usage%rowtype;
 begin
-  if p_user_id is null or length(trim(coalesce(p_feature_code, ''))) < 2
+  if p_user_id is null
+     or length(trim(coalesce(p_feature_code, ''))) < 2
      or length(trim(coalesce(p_request_id, ''))) < 8
      or length(trim(coalesce(p_period_key, ''))) < 1 then
     raise exception 'invalid_usage_reservation' using errcode = '22023';
@@ -252,8 +272,7 @@ begin
   set status = p_status,
       metadata = coalesce(metadata, '{}'::jsonb) || coalesce(p_metadata, '{}'::jsonb),
       updated_at = now()
-  where usage_id = p_usage_id
-    and user_id = p_user_id
+  where usage_id = p_usage_id and user_id = p_user_id
   returning * into v_usage;
 
   if not found then
@@ -282,7 +301,9 @@ as $$
 declare
   v_plan public.workout_plans%rowtype;
 begin
-  if p_user_id is null or length(trim(coalesce(p_title, ''))) < 2
+  if p_user_id is null
+     or length(trim(coalesce(p_title, ''))) < 2
+     or p_days_per_week is null
      or p_days_per_week not between 1 and 7
      or jsonb_typeof(coalesce(p_plan_data, '{}'::jsonb)) <> 'object' then
     raise exception 'invalid_workout_plan' using errcode = '22023';
@@ -324,10 +345,15 @@ set search_path = public
 as $$
 declare
   v_scan public.food_scans%rowtype;
-  v_totals record;
   v_count integer;
+  v_total_calories numeric := 0;
+  v_total_protein numeric := 0;
+  v_total_carbs numeric := 0;
+  v_total_fat numeric := 0;
+  v_total_fiber numeric := 0;
 begin
-  if p_scan_id is null or p_user_id is null
+  if p_scan_id is null
+     or p_user_id is null
      or jsonb_typeof(coalesce(p_items, '[]'::jsonb)) <> 'array'
      or jsonb_array_length(coalesce(p_items, '[]'::jsonb)) < 1
      or jsonb_array_length(coalesce(p_items, '[]'::jsonb)) > 20 then
@@ -382,8 +408,7 @@ begin
     coalesce(sum(carbs_g), 0),
     coalesce(sum(fat_g), 0),
     coalesce(sum(fiber_g), 0)
-  into v_count, v_totals.total_calories, v_totals.total_protein,
-       v_totals.total_carbs, v_totals.total_fat, v_totals.total_fiber
+  into v_count, v_total_calories, v_total_protein, v_total_carbs, v_total_fat, v_total_fiber
   from public.nutrition_logs
   where user_id = p_user_id and food_scan_id = p_scan_id;
 
@@ -392,11 +417,11 @@ begin
       meal_type = case when p_meal_type in ('breakfast','lunch','dinner','snack') then p_meal_type else meal_type end,
       scan_date = coalesce(p_date, scan_date),
       confirmed_items = p_items,
-      total_calories = v_totals.total_calories,
-      total_protein_g = v_totals.total_protein,
-      total_carbs_g = v_totals.total_carbs,
-      total_fat_g = v_totals.total_fat,
-      total_fiber_g = v_totals.total_fiber,
+      total_calories = v_total_calories,
+      total_protein_g = v_total_protein,
+      total_carbs_g = v_total_carbs,
+      total_fat_g = v_total_fat,
+      total_fiber_g = v_total_fiber,
       confirmed_at = now(),
       updated_at = now()
   where scan_id = p_scan_id
@@ -431,7 +456,10 @@ declare
   v_session public.workout_plan_sessions%rowtype;
   v_log public.workout_logs%rowtype;
 begin
-  if p_user_id is null or p_plan_id is null or p_schedule_day_index not between 0 and 6
+  if p_user_id is null
+     or p_plan_id is null
+     or p_schedule_day_index is null
+     or p_schedule_day_index not between 0 and 6
      or length(trim(coalesce(p_external_id, ''))) < 8 then
     raise exception 'invalid_workout_completion' using errcode = '22023';
   end if;
@@ -487,7 +515,11 @@ begin
     updated_at = now()
   returning * into v_log;
 
-  return jsonb_build_object('ok', true, 'session', to_jsonb(v_session), 'workout_log', to_jsonb(v_log));
+  return jsonb_build_object(
+    'ok', true,
+    'session', to_jsonb(v_session),
+    'workout_log', to_jsonb(v_log)
+  );
 end;
 $$;
 
@@ -497,22 +529,27 @@ alter table public.food_scans enable row level security;
 alter table public.member_nutrition_targets enable row level security;
 alter table public.workout_plans enable row level security;
 
+drop policy if exists "member reads own feature usage" on public.member_feature_usage;
 create policy "member reads own feature usage"
 on public.member_feature_usage for select to authenticated
 using (user_id = auth.uid());
 
+drop policy if exists "member reads own workout plans" on public.workout_plans;
 create policy "member reads own workout plans"
 on public.workout_plans for select to authenticated
 using (user_id = auth.uid() or created_by = auth.uid());
 
+drop policy if exists "member reads own workout sessions" on public.workout_plan_sessions;
 create policy "member reads own workout sessions"
 on public.workout_plan_sessions for select to authenticated
 using (user_id = auth.uid());
 
+drop policy if exists "member reads own food scans" on public.food_scans;
 create policy "member reads own food scans"
 on public.food_scans for select to authenticated
 using (user_id = auth.uid());
 
+drop policy if exists "member reads own nutrition target" on public.member_nutrition_targets;
 create policy "member reads own nutrition target"
 on public.member_nutrition_targets for select to authenticated
 using (user_id = auth.uid());
