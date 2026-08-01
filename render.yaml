@@ -37,6 +37,8 @@ services:
         sync: false
       - key: AUTH_SECURITY_SECRET
         sync: false
+      - key: ADMIN_SESSION_SECRET
+        sync: false
       - key: PASSWORD_RESET_URL
         sync: false
       - key: MAILJET_API_KEY
