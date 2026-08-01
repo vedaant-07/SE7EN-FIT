@@ -10,6 +10,8 @@ on:
       - 'server/supabase/migrations/021_engagement_competition_integrity.sql'
       - 'server/supabase/migrations/022_engagement_competition_corrections.sql'
       - 'server/supabase/migrations/023_engagement_competition_defence_in_depth.sql'
+      - 'server/supabase/migrations/024_fix_challenge_verification_hash.sql'
+      - 'server/supabase/migrations/025_fix_battle_winner_uuid_aggregation.sql'
       - 'src/api/engagementClient.js'
       - 'src/pages/Challenges.jsx'
       - 'src/pages/GymBattles.jsx'
@@ -69,6 +71,8 @@ jobs:
           grep -q "minimum_reward_progress" server/supabase/migrations/022_engagement_competition_corrections.sql
           grep -q "revoke insert, update, delete on public.reward_wallets" server/supabase/migrations/023_engagement_competition_defence_in_depth.sql
           grep -q "verified_leaderboard_snapshot_not_found" server/supabase/migrations/023_engagement_competition_defence_in_depth.sql
+          grep -q "extensions.digest" server/supabase/migrations/024_fix_challenge_verification_hash.sql
+          grep -q "min(m.user_id::text)::uuid" server/supabase/migrations/025_fix_battle_winner_uuid_aggregation.sql
 
       - name: Verify server-managed competition protection
         run: |
