@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'server/routes/engagementPhase6Preload.js'
+      - 'server/routes/engagementPhase6CorrectionsPreload.js'
       - 'server/start.js'
       - 'server/supabase/migrations/021_engagement_competition_integrity.sql'
       - 'server/supabase/migrations/022_engagement_competition_corrections.sql'
@@ -51,6 +52,7 @@ jobs:
       - name: Check backend syntax
         run: |
           node --check server/routes/engagementPhase6Preload.js
+          node --check server/routes/engagementPhase6CorrectionsPreload.js
           node --check server/start.js
 
       - name: Verify engagement database contracts
@@ -73,6 +75,7 @@ jobs:
           grep -q "trustedCardio" server/routes/engagementPhase6Preload.js
           grep -q "settle_gym_battle_v2" server/routes/engagementPhase6Preload.js
           grep -q "engagement_abuse_reports" server/routes/engagementPhase6Preload.js
+          grep -q "attachProfiles" server/routes/engagementPhase6CorrectionsPreload.js
 
       - name: Lint Phase 6 frontend files
         run: >-
