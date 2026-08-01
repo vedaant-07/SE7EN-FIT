@@ -77,4 +77,23 @@ export const engagementClient = {
     const response = await request('/admin/gyms');
     return Array.isArray(response) ? response : (response?.items || []);
   },
+  getAdminIntegrityFlags(status = 'open') {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    return request(`/admin/engagement/integrity-flags?${query.toString()}`);
+  },
+  reviewIntegrityFlag(flagId, payload) {
+    return request(`/admin/engagement/integrity-flags/${encodeURIComponent(flagId)}`, { method: 'PATCH', body: payload });
+  },
+  getAdminReports(status = 'open') {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    return request(`/admin/engagement/reports?${query.toString()}`);
+  },
+  reviewReport(reportId, payload) {
+    return request(`/admin/engagement/reports/${encodeURIComponent(reportId)}`, { method: 'PATCH', body: payload });
+  },
+  awardLeaderboard(payload) {
+    return request('/admin/engagement/leaderboards/award', { method: 'POST', body: payload, timeoutMs: 30000 });
+  },
 };
