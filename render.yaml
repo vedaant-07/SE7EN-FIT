@@ -51,6 +51,12 @@ services:
         value: SE7EN FIT
       - key: STAFF_INVITATION_URL
         value: https://aesthetic-canvas-grid.onrender.com/gym-management/staff/accept
+      - key: MEMBER_AI_ENABLED
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
       - key: BILLING_CHECKOUT_ENABLED
         value: "false"
       - key: RAZORPAY_KEY_ID
