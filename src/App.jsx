@@ -53,6 +53,7 @@ import GymOwnerDashboard from '@/pages/GymOwnerDashboardProduction';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminLeaderboardPrizes from '@/pages/admin/AdminLeaderboardPrizes';
+import AdminEngagementIntegrity from '@/pages/admin/AdminEngagementIntegrity';
 import AdminPromotions from '@/pages/admin/AdminPromotions';
 import Support from '@/pages/Support';
 
@@ -137,6 +138,7 @@ const AuthenticatedApp = () => {
           <Route path="/my-gym" element={<MyGym />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/leaderboard-prizes" element={<AdminLeaderboardPrizes />} />
+          <Route path="/admin/competition-integrity" element={<AdminEngagementIntegrity />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
           <Route path="/support" element={<Support />} />
         </Route>
