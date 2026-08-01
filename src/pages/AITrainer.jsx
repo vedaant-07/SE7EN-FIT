@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Bot, Check, Crown, Edit2, RefreshCw, Send, Sparkles, Square, Trash2, X } from 'lucide-react';
 import TopBar from '@/components/se7enfit/TopBar';
-import EmptyState from '@/components/se7enfit/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
