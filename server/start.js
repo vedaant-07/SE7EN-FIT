@@ -18,5 +18,7 @@ import './routes/billingPhase4CorrectionsPreload.js';
 import './routes/billingPhase4Preload.js';
 import './routes/memberProductPhase5CorrectionsPreload.js';
 import './routes/memberProductPhase5Preload.js';
+import './routes/engagementPhase6Preload.js';
+import './routes/engagementPhase6CorrectionsPreload.js';
 import './routes/adminExtraPreload.js';
 import './index.production.js';

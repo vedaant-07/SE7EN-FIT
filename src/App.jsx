@@ -42,6 +42,7 @@ import Challenges from '@/pages/Challenges';
 import GymBattles from '@/pages/GymBattles';
 import Rewards from '@/pages/Rewards';
 import Leaderboard from '@/pages/Leaderboard';
+import FairPlayReport from '@/pages/FairPlayReport';
 import PolicyPages from '@/pages/PolicyPages';
 import GymOwnerLogin from '@/pages/GymOwnerLoginSafe';
 import UserLogin from '@/pages/UserLogin';
@@ -52,6 +53,7 @@ import GymOwnerDashboard from '@/pages/GymOwnerDashboardProduction';
 import MyGym from '@/pages/MyGym';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminLeaderboardPrizes from '@/pages/admin/AdminLeaderboardPrizes';
+import AdminEngagementIntegrity from '@/pages/admin/AdminEngagementIntegrity';
 import AdminPromotions from '@/pages/admin/AdminPromotions';
 import Support from '@/pages/Support';
 
@@ -131,10 +133,12 @@ const AuthenticatedApp = () => {
           <Route path="/challenges/:challengeId" element={<Challenges />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/fair-play" element={<FairPlayReport />} />
           <Route path="/workout/guide" element={<WorkoutGuide />} />
           <Route path="/my-gym" element={<MyGym />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/leaderboard-prizes" element={<AdminLeaderboardPrizes />} />
+          <Route path="/admin/competition-integrity" element={<AdminEngagementIntegrity />} />
           <Route path="/admin/promotions" element={<AdminPromotions />} />
           <Route path="/support" element={<Support />} />
         </Route>

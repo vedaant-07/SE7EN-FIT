@@ -1,5 +1,3 @@
-import { base44 } from '@/api/base44Client';
-
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'https://se7en-fit-api.onrender.com/api'
 ).replace(/\/+$/, '');
@@ -34,10 +32,11 @@ async function request(path, options = {}) {
     if (!response.ok) {
       const error = new Error(data?.error || data?.message || 'Something went wrong. Please try again.');
       error.status = response.status;
+      error.code = data?.code;
       error.body = data;
       throw error;
     }
-    return data?.item ?? data;
+    return data?.item ?? data?.items ?? data;
   } catch (error) {
     if (error?.name === 'AbortError') {
       const timeoutError = new Error('The server is taking too long. Please try again.');
@@ -57,37 +56,44 @@ export const engagementClient = {
   joinChallenge(challengeId) {
     return request(`/engagement/challenges/${encodeURIComponent(challengeId)}/join`, { method: 'POST' });
   },
-  checkInChallenge(challengeId, date = localDateKey()) {
+  checkInChallenge(challengeId) {
     return request(`/engagement/challenges/${encodeURIComponent(challengeId)}/check-in`, {
       method: 'POST',
-      body: { date },
+      body: {},
     });
   },
-  async getLeaderboard(scope = 'global') {
+  getLeaderboard(scope = 'global', period = null) {
     const query = new URLSearchParams({ scope });
-    const result = await request(`/engagement/leaderboard?${query.toString()}`);
-    if (scope !== 'global') return result;
-    try {
-      const prizes = await base44.entities.LeaderboardPrize.list('rank', 100);
-      return {
-        ...result,
-        prizes: prizes
-          .filter((prize) => !prize.gym_id && prize.active !== false && prize.status !== 'inactive')
-          .sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0))
-          .slice(0, 3)
-          .map((prize) => ({
-            rank: Number(prize.rank || 1),
-            title: prize.title,
-            reward: prize.description || prize.reward,
-            coins: Number(prize.coins || 0),
-          })),
-      };
-    } catch {
-      return result;
-    }
+    if (period) query.set('period', period);
+    return request(`/engagement/leaderboard?${query.toString()}`);
+  },
+  getAwards() {
+    return request('/engagement/awards');
+  },
+  submitReport(payload) {
+    return request('/engagement/reports', { method: 'POST', body: payload });
   },
   async getAdminGyms() {
     const response = await request('/admin/gyms');
     return Array.isArray(response) ? response : (response?.items || []);
+  },
+  getAdminIntegrityFlags(status = 'open') {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    return request(`/admin/engagement/integrity-flags?${query.toString()}`);
+  },
+  reviewIntegrityFlag(flagId, payload) {
+    return request(`/admin/engagement/integrity-flags/${encodeURIComponent(flagId)}`, { method: 'PATCH', body: payload });
+  },
+  getAdminReports(status = 'open') {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    return request(`/admin/engagement/reports?${query.toString()}`);
+  },
+  reviewReport(reportId, payload) {
+    return request(`/admin/engagement/reports/${encodeURIComponent(reportId)}`, { method: 'PATCH', body: payload });
+  },
+  awardLeaderboard(payload) {
+    return request('/admin/engagement/leaderboards/award', { method: 'POST', body: payload, timeoutMs: 30000 });
   },
 };
