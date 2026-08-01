@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Award,
   Building2,
   ChevronRight,
   Crown,
+  Flag,
   Gift,
   Globe2,
   MapPin,
@@ -26,12 +28,6 @@ const SCOPES = [
   { key: 'global', label: 'Whole app', icon: Globe2 },
 ];
 
-const DEFAULT_PRIZES = [
-  { rank: 1, title: 'Champion', reward: 'Prize set by your gym or SE7EN FIT', coins: 0 },
-  { rank: 2, title: 'Runner-up', reward: 'Prize set by your gym or SE7EN FIT', coins: 0 },
-  { rank: 3, title: 'Third place', reward: 'Prize set by your gym or SE7EN FIT', coins: 0 },
-];
-
 function rankClasses(rank) {
   if (rank === 1) return 'border-yellow-400/30 bg-yellow-400/12 text-yellow-300';
   if (rank === 2) return 'border-zinc-300/25 bg-zinc-300/10 text-zinc-200';
@@ -51,7 +47,7 @@ function PrizeCard({ prize }) {
       <Crown size={18} className="mx-auto" />
       <p className="mt-1 text-[9px] font-bold uppercase tracking-wide opacity-75">Rank {prize.rank}</p>
       <p className="mt-1 line-clamp-1 text-xs font-black text-foreground">{prize.title}</p>
-      <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-muted-foreground">{prize.reward}</p>
+      <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-muted-foreground">{prize.reward || 'Recognition award'}</p>
       {Number(prize.coins || 0) > 0 && <p className="mt-1 text-[10px] font-bold text-yellow-300">+{prize.coins} coins</p>}
     </div>
   );
@@ -82,19 +78,16 @@ export default function Leaderboard() {
   };
 
   useEffect(() => {
-    if (dataByScope[scope]) return;
-    loadScope(scope);
-  }, [scope]);
+    if (!dataByScope[scope]) loadScope(scope);
+  }, [scope, dataByScope]);
 
   const data = dataByScope[scope] || null;
-  const entries = data?.entries || [];
-  const prizes = useMemo(() => {
-    if (data?.prizes?.length) return data.prizes.slice(0, 3);
-    return scope === 'gym' ? DEFAULT_PRIZES : [];
-  }, [data, scope]);
+  const entries = useMemo(() => (data?.entries || []).filter((entry) => Number(entry.rank || 0) > 0), [data]);
   const currentUser = entries.find((entry) => entry.is_current_user);
   const topThree = entries.slice(0, 3);
   const remaining = entries.slice(3);
+  const prizes = data?.prizes || [];
+  const awardHistory = data?.award_history || [];
 
   if (loading && !data) return <LoadingScreen />;
 
@@ -106,14 +99,16 @@ export default function Leaderboard() {
           <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-yellow-400/[0.06]" />
           <div className="relative flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-yellow-300"><Sparkles size={14} /><span className="text-[10px] font-black uppercase tracking-[0.16em]">Verified competition</span></div>
+              <div className="flex items-center gap-2 text-yellow-300"><Sparkles size={14} /><span className="text-[10px] font-black uppercase tracking-[0.16em]">Verified monthly competition</span></div>
               <h1 className="mt-2 font-heading text-2xl font-black">Rise through every league</h1>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Rankings use verified reward score and completed challenges. Private personal details stay hidden.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Rankings use server-issued rewards from completed challenges, settled gym battles and official prizes.
+              </p>
             </div>
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-yellow-400 text-black shadow-[0_14px_35px_rgba(250,204,21,0.18)]"><Trophy size={26} /></div>
           </div>
           <div className="relative mt-4 flex items-center gap-2 rounded-2xl bg-background/60 px-3 py-2.5 text-[11px] text-muted-foreground">
-            <ShieldCheck size={14} className="shrink-0 text-accent" /> Fair play: only activity recorded through SE7EN FIT systems contributes to challenge rewards.
+            <ShieldCheck size={14} className="shrink-0 text-accent" /> Manual scores, duplicate rewards and activity under review do not count.
           </div>
         </section>
 
@@ -149,37 +144,41 @@ export default function Leaderboard() {
             <section className="rounded-[24px] border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">{data?.scope_label || 'Leaderboard'}</p>
-                  <h2 className="mt-1 font-heading text-lg font-black">{SCOPES.find((item) => item.key === scope)?.label} league</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{entries.length} ranked members shown</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">{data?.period_label || data?.period_key || 'Current month'}</p>
+                  <h2 className="mt-1 font-heading text-lg font-black">{data?.scope_label || 'Leaderboard'}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{entries.length} verified ranked members shown</p>
                 </div>
-                <button type="button" onClick={() => loadScope(scope, { background: true })} disabled={refreshing} className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground">
+                <button type="button" onClick={() => loadScope(scope, { background: true })} disabled={refreshing} aria-label="Refresh leaderboard" className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground">
                   <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
                 </button>
               </div>
 
-              {data?.user_rank ? (
+              {data?.user_integrity_status === 'review' ? (
+                <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-400/[0.08] p-3 text-xs leading-relaxed text-amber-200">
+                  Your competitive score is under fairness review and is temporarily unranked.
+                </div>
+              ) : data?.user_rank ? (
                 <div className="mt-4 flex items-center gap-3 rounded-2xl border border-accent/25 bg-accent/[0.08] p-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-sm font-black text-accent-foreground">#{data.user_rank}</div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-muted-foreground">Your current rank</p>
-                    <p className="mt-0.5 font-heading text-base font-black">{currentUser?.score || 0} verified points</p>
+                    <p className="text-xs font-bold text-muted-foreground">Your verified rank</p>
+                    <p className="mt-0.5 font-heading text-base font-black">{currentUser?.score || 0} points</p>
                   </div>
                   <ChevronRight size={17} className="text-accent" />
                 </div>
               ) : (
-                <div className="mt-4 rounded-2xl bg-background/60 p-3 text-xs text-muted-foreground">Complete a challenge to enter this leaderboard.</div>
+                <div className="mt-4 rounded-2xl bg-background/60 p-3 text-xs text-muted-foreground">Earn a verified challenge or battle reward to enter this month’s rankings.</div>
               )}
             </section>
 
             {prizes.length > 0 && (
               <section>
                 <div className="mb-3 flex items-center justify-between px-1">
-                  <div><h2 className="font-heading text-sm font-black">Top prizes</h2><p className="text-[10px] text-muted-foreground">Managed by your gym or SE7EN FIT</p></div>
+                  <div><h2 className="font-heading text-sm font-black">Official prizes</h2><p className="text-[10px] text-muted-foreground">Awarded after the leaderboard period is locked</p></div>
                   <Gift size={17} className="text-yellow-300" />
                 </div>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {prizes.map((prize, index) => <PrizeCard key={`${prize.rank}-${index}`} prize={prize} />)}
+                  {prizes.slice(0, 3).map((prize) => <PrizeCard key={prize.id || `${prize.rank}-${prize.title}`} prize={prize} />)}
                 </div>
               </section>
             )}
@@ -193,7 +192,7 @@ export default function Leaderboard() {
                       <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-background/70 text-xs font-black">{initials(member.name)}</div>
                       <p className="mt-2 truncate text-[10px] font-black text-foreground">{member.name}</p>
                       <p className="mt-0.5 font-heading text-lg font-black">{member.score}</p>
-                      <p className="text-[8px] text-muted-foreground">points</p>
+                      <p className="text-[8px] text-muted-foreground">verified points</p>
                       <span className="mt-2 inline-flex rounded-full border border-current/20 px-2 py-0.5 text-[9px] font-black">#{member.rank}</span>
                     </div>
                   ))}
@@ -202,12 +201,12 @@ export default function Leaderboard() {
             )}
 
             <section className="space-y-2.5">
-              <div className="flex items-center justify-between px-1"><h2 className="font-heading text-sm font-black">Rankings</h2><span className="text-[10px] text-muted-foreground">Reward score</span></div>
+              <div className="flex items-center justify-between px-1"><h2 className="font-heading text-sm font-black">Rankings</h2><span className="text-[10px] text-muted-foreground">Verified score</span></div>
               {entries.length === 0 ? (
                 <div className="rounded-[24px] border border-border bg-card p-8 text-center">
                   <Users size={30} className="mx-auto text-muted-foreground" />
-                  <h3 className="mt-3 font-heading text-sm font-black">No ranked members yet</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">Complete the first verified challenge and claim the opening position.</p>
+                  <h3 className="mt-3 font-heading text-sm font-black">No verified rankings yet</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">Complete a trusted challenge or gym battle to claim the opening position.</p>
                   <Button onClick={() => navigate('/challenges')} className="mt-4 h-10 rounded-xl">Browse challenges</Button>
                 </div>
               ) : remaining.map((member) => (
@@ -216,18 +215,38 @@ export default function Leaderboard() {
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-[10px] font-black"><UserRound size={16} /></div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{member.name}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{member.completed_challenges} challenges • {member.coins} spendable coins</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{member.completed_challenges} completed challenges</p>
                   </div>
                   <div className="text-right"><p className="font-heading text-base font-black">{member.score}</p><p className="text-[9px] text-muted-foreground">points</p></div>
                 </div>
               ))}
             </section>
+
+            {awardHistory.length > 0 && (
+              <section className="rounded-[24px] border border-border bg-card p-4">
+                <div className="mb-3 flex items-center gap-2"><Award size={17} className="text-yellow-300" /><h2 className="font-heading text-sm font-black">Your award history</h2></div>
+                <div className="space-y-2">
+                  {awardHistory.slice(0, 5).map((award) => (
+                    <div key={award.id} className="flex items-center gap-3 rounded-2xl bg-background/60 p-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-400/10 text-yellow-300"><Crown size={15} /></div>
+                      <div className="min-w-0 flex-1"><p className="truncate text-xs font-black">{award.title}</p><p className="text-[9px] text-muted-foreground">Rank {award.rank} • {award.status}</p></div>
+                      {Number(award.coins || 0) > 0 && <span className="text-xs font-black text-yellow-300">+{award.coins}</span>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
 
-        <button type="button" onClick={() => navigate('/challenges')} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card text-sm font-bold">
-          Earn more points in Challenges <ChevronRight size={16} />
-        </button>
+        <div className="grid grid-cols-2 gap-2.5">
+          <button type="button" onClick={() => navigate('/challenges')} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 text-xs font-bold">
+            Earn points <ChevronRight size={15} />
+          </button>
+          <button type="button" onClick={() => navigate('/fair-play?source_type=leaderboard')} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-3 text-xs font-bold text-muted-foreground">
+            <Flag size={14} /> Report concern
+          </button>
+        </div>
       </main>
     </>
   );
