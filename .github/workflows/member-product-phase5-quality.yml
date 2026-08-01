@@ -1,0 +1,88 @@
+name: Phase 5 Member Product Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/routes/memberProductPhase5Preload.js'
+      - 'server/start.js'
+      - 'server/supabase/migrations/020_member_product_reliability.sql'
+      - 'server/package.json'
+      - 'src/api/memberProductClient.js'
+      - 'src/pages/AITrainer.jsx'
+      - 'src/pages/FoodScan.jsx'
+      - 'src/pages/Workout.jsx'
+      - 'src/pages/Nutrition.jsx'
+      - 'src/pages/NutritionLog.jsx'
+      - 'src/components/se7enfit/AIWorkoutGenerator.jsx'
+      - 'render.yaml'
+      - '.github/workflows/member-product-phase5-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked frontend dependencies
+        run: npm ci --no-fund --no-audit
+
+      - name: Install backend production dependencies
+        run: npm install --omit=dev --no-fund --no-audit
+        working-directory: server
+
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --audit-level=high
+          npm audit --omit=dev --audit-level=high --prefix server
+
+      - name: Check backend syntax
+        run: |
+          node --check server/routes/memberProductPhase5Preload.js
+          node --check server/start.js
+
+      - name: Verify Phase 5 database contracts
+        run: |
+          grep -q "create table if not exists public.member_feature_usage" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "create table if not exists public.food_scans" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "create table if not exists public.workout_plan_sessions" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "reserve_member_feature_usage" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "confirm_food_scan" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "complete_member_workout_session" server/supabase/migrations/020_member_product_reliability.sql
+
+      - name: Verify AI and entitlement protections
+        run: |
+          grep -q "x-goog-api-key" server/routes/memberProductPhase5Preload.js
+          grep -q "subscription_plan_entitlements" server/routes/memberProductPhase5Preload.js
+          grep -q "reserve_member_feature_usage" server/routes/memberProductPhase5Preload.js
+          grep -q "GEMINI_API_KEY" render.yaml
+          grep -q "MEMBER_AI_ENABLED" render.yaml
+
+      - name: Lint member product files
+        run: >-
+          npx eslint --quiet
+          src/api/memberProductClient.js
+          src/pages/AITrainer.jsx
+          src/pages/FoodScan.jsx
+          src/pages/Workout.jsx
+          src/pages/Nutrition.jsx
+          src/pages/NutritionLog.jsx
+          src/components/se7enfit/AIWorkoutGenerator.jsx
+
+      - name: Build production web app
+        run: npm run build
+
+      - name: Build Capacitor web bundle
+        run: npm run build:capacitor
