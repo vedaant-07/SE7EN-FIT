@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'server/routes/memberProductPhase5CorrectionsPreload.js'
       - 'server/routes/memberProductPhase5Preload.js'
       - 'server/start.js'
       - 'server/supabase/migrations/020_member_product_reliability.sql'
@@ -50,6 +51,7 @@ jobs:
 
       - name: Check backend syntax
         run: |
+          node --check server/routes/memberProductPhase5CorrectionsPreload.js
           node --check server/routes/memberProductPhase5Preload.js
           node --check server/start.js
 
@@ -61,12 +63,14 @@ jobs:
           grep -q "reserve_member_feature_usage" server/supabase/migrations/020_member_product_reliability.sql
           grep -q "confirm_food_scan" server/supabase/migrations/020_member_product_reliability.sql
           grep -q "complete_member_workout_session" server/supabase/migrations/020_member_product_reliability.sql
+          grep -q "uq_ai_chat_request_role" server/supabase/migrations/020_member_product_reliability.sql
 
       - name: Verify AI and entitlement protections
         run: |
           grep -q "x-goog-api-key" server/routes/memberProductPhase5Preload.js
           grep -q "subscription_plan_entitlements" server/routes/memberProductPhase5Preload.js
           grep -q "reserve_member_feature_usage" server/routes/memberProductPhase5Preload.js
+          grep -q "Phase 5 member routes were not initialized" server/routes/memberProductPhase5CorrectionsPreload.js
           grep -q "GEMINI_API_KEY" render.yaml
           grep -q "MEMBER_AI_ENABLED" render.yaml
 
