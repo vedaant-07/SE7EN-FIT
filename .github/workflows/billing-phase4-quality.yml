@@ -13,6 +13,7 @@ on:
       - 'server/supabase/migrations/016_partial_refund_commission_recalculation.sql'
       - 'server/supabase/migrations/017_fix_subscription_activation_idempotency.sql'
       - 'server/supabase/migrations/018_fix_payout_currency_validation.sql'
+      - 'server/supabase/migrations/019_demote_removed_admin_profiles.sql'
       - 'server/package.json'
       - 'src/api/billingClient.js'
       - 'src/pages/Subscription.jsx'
@@ -64,6 +65,7 @@ jobs:
           grep -q "qualified_referral_is_immutable" server/supabase/migrations/014_subscription_commission_foundation.sql
           grep -q "sync_profile_privileged_role_from_user_roles" server/supabase/migrations/015_canonical_admin_profile_roles.sql
           grep -q "partially_refunded" server/supabase/migrations/016_partial_refund_commission_recalculation.sql
+          grep -q "v_current in ('admin'" server/supabase/migrations/019_demote_removed_admin_profiles.sql
 
       - name: Verify server-side admin and payout protection
         run: |
