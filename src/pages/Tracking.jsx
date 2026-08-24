@@ -3,7 +3,7 @@ import { Activity, RefreshCw, ShieldCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import TopBar from '@/components/se7enfit/TopBar';
 import LoadingScreen from '@/components/se7enfit/LoadingScreen';
-import UnifiedLiveTrackerV2 from '@/components/se7enfit/tracking/UnifiedLiveTrackerV2';
+import CoreActivityTracker from '@/components/se7enfit/tracking/CoreActivityTracker';
 import { Button } from '@/components/ui/button';
 
 const safeArray = (value) => Array.isArray(value) ? value : [];
@@ -46,13 +46,13 @@ export default function Tracking() {
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">Activity recorder</p>
               <h1 className="mt-1 font-heading text-xl font-black text-foreground">Track movement, not paperwork</h1>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Start one activity recorder for time, GPS distance, pace and estimated energy. Health trends and older manual metrics live under Explore instead of cluttering Track.
+                Walk, run, cycle or hike with one focused recorder. Health trends and older manual metrics live under Explore instead of cluttering Track.
               </p>
             </div>
           </div>
           <div className="mt-3 flex items-start gap-2 rounded-2xl bg-background/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
             <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
-            <span>GPS routes are private account data. SE7EN FIT rejects weak points and implausible jumps before saving an activity.</span>
+            <span>Android uses a native foreground service for screen-off route recording. GPS points remain private activity data and weak or implausible movement is filtered before saving.</span>
           </div>
         </section>
 
@@ -65,7 +65,7 @@ export default function Tracking() {
           </div>
         )}
 
-        <UnifiedLiveTrackerV2
+        <CoreActivityTracker
           key={savedCount}
           profile={profile}
           onSaved={() => setSavedCount((value) => value + 1)}
