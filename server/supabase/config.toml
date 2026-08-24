@@ -1,0 +1,11 @@
+# Canonical Supabase Edge Function configuration for SE7EN FIT.
+# Public pre-auth endpoints intentionally verify their own input/rate limits.
+
+[functions.submit-gym-request]
+verify_jwt = false
+
+[functions.validate-gym-code]
+verify_jwt = false
+
+[functions.search-router]
+verify_jwt = false
