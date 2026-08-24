@@ -31,7 +31,6 @@ import ExerciseLibrary from '@/pages/ExerciseLibrary';
 import Nutrition from '@/pages/Nutrition';
 import NutritionLog from '@/pages/NutritionLog';
 import Tracking from '@/pages/Tracking';
-import LiveTracking from '@/pages/LiveTracking';
 import Progress from '@/pages/Progress';
 import Community from '@/pages/Community';
 import Profile from '@/pages/Profile';
@@ -103,28 +102,36 @@ const AuthenticatedApp = () => {
         <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
-          <Route path="/features" element={<CoreFeatures />} />
           <Route path="/user-dashboard" element={<Navigate to="/" replace />} />
+
+          {/* Core mobile information architecture */}
+          <Route path="/tracking" element={<Tracking />} />
+          <Route path="/tracking/live" element={<Navigate to="/tracking" replace />} />
+          <Route path="/explore" element={<Progress />} />
+          <Route path="/history" element={<WorkoutLog />} />
+          <Route path="/profile" element={<Profile />} />
+
+          {/* Legacy metric deep links now belong to Explore, not the recorder. */}
+          <Route path="/tracking/water" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/steps" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/sleep" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/weight" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/measurements" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/cardio" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/habits" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/mood" element={<Navigate to="/explore" replace />} />
+          <Route path="/tracking/gym-attendance" element={<Navigate to="/my-gym" replace />} />
+          <Route path="/progress" element={<Navigate to="/explore" replace />} />
+
+          {/* Secondary features stay available without dominating primary navigation. */}
+          <Route path="/features" element={<CoreFeatures />} />
           <Route path="/ai-trainer" element={<AITrainer />} />
           <Route path="/workout" element={<Workout />} />
-          <Route path="/workout/log" element={<WorkoutLog />} />
+          <Route path="/workout/log" element={<Navigate to="/history" replace />} />
           <Route path="/exercises" element={<ExerciseLibrary />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/nutrition/log" element={<NutritionLog />} />
-          <Route path="/tracking" element={<Tracking />} />
-          <Route path="/tracking/live" element={<LiveTracking />} />
-          <Route path="/tracking/water" element={<Navigate to="/tracking?metric=water" replace />} />
-          <Route path="/tracking/steps" element={<Navigate to="/tracking?metric=steps" replace />} />
-          <Route path="/tracking/sleep" element={<Navigate to="/tracking?metric=sleep" replace />} />
-          <Route path="/tracking/weight" element={<Navigate to="/tracking?metric=weight" replace />} />
-          <Route path="/tracking/measurements" element={<Navigate to="/tracking?metric=measurements" replace />} />
-          <Route path="/tracking/cardio" element={<Navigate to="/tracking?metric=cardio" replace />} />
-          <Route path="/tracking/habits" element={<Navigate to="/tracking?metric=habits" replace />} />
-          <Route path="/tracking/mood" element={<Navigate to="/tracking?metric=mood" replace />} />
-          <Route path="/tracking/gym-attendance" element={<Navigate to="/my-gym" replace />} />
-          <Route path="/progress" element={<Progress />} />
           <Route path="/community" element={<Community />} />
-          <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/subscription" element={<Subscription />} />
           <Route path="/food-scan" element={<FoodScan />} />
