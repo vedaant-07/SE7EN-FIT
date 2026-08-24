@@ -34,10 +34,6 @@ public class SE7ENActivityTrackerPlugin extends Plugin {
       ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED;
   }
 
-  private boolean countsSteps(String activity) {
-    return !"cycling".equals(activity);
-  }
-
   private String sanitizeActivity(String value) {
     if ("running".equals(value) || "cycling".equals(value) || "hiking".equals(value)) return value;
     return "walking";
@@ -61,11 +57,9 @@ public class SE7ENActivityTrackerPlugin extends Plugin {
       call.reject("Location permission is required for activity tracking.");
       return;
     }
-    if (countsSteps(activity) && !hasActivityPermission()) {
-      call.reject("Activity recognition permission is required for step tracking.");
-      return;
-    }
 
+    // Activity-recognition permission is optional at the service boundary. If
+    // denied or unavailable, GPS/timer tracking continues and steps stay zero.
     Intent intent = command(SE7ENActivityTrackingService.ACTION_START)
       .putExtra(SE7ENActivityTrackingService.EXTRA_SESSION_ID, sessionId)
       .putExtra(SE7ENActivityTrackingService.EXTRA_ACTIVITY, activity);
