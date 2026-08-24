@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(SE7ENHealthPlugin.class);
     registerPlugin(SE7ENSecureStoragePlugin.class);
+    registerPlugin(SE7ENActivityTrackerPlugin.class);
     super.onCreate(savedInstanceState);
   }
 }
