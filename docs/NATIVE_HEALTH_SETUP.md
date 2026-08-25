@@ -1,52 +1,48 @@
-# SE7EN FIT Native Health Setup
+# SE7EN FIT Native Activity / Step Setup
 
-The app has a production health sync bridge in `src/lib/healthSync.js`.
+SE7EN FIT uses a first-party Capacitor bridge named `SE7ENHealth` for Android step-counter access.
 
-## Synced data
+## Current Android implementation
 
-- Steps
-- Distance
-- Active calories
-- Running/walking/cycling/treadmill cardio sessions
-- Average heart rate when returned by the native provider
+The Android project is generated during native builds. `scripts/prepare-android.mjs` then:
 
-## Platform mapping
+- adds `ACTIVITY_RECOGNITION`, coarse/fine location permissions, and optional GPS/step-counter hardware declarations,
+- generates `MainActivity.java`,
+- registers the `SE7ENHealth` Capacitor plugin,
+- generates `SE7ENHealthPlugin.java`.
 
-- iOS uses Apple HealthKit.
-- Android uses Health Connect.
+The plugin reads Android's hardware `Sensor.TYPE_STEP_COUNTER` instead of treating arbitrary JavaScript motion events as authoritative daily steps.
 
-The app safely skips sync in browser mode. Manual tracking still works.
+## JavaScript bridge
 
-## Required native bridge names
-
-The JavaScript layer checks for one of these Capacitor plugin names:
-
-```txt
-SE7ENHealth
-HealthKit
-HealthConnect
-Health
-```
-
-## Required native methods
+`src/lib/healthSync.js` calls `registerPlugin('SE7ENHealth')` and supports:
 
 ```txt
 requestPermissions
 getDailySummary
+getStepCounter
 getWorkouts
 ```
 
-`getDailySummary` should return steps, distanceKm, and calories.
-`getWorkouts` should return workouts with id, activity, durationMinutes, distanceKm, calories, averageHeartRate, startDate, and endDate.
+`getDailySummary` currently returns Android step-counter information for the current day. `getWorkouts` is intentionally empty until workout-history integration is implemented.
 
-## Database migration
+## Important limitations
 
-Run this after the earlier production migrations:
+This is a real hardware step-counter bridge, but it is not yet a replacement for Android Health Connect history:
 
-```txt
-006_native_health_tracking_fields.sql
-```
+- `TYPE_STEP_COUNTER` is cumulative since device boot.
+- SE7EN FIT stores a daily baseline when it first reads the counter that day.
+- Steps that occurred before the first successful SE7EN FIT read of that date cannot be reconstructed from this bridge alone.
+- Historical daily step totals require Health Connect (or another trusted historical provider) in a later integration.
+- iOS HealthKit is not implemented in this repository yet.
+- GPS activity recording is currently foreground-oriented; true screen-off route recording requires an Android foreground location service.
 
-## Important
+These limitations must be represented honestly in the product. Do not label missing historical data as measured data and do not silently combine manual values with sensor-measured steps.
 
-The web/backend code is ready. Actual HealthKit or Health Connect access needs the native iOS/Android project to include the native Capacitor health implementation because browser JavaScript cannot read OS health data directly.
+## Build validation
+
+The Android GitHub Actions workflow creates the Android project, runs the native preparation script, and compiles both an APK and an unsigned AAB on pull requests to `main`.
+
+## Production rule
+
+Measured activity sources must remain identifiable in persisted data. Manual entries, hardware step-counter data, GPS-tracked sessions, and any future Health Connect/HealthKit data must not be silently merged into an indistinguishable source.

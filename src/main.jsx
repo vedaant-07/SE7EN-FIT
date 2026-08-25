@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/space-grotesk/wght.css'
 import '@/index.css'
+import { initializeSecureSessionStorage } from '@/lib/secureSessionStorage'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 const path = '';
@@ -19,25 +20,39 @@ function renderFallback(message, actionPath = '/login/gym-owner', actionLabel = 
   );
 }
 
-if (path === '/gym-owner/dashboard') {
-  import('@/pages/GymOwnerDashboardStandalone.jsx')
-    .then(({ default: GymOwnerDashboardStandalone }) => root.render(<GymOwnerDashboardStandalone />))
-    .catch((error) => {
-      console.error('[SE7EN FIT] standalone owner dashboard failed:', error);
-      renderFallback('Dashboard could not load. Please redeploy the latest frontend build.');
-    });
-} else if (path === '/gym-owner/onboarding') {
-  import('@/pages/GymOwnerOnboardingStandalone.jsx')
-    .then(({ default: GymOwnerOnboardingStandalone }) => root.render(<GymOwnerOnboardingStandalone />))
-    .catch((error) => {
-      console.error('[SE7EN FIT] standalone owner onboarding failed:', error);
-      renderFallback('Gym setup could not load. Please redeploy the latest frontend build.', '/login/gym-owner', 'Login Again');
-    });
-} else {
-  import('@/App.jsx')
-    .then(({ default: App }) => root.render(<App />))
-    .catch((error) => {
-      console.error('[SE7EN FIT] app failed:', error);
-      renderFallback('App could not load. Please refresh or redeploy the latest build.', window.location.pathname, 'Reload');
-    });
+async function bootstrap() {
+  try {
+    // Android bearer/refresh credentials are migrated from any older WebView
+    // storage and hydrated from the native Keystore before auth code is loaded.
+    await initializeSecureSessionStorage();
+  } catch (error) {
+    console.error('[SE7EN FIT] secure session initialization failed:', error);
+    renderFallback('Secure session storage could not initialize. Please restart the app.', '/welcome', 'Restart Login');
+    return;
+  }
+
+  if (path === '/gym-owner/dashboard') {
+    import('@/pages/GymOwnerDashboardStandalone.jsx')
+      .then(({ default: GymOwnerDashboardStandalone }) => root.render(<GymOwnerDashboardStandalone />))
+      .catch((error) => {
+        console.error('[SE7EN FIT] standalone owner dashboard failed:', error);
+        renderFallback('Dashboard could not load. Please redeploy the latest frontend build.');
+      });
+  } else if (path === '/gym-owner/onboarding') {
+    import('@/pages/GymOwnerOnboardingStandalone.jsx')
+      .then(({ default: GymOwnerOnboardingStandalone }) => root.render(<GymOwnerOnboardingStandalone />))
+      .catch((error) => {
+        console.error('[SE7EN FIT] standalone owner onboarding failed:', error);
+        renderFallback('Gym setup could not load. Please redeploy the latest frontend build.', '/login/gym-owner', 'Login Again');
+      });
+  } else {
+    import('@/App.jsx')
+      .then(({ default: App }) => root.render(<App />))
+      .catch((error) => {
+        console.error('[SE7EN FIT] app failed:', error);
+        renderFallback('App could not load. Please refresh or redeploy the latest build.', window.location.pathname, 'Reload');
+      });
+  }
 }
+
+void bootstrap();

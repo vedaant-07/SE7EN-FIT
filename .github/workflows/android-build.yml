@@ -2,10 +2,21 @@ name: Build Android App
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - 'capacitor.config.ts'
+      - 'vite.config.js'
+      - '.github/workflows/android-build.yml'
   push:
     branches:
       - main
-      - master
     paths:
       - 'src/**'
       - 'public/**'
@@ -16,10 +27,18 @@ on:
       - 'vite.config.js'
       - '.github/workflows/android-build.yml'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android:
     name: Build APK and AAB
     runs-on: ubuntu-latest
+    timeout-minutes: 35
 
     steps:
       - name: Checkout repository
@@ -28,7 +47,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -42,7 +62,7 @@ jobs:
       - name: Build web app
         run: npm run build:capacitor
 
-      - name: Create Android project
+      - name: Create and prepare Android project
         run: |
           if [ ! -d android ]; then
             npx cap add android
@@ -62,13 +82,17 @@ jobs:
           ./gradlew :app:bundleRelease --no-daemon
 
       - name: Upload debug APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: se7enfit-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
 
       - name: Upload release AAB
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: se7enfit-release-aab-unsigned
           path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore

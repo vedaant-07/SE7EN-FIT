@@ -1,0 +1,9 @@
+drop index if exists public.attendance_id_key;
+drop index if exists public.equipment_id_key;
+drop index if exists public.gym_members_id_key;
+drop index if exists public.gyms_gym_id_key;
+drop index if exists public.profiles_user_id_key;
+drop index if exists public.audit_logs_created_at_idx;
+drop index if exists public.idx_attendance_gym_checkin;
+drop index if exists public.idx_profiles_email;
+drop index if exists public.idx_profiles_role;

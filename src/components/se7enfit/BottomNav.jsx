@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Bot, Dumbbell, Trophy, Activity } from 'lucide-react';
+import { Activity, Compass, History, Home, UserRound } from 'lucide-react';
 
 const navItems = [
   { path: '/', icon: Home, label: 'Home' },
-  { path: '/workout', icon: Dumbbell, label: 'Train' },
-  { path: '/ai-trainer', icon: Bot, label: 'Coach' },
-  { path: '/challenges', icon: Trophy, label: 'Compete' },
   { path: '/tracking', icon: Activity, label: 'Track' },
+  { path: '/explore', icon: Compass, label: 'Explore' },
+  { path: '/history', icon: History, label: 'History' },
+  { path: '/profile', icon: UserRound, label: 'Profile' },
 ];
 
 export default function BottomNav() {
@@ -16,8 +16,11 @@ export default function BottomNav() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <nav aria-label="Primary" className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 backdrop-blur-2xl"
-         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 backdrop-blur-2xl"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       <div className="mx-auto flex max-w-lg items-center justify-around px-2 pb-2 pt-2">
         {navItems.map(({ path, icon: NavIcon, label }) => {
           const isActive = pathname === path || (path !== '/' && pathname.startsWith(path));
