@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload debug APK
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: se7enfit-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload release AAB
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: se7enfit-release-aab-unsigned
           path: android/app/build/outputs/bundle/release/*.aab
